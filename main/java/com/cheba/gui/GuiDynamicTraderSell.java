@@ -2,6 +2,7 @@ package com.cheba.gui;
 
 import com.cheba.container.TraderSellContainer;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.util.text.translation.I18n;
 import noppes.npcs.client.gui.util.GuiContainerNPCInterface;
 import noppes.npcs.entity.EntityNPCInterface;
 
@@ -41,13 +42,13 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
         // Подписи панелей.
         drawCenteredString(
-                fontRenderer, "Предметы для продажи",
+                fontRenderer, I18n.translateToLocal("cheba.trader.sell.title"),
                 guiLeft + xSize / 2, guiTop - 12,
                 0xFFFFFF
         );
 
         drawString(
-                fontRenderer, "Буфер продажи",
+                fontRenderer, I18n.translateToLocal("cheba.trader.sell.buffer"),
                 guiLeft + 23, guiTop - 1, 0xFFFFFF
         );
 

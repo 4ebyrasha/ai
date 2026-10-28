@@ -9,6 +9,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleTrader;
+import net.minecraft.util.text.translation.I18n;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,15 +54,15 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         int controlsY = gridY + ROWS * CELL_SIZE + 8;
 
         buttonList.add(new GuiButton(
-                0, width / 2 - 105, controlsY, 65, 20, "< Назад"
+                0, width / 2 - 105, controlsY, 65, 20, I18n.translateToLocal("cheba.trader.back")
         ));
 
         buttonList.add(new GuiButton(
-                1, width / 2 - 32, controlsY, 64, 20, "Меню"
+                1, width / 2 - 32, controlsY, 64, 20, I18n.translateToLocal("cheba.trader.menu")
         ));
 
         buttonList.add(new GuiButton(
-                2, width / 2 + 40, controlsY, 65, 20, "Вперёд >"
+                2, width / 2 + 40, controlsY, 65, 20, I18n.translateToLocal("cheba.trader.next")
         ));
 
         int pages = getPageCount();
@@ -138,14 +139,14 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         drawDefaultBackground();
 
         drawCenteredString(
-                fontRenderer, "Покупка товаров",
+                fontRenderer, I18n.translateToLocal("cheba.trader.buy.title"),
                 width / 2, 12, 0xFFFFFF
         );
 
         if (role == null) {
             drawCenteredString(
                     fontRenderer,
-                    "Не удалось получить список предложений NPC",
+                    I18n.translateToLocal("cheba.trader.buy.load_error"),
                     width / 2, height / 2, 0xFF5555
             );
 
@@ -186,7 +187,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
 
         drawCenteredString(
                 fontRenderer,
-                "Страница " + (page + 1) + " / " + getPageCount(),
+                "cheba.trader.page" + (page + 1) + " / " + getPageCount(),
                 width / 2, getGridY() + ROWS * CELL_SIZE + 31,
                 0xFFFFFF
         );
@@ -205,8 +206,13 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         lines.add(result.getDisplayName());
 
         if (offer.getPriceMoney() > 0) {
-            lines.add(TextFormatting.GOLD
-                    + "Цена: " + offer.getPriceMoney() + " монет");
+            lines.add(
+                    TextFormatting.GOLD
+                            + I18n.translateToLocalFormatted(
+                            "cheba.trader.price",
+                            offer.getPriceMoney()
+                    )
+            );
         }
 
         for (ItemStack priceItem : offer.getPriceItems()) {

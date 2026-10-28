@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import noppes.npcs.client.Client;
 import noppes.npcs.constants.EnumPacketServer;
+import net.minecraft.util.text.translation.I18n;
 
 import java.io.IOException;
 
@@ -25,11 +26,11 @@ public class GuiDynamicTraderMenu extends GuiScreen {
         int y = height / 2 - 12;
 
         buttonList.add(new GuiButton(
-                0, x, y, buttonWidth, buttonHeight, "КУПИТЬ"
+                0, x, y, buttonWidth, buttonHeight, I18n.translateToLocal("cheba.trader.buy")
         ));
 
         buttonList.add(new GuiButton(
-                1, x, y + 26, buttonWidth, buttonHeight, "ПРОДАТЬ"
+                1, x, y + 26, buttonWidth, buttonHeight, I18n.translateToLocal("cheba.trader.sell")
         ));
     }
 
@@ -53,7 +54,7 @@ public class GuiDynamicTraderMenu extends GuiScreen {
 
         drawCenteredString(
                 fontRenderer,
-                "Торговец",
+                I18n.translateToLocal("cheba.trader.title"),
                 width / 2,
                 height / 2 - 55,
                 0xFFFFFF

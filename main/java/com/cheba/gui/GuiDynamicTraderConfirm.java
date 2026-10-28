@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.text.translation.I18n;
 import noppes.npcs.client.Client;
 import noppes.npcs.constants.EnumPacketServer;
 
@@ -35,11 +36,11 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
         int y = height / 2 + 45;
 
         buttonList.add(new GuiButton(
-                0, x, y, 100, 20, "Купить"
+                0, x, y, 100, 20, I18n.translateToLocal("cheba.trader.buy")
         ));
 
         buttonList.add(new GuiButton(
-                1, x + 110, y, 100, 20, "Отмена"
+                1, x + 110, y, 100, 20, I18n.translateToLocal("cheba.trader.cancel")
         ));
     }
 
@@ -64,7 +65,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
 
         drawCenteredString(
                 fontRenderer,
-                "Подтверждение покупки",
+                I18n.translateToLocal("cheba.trader.confirm.title"),
                 width / 2, height / 2 - 55, 0xFFFFFF
         );
 
@@ -91,7 +92,10 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
         if (offer.getPriceMoney() > 0) {
             drawCenteredString(
                     fontRenderer,
-                    "Цена: " + offer.getPriceMoney() + " монет",
+                    I18n.translateToLocalFormatted(
+                            "cheba.trader.price",
+                            offer.getPriceMoney()
+                    ),
                     width / 2, y, 0xFFD700
             );
             y += 12;

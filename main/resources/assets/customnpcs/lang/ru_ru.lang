@@ -608,3 +608,36 @@ item.npcsoulstoneempty.name=Камень душ (пуст)
 item.npcsoulstonefilled.name=Камень душ (полон)
 
 item.scripted_item.name=Скриптовый предмет
+
+# Dynamic trader
+cheba.trader.title=Торговец
+cheba.trader.buy=КУПИТЬ
+cheba.trader.sell=ПРОДАТЬ
+cheba.trader.back=< Назад
+cheba.trader.menu=Меню
+cheba.trader.next=Вперёд >
+cheba.trader.buy.title=Покупка товаров
+cheba.trader.buy.load_error=Не удалось получить список предложений NPC
+cheba.trader.page=Страница %s / %s
+cheba.trader.price=Цена: %s рублей
+cheba.trader.confirm.title=Подтверждение покупки
+cheba.trader.cancel=Отмена
+cheba.trader.sell.title=Предметы для продажи
+cheba.trader.sell.buffer=Буфер продажи
+
+cheba.trader.message.invalid_offer=Некорректное предложение.
+cheba.trader.message.not_found=Торговец не найден.
+cheba.trader.message.not_trader=Этот NPC не является торговцем.
+cheba.trader.message.too_far=Вы слишком далеко от торговца.
+cheba.trader.message.buy_success=Покупка выполнена.
+cheba.trader.message.server_only=Покупка доступна только на сервере.
+cheba.trader.message.offer_unavailable=Предложение больше недоступно.
+cheba.trader.message.currency_unavailable=Валютная система недоступна.
+cheba.trader.message.not_enough_money=Недостаточно денег.
+cheba.trader.message.payment_failed=Не удалось списать деньги.
+cheba.trader.message.not_enough_items=Недостаточно предметов для оплаты.
+cheba.trader.message.out_of_stock=Товар закончился.
+cheba.trader.message.daily_limit=Достигнут дневной лимит покупки.
+cheba.trader.message.inventory_changed=Инвентарь изменился. Повторите покупку.
+cheba.trader.message.refund_failed=Ошибка возврата оплаты. Обратитесь к администратору.
+cheba.trader.message.generic_failure=Не удалось выполнить покупку.

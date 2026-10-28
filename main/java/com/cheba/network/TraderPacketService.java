@@ -5,7 +5,7 @@ import com.cheba.trader.TraderTradeService;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
 
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleTrader;
@@ -35,26 +35,26 @@ public final class TraderPacketService {
 
         if (offerId == null || offerId.trim().isEmpty()
                 || offerId.length() > 128) {
-            sendMessage(player, "Некорректное предложение.");
+            sendMessage(player, "cheba.trader.message.invalid_offer");
             return;
         }
 
         Entity entity = player.world.getEntityByID(npcEntityId);
 
         if (!(entity instanceof EntityNPCInterface)) {
-            sendMessage(player, "Торговец не найден.");
+            sendMessage(player, "cheba.trader.message.not_found");
             return;
         }
 
         EntityNPCInterface npc = (EntityNPCInterface) entity;
 
         if (!(npc.roleInterface instanceof RoleTrader)) {
-            sendMessage(player, "Этот NPC не является торговцем.");
+            sendMessage(player, "cheba.trader.message.not_trader");
             return;
         }
 
         if (player.getDistanceSq(npc) > 64.0D) {
-            sendMessage(player, "Вы слишком далеко от торговца.");
+            sendMessage(player, "cheba.trader.message.too_far");
             return;
         }
 
@@ -84,9 +84,9 @@ public final class TraderPacketService {
 
         if (result == TraderTradeService.Result.REFUND_FAILED) {
             System.err.println(
-                    "[ChebaTrader] Не удалось вернуть оплату игроку "
+                    "[ChebaTrader] Failed to refund payment to player "
                             + player.getName()
-                            + " при покупке у NPC "
+                            + " for NPC "
                             + npc.getEntityId()
             );
         }
@@ -97,70 +97,96 @@ public final class TraderPacketService {
             TraderTradeService.Result result
     ) {
         if (result == null) {
-            sendMessage(player, "Не удалось выполнить покупку.");
+            sendMessage(
+                    player,
+                    "cheba.trader.message.generic_failure"
+            );
             return;
         }
 
         switch (result) {
             case SUCCESS:
-                sendMessage(player, "Покупка выполнена.");
+                sendMessage(player, "cheba.trader.message.buy_success");
                 break;
 
             case SERVER_ONLY:
-                sendMessage(player, "Покупка доступна только на сервере.");
+                sendMessage(player, "cheba.trader.message.server_only");
                 break;
 
             case TOO_FAR:
-                sendMessage(player, "Вы слишком далеко от торговца.");
+                sendMessage(player, "cheba.trader.message.too_far");
                 break;
 
             case INVALID_OFFER:
-                sendMessage(player, "Предложение больше недоступно.");
+                sendMessage(player, "cheba.trader.message.offer_unavailable");
                 break;
 
             case CURRENCY_UNAVAILABLE:
-                sendMessage(player, "Валютная система недоступна.");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.currency_unavailable"
+                );
                 break;
 
             case NOT_ENOUGH_MONEY:
-                sendMessage(player, "Недостаточно денег.");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.not_enough_money"
+                );
                 break;
 
             case PAYMENT_FAILED:
-                sendMessage(player, "Не удалось списать деньги.");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.payment_failed"
+                );
                 break;
 
             case NOT_ENOUGH_ITEMS:
-                sendMessage(player, "Недостаточно предметов для оплаты.");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.not_enough_items"
+                );
                 break;
 
             case OUT_OF_STOCK:
-                sendMessage(player, "Товар закончился.");
+                sendMessage(player, "cheba.trader.message.out_of_stock");
                 break;
 
             case DAILY_LIMIT_REACHED:
-                sendMessage(player, "Достигнут дневной лимит покупки.");
+                sendMessage(player, "cheba.trader.message.daily_limit");
                 break;
 
             case INVENTORY_CHANGED:
-                sendMessage(player, "Инвентарь изменился. Повторите покупку.");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.inventory_changed"
+                );
                 break;
 
             case REFUND_FAILED:
                 sendMessage(
                         player,
-                        "Ошибка возврата оплаты. Обратитесь к администратору."
+                        "cheba.trader.message.refund_failed"
                 );
                 break;
 
             default:
-                sendMessage(player, "Покупка не выполнена.");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.generic_failure"
+                );
                 break;
         }
     }
 
-    private static void sendMessage(EntityPlayerMP player, String message) {
-        player.sendMessage(new TextComponentString(message));
+    private static void sendMessage(
+            EntityPlayerMP player,
+            String translationKey
+    ) {
+        player.sendMessage(
+                new TextComponentTranslation(translationKey)
+        );
     }
 
     private static final class LastRequest {
