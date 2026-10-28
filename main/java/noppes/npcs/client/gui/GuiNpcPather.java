@@ -1,0 +1,155 @@
+package noppes.npcs.client.gui;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.nbt.NBTTagCompound;
+import noppes.npcs.NBTTags;
+import noppes.npcs.client.Client;
+import noppes.npcs.client.gui.util.GuiCustomScroll;
+import noppes.npcs.client.gui.util.GuiNPCInterface;
+import noppes.npcs.client.gui.util.GuiNpcButton;
+import noppes.npcs.client.gui.util.IGuiData;
+import noppes.npcs.constants.EnumPacketServer;
+import noppes.npcs.entity.EntityNPCInterface;
+import noppes.npcs.entity.data.DataAI;
+
+public class GuiNpcPather extends GuiNPCInterface implements IGuiData {
+	private GuiCustomScroll scroll;
+	private HashMap data = new HashMap();
+	private DataAI ai;
+	private static int selected;
+	private boolean select = false;
+
+	public GuiNpcPather(EntityNPCInterface npc) {
+		this.drawDefaultBackground = false;
+		this.xSize = 176;
+		this.title = "Npc Pather";
+		this.setBackground("smallbg.png");
+		this.ai = npc.ais;
+	}
+
+	public void initPacket() {
+		Client.sendData(EnumPacketServer.MovingPathGet);
+	}
+
+	public void initGui() {
+		super.initGui();
+		this.scroll = new GuiCustomScroll(this, 0);
+		this.scroll.setSize(160, 164);
+		List<String> list = new ArrayList<String>();
+		Iterator<int[]> var2 = this.ai.getMovingPath().iterator();
+
+		while (var2.hasNext()) {
+			int[] arr = (int[]) var2.next();
+			list.add("x:" + arr[0] + " y:" + arr[1] + " z:" + arr[2] + " roam:" + arr[3]);
+		}
+
+		this.scroll.setUnsortedList(list);
+		this.scroll.guiLeft = this.guiLeft + 7;
+		this.scroll.guiTop = this.guiTop + 12;
+		this.addScroll(this.scroll);
+
+		if (select) {
+			if (selected < list.size())
+				this.scroll.selected = selected;
+
+			select = false;
+		}
+
+		this.addButton(new GuiNpcButton(0, this.guiLeft + 7, this.guiTop + 178, 30, 20, "gui.down"));
+		this.addButton(new GuiNpcButton(1, this.guiLeft + 39, this.guiTop + 178, 25, 20, "gui.up"));
+		this.addButton(new GuiNpcButton(2, this.guiLeft + 66, this.guiTop + 178, 39, 20, "selectWorld.deleteButton"));
+		this.addButton(new GuiNpcButton(3, this.guiLeft + 107, this.guiTop + 178, 61, 20, "ai.wandering"));
+	}
+
+	protected void actionPerformed(GuiButton guibutton) {
+		if (this.scroll.selected >= 0) {
+			int id = guibutton.id;
+			List list;
+			int[] a;
+			int[] b;
+			if (id == 0) {
+				list = this.ai.getMovingPath();
+				selected = this.scroll.selected;
+				if (list.size() <= selected + 1) {
+					return;
+				}
+
+				a = (int[]) list.get(selected);
+				b = (int[]) list.get(selected + 1);
+				list.set(selected, b);
+				list.set(selected + 1, a);
+				this.ai.setMovingPath(list);
+				this.initGui();
+				this.scroll.selected = selected + 1;
+			} else if (id == 1) {
+				if (this.scroll.selected - 1 < 0) {
+					return;
+				}
+
+				list = this.ai.getMovingPath();
+				selected = this.scroll.selected;
+				a = (int[]) list.get(selected);
+				b = (int[]) list.get(selected - 1);
+				list.set(selected, b);
+				list.set(selected - 1, a);
+				this.ai.setMovingPath(list);
+				this.initGui();
+				this.scroll.selected = selected - 1;
+			} else if (id == 2) {
+				list = this.ai.getMovingPath();
+				if (list.size() <= 1) {
+					return;
+				}
+
+				selected = new Integer(this.scroll.selected);
+
+				list.remove(selected);
+				this.ai.setMovingPath(list);
+
+				select = true;
+
+				this.initGui();
+			} else if (id == 3) {
+				selected = this.scroll.selected;
+				this.setSubGui(new SubGuiNpcWanderNode(this.ai, selected));
+			}
+
+		}
+	}
+
+	protected void drawGuiContainerBackgroundLayer(float f, int i, int j) {
+	}
+
+	public void mouseClicked(int i, int j, int k) {
+		super.mouseClicked(i, j, k);
+		this.scroll.mouseClicked(i, j, k);
+	}
+
+	public void keyTyped(char c, int i) {
+		if (this.subgui != null) {
+			this.subgui.keyTyped(c, i);
+		} else if (i == 1 || this.isInventoryKey(i)) {
+			this.close();
+		}
+	}
+
+	public void save() {
+		NBTTagCompound compound = new NBTTagCompound();
+		compound.setTag("MovingPathNew", NBTTags.nbtIntegerArraySet(this.ai.getMovingPath()));
+		Client.sendData(EnumPacketServer.MovingPathSave, compound);
+	}
+
+	public void setGuiData(NBTTagCompound compound) {
+		this.ai.readToNBT(compound);
+		this.initGui();
+	}
+
+	@Override
+	public void onSubGuiClosed() {
+		this.initGui();
+	}
+}
