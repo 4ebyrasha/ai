@@ -15,6 +15,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import net.minecraft.nbt.NBTTagCompound;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 public final class TraderTradeService {
 
     private final TraderCurrencyBridge currency;
@@ -93,7 +99,7 @@ public final class TraderTradeService {
         }
 
         String marketKey = getMarketKey(role);
-        String stockKey = marketKey + "|" + offer.getId();
+        String stockKey = marketKey + "|" + getStockProductKey(product);
 
         String playerKey = stockKey
                 + "|" + player.getUniqueID();
@@ -176,6 +182,37 @@ public final class TraderTradeService {
         return Result.SUCCESS;
     }
 
+    private String getStockProductKey(ItemStack product) {
+        String productData = product
+                .writeToNBT(new NBTTagCompound())
+                .toString();
+
+        try {
+            byte[] hash = MessageDigest
+                    .getInstance("SHA-256")
+                    .digest(productData.getBytes(StandardCharsets.UTF_8));
+
+            StringBuilder key = new StringBuilder(hash.length * 2);
+
+            for (byte value : hash) {
+                int unsignedValue = value & 0xFF;
+
+                if (unsignedValue < 16) {
+                    key.append('0');
+                }
+
+                key.append(Integer.toHexString(unsignedValue));
+            }
+
+            return "product:" + key;
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(
+                    "SHA-256 is unavailable",
+                    e
+            );
+        }
+    }
+
     private NpcTradeConfig findOffer(
             RoleTrader role,
             String offerId
@@ -202,7 +239,6 @@ public final class TraderTradeService {
     /**
      * Создаёт план списания предметов.
      * Возвращает null, если предметов недостаточно.
-     *
      * Метаданные и NBT не учитываются: сравнивается Item.
      */
     private List<Removal> buildRemovalPlan(
