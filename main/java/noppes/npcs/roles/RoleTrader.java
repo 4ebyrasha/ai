@@ -19,16 +19,73 @@ import noppes.npcs.constants.EnumGuiType;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.util.NBTJsonUtil;
 
+import com.cheba.trader.NpcTradeConfig;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import net.minecraft.nbt.NBTTagList;
+
 public class RoleTrader extends RoleInterface implements IRoleTrader {
 	public String marketName = "";
 	public NpcMiscInventory inventoryCurrency = new NpcMiscInventory(36);
 	public NpcMiscInventory inventorySold = new NpcMiscInventory(18);
+	private final List<NpcTradeConfig> dynamicOffers = new ArrayList<>();
 	public boolean ignoreDamage = false;
 	public boolean ignoreNBT = false;
 	public boolean toSave = false;
 
 	public RoleTrader(EntityNPCInterface npc) {
 		super(npc);
+	}
+
+	public List<NpcTradeConfig> getDynamicOffers() {
+		return Collections.unmodifiableList(dynamicOffers);
+	}
+
+	public NpcTradeConfig getDynamicOffer(String id) {
+		if (id == null) {
+			return null;
+		}
+
+		for (NpcTradeConfig offer : dynamicOffers) {
+			if (id.equals(offer.getId())) {
+				return offer;
+			}
+		}
+
+		return null;
+	}
+
+	public void addDynamicOffer(NpcTradeConfig offer) {
+		if (offer == null) {
+			return;
+		}
+
+		// Не добавляем второй экземпляр предложения с тем же ID.
+		if (getDynamicOffer(offer.getId()) == null) {
+			dynamicOffers.add(offer);
+		}
+	}
+
+	public boolean removeDynamicOffer(String id) {
+		if (id == null) {
+			return false;
+		}
+
+		for (int i = 0; i < dynamicOffers.size(); i++) {
+			if (id.equals(dynamicOffers.get(i).getId())) {
+				dynamicOffers.remove(i);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public void clearDynamicOffers() {
+		dynamicOffers.clear();
 	}
 
 	public NBTTagCompound writeToNBT(NBTTagCompound nbttagcompound) {
@@ -42,36 +99,79 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		return nbttagcompound;
 	}
 
-	public NBTTagCompound writeNBT(NBTTagCompound nbttagcompound) {
-		nbttagcompound.setTag("TraderCurrency", this.inventoryCurrency.getToNBT());
-		nbttagcompound.setTag("TraderSold", this.inventorySold.getToNBT());
-		nbttagcompound.setBoolean("TraderIgnoreDamage", this.ignoreDamage);
-		nbttagcompound.setBoolean("TraderIgnoreNBT", this.ignoreNBT);
-		return nbttagcompound;
-	}
-
 	public void readFromNBT(NBTTagCompound nbttagcompound) {
 		this.marketName = nbttagcompound.getString("TraderMarket");
 		this.readNBT(nbttagcompound);
 	}
 
-	public void readNBT(NBTTagCompound nbttagcompound) {
-		this.inventoryCurrency.setFromNBT(nbttagcompound.getCompoundTag("TraderCurrency"));
-		this.inventorySold.setFromNBT(nbttagcompound.getCompoundTag("TraderSold"));
-		this.ignoreDamage = nbttagcompound.getBoolean("TraderIgnoreDamage");
-		this.ignoreNBT = nbttagcompound.getBoolean("TraderIgnoreNBT");
+	public NBTTagCompound writeNBT(NBTTagCompound tag) {
+		writeLegacyNBT(tag);
+
+		NBTTagList offersTag = new NBTTagList();
+
+		for (NpcTradeConfig offer : dynamicOffers) {
+			if (offer != null) {
+				offersTag.appendTag(offer.writeToNBT());
+			}
+		}
+
+		tag.setTag("DynamicTraderOffers", offersTag);
+		return tag;
+	}
+
+	public void readNBT(NBTTagCompound tag) {
+		readLegacyNBT(tag);
+
+		// Старые JSON-файлы не должны очищать новые NBT-предложения.
+		if (tag.hasKey("DynamicTraderOffers", 9)) {
+			dynamicOffers.clear();
+
+			NBTTagList offersTag =
+					tag.getTagList("DynamicTraderOffers", 10);
+
+			for (int i = 0; i < offersTag.tagCount(); i++) {
+				NpcTradeConfig offer =
+						NpcTradeConfig.readFromNBT(
+								offersTag.getCompoundTagAt(i)
+						);
+
+				if (offer != null) {
+					addDynamicOffer(offer);
+				}
+			}
+		}
+	}
+
+	private NBTTagCompound writeLegacyNBT(NBTTagCompound tag) {
+		tag.setTag("TraderCurrency", inventoryCurrency.getToNBT());
+		tag.setTag("TraderSold", inventorySold.getToNBT());
+		tag.setBoolean("TraderIgnoreDamage", ignoreDamage);
+		tag.setBoolean("TraderIgnoreNBT", ignoreNBT);
+
+		return tag;
+	}
+
+	private void readLegacyNBT(NBTTagCompound tag) {
+		inventoryCurrency.setFromNBT(
+				tag.getCompoundTag("TraderCurrency")
+		);
+
+		inventorySold.setFromNBT(
+				tag.getCompoundTag("TraderSold")
+		);
+
+		ignoreDamage = tag.getBoolean("TraderIgnoreDamage");
+		ignoreNBT = tag.getBoolean("TraderIgnoreNBT");
 	}
 
 	public void interact(EntityPlayer player) {
 		this.npc.say(player, this.npc.advanced.getInteractLine());
 
-		try {
-			load(this, this.marketName);
-		} catch (Exception var3) {
-			Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, (String) null, var3);
-		}
-
-		NoppesUtilServer.sendOpenGui(player, EnumGuiType.PlayerTrader, this.npc);
+		NoppesUtilServer.sendOpenGui(
+				player,
+				EnumGuiType.DynamicTraderMenu,
+				this.npc
+		);
 	}
 
 	public boolean hasCurrency(ItemStack itemstack) {
@@ -158,7 +258,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 			File file1 = getFile(name);
 
 			try {
-				NBTJsonUtil.SaveFile(file, r.writeNBT(new NBTTagCompound()));
+				NBTJsonUtil.SaveFile(file, r.writeLegacyNBT(new NBTTagCompound()));
 				if (file1.exists()) {
 					file1.delete();
 				}
@@ -175,7 +275,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 			File file = getFile(name);
 			if (file.exists()) {
 				try {
-					role.readNBT(NBTJsonUtil.LoadFile(file));
+					role.readLegacyNBT(NBTJsonUtil.LoadFile(file));
 				} catch (Exception var4) {
 				}
 

@@ -286,13 +286,23 @@ public class NoppesUtilServer {
 		}
 	}
 
-	private static void sendExtraData(EntityPlayer player, EntityNPCInterface npc, EnumGuiType gui, int i, int j,
-			int k) {
-		if (gui == EnumGuiType.PlayerFollower || gui == EnumGuiType.PlayerFollowerHire
-				|| gui == EnumGuiType.PlayerTrader || gui == EnumGuiType.PlayerTransporter) {
+	private static void sendExtraData(
+			EntityPlayer player,
+			EntityNPCInterface npc,
+			EnumGuiType gui,
+			int i,
+			int j,
+			int k
+	) {
+		if (gui == EnumGuiType.PlayerFollower
+				|| gui == EnumGuiType.PlayerFollowerHire
+				|| gui == EnumGuiType.PlayerTrader
+				|| gui == EnumGuiType.PlayerTransporter
+				|| gui == EnumGuiType.DynamicTraderMenu
+				|| gui == EnumGuiType.DynamicTraderSell) {
+
 			sendRoleData(player, npc);
 		}
-
 	}
 
 	private static ArrayList getScrollData(EntityPlayer player, EnumGuiType gui, EntityNPCInterface npc) {

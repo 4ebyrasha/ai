@@ -79,6 +79,8 @@ import noppes.npcs.roles.RoleTransporter;
 import noppes.npcs.schematics.SchematicWrapper;
 import noppes.npcs.util.IPermission;
 
+import com.cheba.network.TraderPacketService;
+
 public class PacketHandlerServer {
 	@SubscribeEvent
 	public void onServerPacket(ServerCustomPacketEvent event) {
@@ -131,7 +133,36 @@ public class PacketHandlerServer {
 
 	private void handlePacket(EnumPacketServer type, ByteBuf buffer, EntityPlayerMP player, EntityNPCInterface npc)
 			throws Exception {
-		if (type == EnumPacketServer.Delete) {
+		if (type == EnumPacketServer.TraderBuy) {
+			int npcEntityId = buffer.readInt();
+			String offerId = Server.readString(buffer);
+
+			TraderPacketService.handleBuy(
+					player,
+					npcEntityId,
+					offerId
+			);
+
+		} else if (type == EnumPacketServer.TraderOpenSell) {
+			int npcEntityId = buffer.readInt();
+
+			Entity entity = player.world.getEntityByID(npcEntityId);
+
+			if (entity instanceof EntityNPCInterface) {
+				EntityNPCInterface traderNpc = (EntityNPCInterface) entity;
+
+				if (traderNpc.roleInterface instanceof RoleTrader
+						&& player.getDistanceSq(traderNpc) <= 64.0D) {
+
+					NoppesUtilServer.sendOpenGui(
+							player,
+							EnumGuiType.DynamicTraderSell,
+							traderNpc
+					);
+				}
+			}
+
+		} else if (type == EnumPacketServer.Delete) {
 			npc.delete();
 			NoppesUtilServer.deleteNpc(npc, player);
 		} else if (type == EnumPacketServer.SceneStart) {

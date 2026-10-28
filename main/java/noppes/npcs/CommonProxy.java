@@ -33,6 +33,9 @@ import noppes.npcs.containers.ContainerNpcQuestTypeItem;
 import noppes.npcs.controllers.data.PlayerData;
 import noppes.npcs.entity.EntityNPCInterface;
 
+import com.cheba.container.TraderMenuContainer;
+import com.cheba.container.TraderSellContainer;
+
 public class CommonProxy implements IGuiHandler {
 	public boolean newVersionAvailable = false;
 	public int revision = 4;
@@ -96,6 +99,12 @@ public class CommonProxy implements IGuiHandler {
 			return new ContainerMail(player, x == 1, y == 1);
 		} else if (gui == EnumGuiType.CompanionInv) {
 			return new ContainerNPCCompanion(npc, player);
+		}
+		else if (gui == EnumGuiType.DynamicTraderMenu) {
+			return new TraderMenuContainer(player);
+		}
+		else if (gui == EnumGuiType.DynamicTraderSell) {
+			return new TraderSellContainer(player, npc);
 		} else {
 			return gui == EnumGuiType.CustomGui ? new ContainerCustomGui(new InventoryBasic("", false, x)) : null;
 		}
