@@ -12,7 +12,6 @@ import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.text.TextFormatting;
 import net.minecraft.util.text.translation.I18n;
 
 import noppes.npcs.client.Client;
@@ -239,28 +238,39 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
         switch (button.id) {
             case 0: {
+                // Добавить предложение и перейти на его страницу
                 role.addDynamicOffer(new NpcTradeConfig());
+
                 selectedOfferIndex = role.getDynamicOffers().size() - 1;
+                offerPage = selectedOfferIndex / VISIBLE_OFFERS;
+
                 statusMessage = I18n.translateToLocal(
                         "cheba.trader.editor.created"
                 );
+
                 refreshFields();
                 break;
             }
 
             case 1: {
+                // Удалить выбранное предложение
                 NpcTradeConfig offer = getSelectedOffer();
 
                 if (offer != null) {
                     role.removeDynamicOffer(offer.getId());
 
-                    if (role.getDynamicOffers().isEmpty()) {
+                    int size = role.getDynamicOffers().size();
+
+                    if (size == 0) {
                         selectedOfferIndex = -1;
+                        offerPage = 0;
                     } else {
                         selectedOfferIndex = Math.min(
                                 selectedOfferIndex,
-                                role.getDynamicOffers().size() - 1
+                                size - 1
                         );
+
+                        offerPage = selectedOfferIndex / VISIBLE_OFFERS;
                     }
 
                     statusMessage = I18n.translateToLocal(
@@ -274,6 +284,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
             case 2:
                 saveRole();
+
                 statusMessage = I18n.translateToLocal(
                         "cheba.trader.editor.saved"
                 );
@@ -285,11 +296,13 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 return;
 
             case 4: {
+                // Установить товар из выбранного слота инвентаря
                 NpcTradeConfig offer = getSelectedOffer();
                 ItemStack stack = getSelectedInventoryStack();
 
                 if (offer != null && !stack.isEmpty()) {
                     offer.setResult(stack.copy());
+
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.editor.product_set"
                     );
@@ -298,6 +311,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                             "cheba.trader.editor.select_item"
                     );
                 }
+
                 break;
             }
 
@@ -306,19 +320,23 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
                 if (offer != null) {
                     offer.setResult(ItemStack.EMPTY);
+
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.editor.product_cleared"
                     );
                 }
+
                 break;
             }
 
             case 6: {
+                // Добавить предмет из инвентаря к оплате
                 NpcTradeConfig offer = getSelectedOffer();
                 ItemStack stack = getSelectedInventoryStack();
 
                 if (offer != null && !stack.isEmpty()) {
                     offer.addPriceItem(stack.copy());
+
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.editor.payment_added"
                     );
@@ -327,6 +345,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                             "cheba.trader.editor.select_item"
                     );
                 }
+
                 break;
             }
 
@@ -335,38 +354,52 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
                 if (offer != null) {
                     offer.clearPriceItems();
+
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.editor.payment_cleared"
                     );
                 }
+
                 break;
             }
 
-            case 8:
+            case 8: {
+                // Предыдущая страница
                 offerPage = Math.max(0, offerPage - 1);
-                selectedOfferIndex = offerPage * VISIBLE_OFFERS;
-                if (selectedOfferIndex >= role.getDynamicOffers().size()) {
-                    selectedOfferIndex = role.getDynamicOffers().isEmpty()
-                            ? -1
-                            : role.getDynamicOffers().size() - 1;
-                }
-                refreshFields();
-                break;
 
-            case 9:
-                int maxPage = Math.max(
-                        0,
-                        (role.getDynamicOffers().size() - 1) / VISIBLE_OFFERS
+                int size = role.getDynamicOffers().size();
+
+                selectedOfferIndex = size == 0
+                        ? -1
+                        : Math.min(
+                        offerPage * VISIBLE_OFFERS,
+                        size - 1
                 );
-                offerPage = Math.min(maxPage, offerPage + 1);
-                selectedOfferIndex = offerPage * VISIBLE_OFFERS;
-                if (selectedOfferIndex >= role.getDynamicOffers().size()) {
-                    selectedOfferIndex = role.getDynamicOffers().isEmpty()
-                            ? -1
-                            : role.getDynamicOffers().size() - 1;
-                }
+
                 refreshFields();
                 break;
+            }
+
+            case 9: {
+                // Следующая страница
+                int size = role.getDynamicOffers().size();
+
+                int maxPage = size == 0
+                        ? 0
+                        : (size - 1) / VISIBLE_OFFERS;
+
+                offerPage = Math.min(maxPage, offerPage + 1);
+
+                selectedOfferIndex = size == 0
+                        ? -1
+                        : Math.min(
+                        offerPage * VISIBLE_OFFERS,
+                        size - 1
+                );
+
+                refreshFields();
+                break;
+            }
 
             default:
                 break;
@@ -454,7 +487,13 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         int x = left();
         int y = top();
 
-        drawRect(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0xEE202020);
+        drawRect(
+                x,
+                y,
+                x + PANEL_WIDTH,
+                y + PANEL_HEIGHT,
+                0xEE202020
+        );
 
         drawCenteredString(
                 fontRenderer,
@@ -464,19 +503,25 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 0xFFFFFF
         );
 
-        // Список предложений
+        // Список предложений с учётом текущей страницы.
+        List<NpcTradeConfig> offers = role.getDynamicOffers();
+
         for (int i = 0; i < VISIBLE_OFFERS; i++) {
+            int offerIndex = offerPage * VISIBLE_OFFERS + i;
             int rowY = y + 31 + i * 18;
-            boolean selected = i == selectedOfferIndex;
+
+            boolean selected = offerIndex == selectedOfferIndex;
 
             drawRect(
-                    x + 7, rowY,
-                    x + 180, rowY + 17,
+                    x + 7,
+                    rowY,
+                    x + 180,
+                    rowY + 17,
                     selected ? 0xFF626262 : 0xFF303030
             );
 
-            if (i < role.getDynamicOffers().size()) {
-                NpcTradeConfig offer = role.getDynamicOffers().get(i);
+            if (offerIndex < offers.size()) {
+                NpcTradeConfig offer = offers.get(offerIndex);
                 ItemStack product = offer.getResult();
 
                 String name = product.isEmpty()
@@ -488,7 +533,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 name = fontRenderer.trimStringToWidth(name, 160);
 
                 fontRenderer.drawString(
-                        (i + 1) + ". " + name,
+                        (offerIndex + 1) + ". " + name,
                         x + 11,
                         rowY + 5,
                         0xFFFFFF
@@ -499,25 +544,33 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.buy_price"),
-                x + 190, y + 61, 0xFFFFFF
+                x + 190,
+                y + 61,
+                0xFFFFFF
         );
 
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.sell_price"),
-                x + 190, y + 83, 0xFFFFFF
+                x + 190,
+                y + 83,
+                0xFFFFFF
         );
 
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.max_day"),
-                x + 190, y + 105, 0xFFFFFF
+                x + 190,
+                y + 105,
+                0xFFFFFF
         );
 
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.stock"),
-                x + 190, y + 127, 0xFFFFFF
+                x + 190,
+                y + 127,
+                0xFFFFFF
         );
 
         buyPriceField.drawTextBox();
@@ -525,7 +578,6 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         maxPerDayField.drawTextBox();
         dailyStockField.drawTextBox();
 
-        // Показываем количество предметов оплаты у выбранного предложения
         NpcTradeConfig selectedOffer = getSelectedOffer();
 
         if (selectedOffer != null) {
@@ -551,7 +603,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 0xFFFFFF
         );
 
-        // Инвентарь игрока: три ряда и хотбар.
+        // Основной инвентарь игрока.
         int inventoryX = x + (PANEL_WIDTH - 9 * 18) / 2;
         int mainY = y + 183;
         int hotbarY = y + 237;
@@ -568,6 +620,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             }
         }
 
+        // Панель быстрого доступа.
         for (int col = 0; col < 9; col++) {
             drawInventorySlot(
                     inventoryX + col * 18,
@@ -585,7 +638,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
             drawString(
                     fontRenderer,
-                    fontRenderer.trimStringToWidth(selectedText, PANEL_WIDTH - 16),
+                    fontRenderer.trimStringToWidth(
+                            selectedText,
+                            PANEL_WIDTH - 16
+                    ),
                     x + 8,
                     y + 255,
                     0xAAAAAA
@@ -601,9 +657,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                     ),
                     x + 8,
                     y + PANEL_HEIGHT - 10,
-                    TextFormatting.YELLOW.getColorIndex() == -1
-                            ? 0xFFFF55
-                            : 0xFFFF55
+                    0xFFFF55
             );
         }
 

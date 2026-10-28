@@ -67,15 +67,24 @@ public class TraderRuntimeState extends WorldSavedData {
         return playerPurchases.getLong(key);
     }
 
-    public void recordPurchase(String stockKey, String playerKey) {
+    public void recordPurchase(
+            String stockKey,
+            String playerKey,
+            long quantity
+    ) {
+        if (quantity <= 0L) {
+            return;
+        }
+
         long stockCount = stockSales.getLong(stockKey);
         long playerCount = playerPurchases.getLong(playerKey);
 
-        stockSales.setLong(stockKey, stockCount + 1L);
-        playerPurchases.setLong(playerKey, playerCount + 1L);
+        stockSales.setLong(stockKey, stockCount + quantity);
+        playerPurchases.setLong(playerKey, playerCount + quantity);
 
         markDirty();
     }
+
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {

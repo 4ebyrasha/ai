@@ -107,13 +107,15 @@ public final class TraderTradeService {
         int dailyStock = offer.getDailyStock();
         int maxPerDay = offer.getMaxPerDay();
 
+        long quantity = product.getCount();
+
         if (dailyStock >= 0
-                && state.getSoldCount(stockKey) >= dailyStock) {
+                && state.getSoldCount(stockKey) + quantity > dailyStock) {
             return Result.OUT_OF_STOCK;
         }
 
         if (maxPerDay >= 0
-                && state.getPlayerPurchaseCount(playerKey) >= maxPerDay) {
+                && state.getPlayerPurchaseCount(playerKey) + quantity > maxPerDay) {
             return Result.DAILY_LIMIT_REACHED;
         }
 
@@ -173,9 +175,9 @@ public final class TraderTradeService {
 
         /*
          * Запас и дневные лимиты обновляются только после оплаты
-         * и фактического списания предметов.
+         * и фактического списания предметов
          */
-        state.recordPurchase(stockKey, playerKey);
+        state.recordPurchase(stockKey, playerKey, quantity);
 
         deliverProduct(player, product);
 
@@ -183,7 +185,10 @@ public final class TraderTradeService {
     }
 
     private String getStockProductKey(ItemStack product) {
-        String productData = product
+        ItemStack normalized = product.copy();
+        normalized.setCount(1);
+
+        String productData = normalized
                 .writeToNBT(new NBTTagCompound())
                 .toString();
 
