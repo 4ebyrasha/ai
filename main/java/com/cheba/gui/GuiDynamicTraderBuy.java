@@ -187,7 +187,11 @@ public class GuiDynamicTraderBuy extends GuiScreen {
 
         drawCenteredString(
                 fontRenderer,
-                "cheba.trader.page" + (page + 1) + " / " + getPageCount(),
+                I18n.translateToLocalFormatted(
+                        "cheba.trader.page",
+                        page + 1,
+                        getPageCount()
+                ),
                 width / 2, getGridY() + ROWS * CELL_SIZE + 31,
                 0xFFFFFF
         );

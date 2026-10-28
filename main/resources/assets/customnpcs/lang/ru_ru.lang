@@ -641,3 +641,10 @@ cheba.trader.message.daily_limit=Достигнут дневной лимит п
 cheba.trader.message.inventory_changed=Инвентарь изменился. Повторите покупку.
 cheba.trader.message.refund_failed=Ошибка возврата оплаты. Обратитесь к администратору.
 cheba.trader.message.generic_failure=Не удалось выполнить покупку.
+
+cheba.trader.sell.execute=Продать
+cheba.trader.message.sell_success=Продажа выполнена. Получено %s рублей.
+cheba.trader.message.sell.invalid_container=Окно продажи уже закрыто.
+cheba.trader.message.sell.empty=Поместите предметы в буфер продажи.
+cheba.trader.message.sell.item_not_buyable=Торговец не покупает один или несколько предметов.
+cheba.trader.message.sell.payment_failed=Не удалось начислить деньги. Предметы сохранены.

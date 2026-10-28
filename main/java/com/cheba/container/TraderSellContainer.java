@@ -177,6 +177,14 @@ public class TraderSellContainer extends Container {
         }
     }
 
+    public void clearEscrowAfterSale() {
+        for (int i = 0; i < escrow.getSizeInventory(); i++) {
+            escrow.setInventorySlotContents(i, ItemStack.EMPTY);
+        }
+
+        detectAndSendChanges();
+    }
+
     public IInventory getEscrowInventory() {
         return escrow;
     }

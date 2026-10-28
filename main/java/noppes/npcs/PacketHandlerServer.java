@@ -162,6 +162,13 @@ public class PacketHandlerServer {
 				}
 			}
 
+		} else if (type == EnumPacketServer.TraderSell) {
+			int npcEntityId = buffer.readInt();
+
+			TraderPacketService.handleSell(
+					player,
+					npcEntityId
+			);
 		} else if (type == EnumPacketServer.Delete) {
 			npc.delete();
 			NoppesUtilServer.deleteNpc(npc, player);

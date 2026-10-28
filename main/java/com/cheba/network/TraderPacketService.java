@@ -1,6 +1,7 @@
 package com.cheba.network;
 
 import com.cheba.currency.StalkerBaseCurrencyBridge;
+import com.cheba.trader.TraderSellService;
 import com.cheba.trader.TraderTradeService;
 
 import net.minecraft.entity.Entity;
@@ -15,8 +16,14 @@ import java.util.WeakHashMap;
 
 public final class TraderPacketService {
 
+    private static final StalkerBaseCurrencyBridge CURRENCY =
+            new StalkerBaseCurrencyBridge();
+
     private static final TraderTradeService TRADE_SERVICE =
-            new TraderTradeService(new StalkerBaseCurrencyBridge());
+            new TraderTradeService(CURRENCY);
+
+    private static final TraderSellService SELL_SERVICE =
+            new TraderSellService(CURRENCY);
 
     private static final Map<EntityPlayerMP, LastRequest> LAST_REQUESTS =
             new WeakHashMap<>();
@@ -80,7 +87,7 @@ public final class TraderPacketService {
                 offerId
         );
 
-        sendResult(player, result);
+        sendBuyResult(player, result);
 
         if (result == TraderTradeService.Result.REFUND_FAILED) {
             System.err.println(
@@ -92,7 +99,92 @@ public final class TraderPacketService {
         }
     }
 
-    private static void sendResult(
+    public static void handleSell(
+            EntityPlayerMP player,
+            int npcEntityId
+    ) {
+        if (player == null || player.world.isRemote) {
+            return;
+        }
+
+        TraderSellService.Outcome outcome =
+                SELL_SERVICE.sell(player, npcEntityId);
+
+        switch (outcome.getStatus()) {
+            case SUCCESS:
+                player.sendMessage(new TextComponentTranslation(
+                        "cheba.trader.message.sell_success",
+                        outcome.getAmount()
+                ));
+                break;
+
+            case INVALID_CONTAINER:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.sell.invalid_container"
+                );
+                break;
+
+            case INVALID_NPC:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.not_found"
+                );
+                break;
+
+            case TOO_FAR:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.too_far"
+                );
+                break;
+
+            case NOT_TRADER:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.not_trader"
+                );
+                break;
+
+            case EMPTY:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.sell.empty"
+                );
+                break;
+
+            case ITEM_NOT_BUYABLE:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.sell.item_not_buyable"
+                );
+                break;
+
+            case CURRENCY_UNAVAILABLE:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.currency_unavailable"
+                );
+                break;
+
+            case PAYMENT_FAILED:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.sell.payment_failed"
+                );
+                break;
+
+            case INVALID_AMOUNT:
+            default:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.generic_failure"
+                );
+                break;
+        }
+    }
+
+    private static void sendBuyResult(
             EntityPlayerMP player,
             TraderTradeService.Result result
     ) {
@@ -106,19 +198,31 @@ public final class TraderPacketService {
 
         switch (result) {
             case SUCCESS:
-                sendMessage(player, "cheba.trader.message.buy_success");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.buy_success"
+                );
                 break;
 
             case SERVER_ONLY:
-                sendMessage(player, "cheba.trader.message.server_only");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.server_only"
+                );
                 break;
 
             case TOO_FAR:
-                sendMessage(player, "cheba.trader.message.too_far");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.too_far"
+                );
                 break;
 
             case INVALID_OFFER:
-                sendMessage(player, "cheba.trader.message.offer_unavailable");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.offer_unavailable"
+                );
                 break;
 
             case CURRENCY_UNAVAILABLE:
@@ -150,11 +254,17 @@ public final class TraderPacketService {
                 break;
 
             case OUT_OF_STOCK:
-                sendMessage(player, "cheba.trader.message.out_of_stock");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.out_of_stock"
+                );
                 break;
 
             case DAILY_LIMIT_REACHED:
-                sendMessage(player, "cheba.trader.message.daily_limit");
+                sendMessage(
+                        player,
+                        "cheba.trader.message.daily_limit"
+                );
                 break;
 
             case INVENTORY_CHANGED:
@@ -190,6 +300,7 @@ public final class TraderPacketService {
     }
 
     private static final class LastRequest {
+
         private final String key;
         private final long tick;
 

@@ -10,27 +10,25 @@ import java.util.List;
 import java.util.UUID;
 
 public class NpcTradeConfig {
-    private static final int NBT_VERSION = 1;
 
-    /**
-     * -1 = без ограничения.
-     */
+    private static final int NBT_VERSION = 1;
 
     private final String id;
 
-    // Предмет, который получит покупатель
+    // Предмет, который получает покупатель.
     private ItemStack result = ItemStack.EMPTY;
 
-    // Список предметов, требуемых для покупки
+    // Предметы, требуемые для покупки.
     private final List<ItemStack> priceItems = new ArrayList<>();
 
-    // Денежная стоимость
+    // Денежная цена, по которой игрок покупает товар.
     private long priceMoney = 0L;
 
-    // Максимальное количество покупок одним игроком за игровой день(может и не игровой хех)
-    private int maxPerDay = -1;
+    // Денежная цена, по которой NPC покупает товар у игрока.
+    private long sellPriceMoney = 0L;
 
-    // Общий запас товара на игровой день
+    // -1 означает отсутствие ограничения.
+    private int maxPerDay = -1;
     private int dailyStock = -1;
 
     public NpcTradeConfig() {
@@ -38,7 +36,7 @@ public class NpcTradeConfig {
     }
 
     public NpcTradeConfig(String id) {
-        this.id = (id == null || id.trim().isEmpty())
+        this.id = id == null || id.trim().isEmpty()
                 ? UUID.randomUUID().toString()
                 : id;
     }
@@ -117,6 +115,14 @@ public class NpcTradeConfig {
         this.priceMoney = Math.max(0L, priceMoney);
     }
 
+    public long getSellPriceMoney() {
+        return sellPriceMoney;
+    }
+
+    public void setSellPriceMoney(long sellPriceMoney) {
+        this.sellPriceMoney = Math.max(0L, sellPriceMoney);
+    }
+
     public int getMaxPerDay() {
         return maxPerDay;
     }
@@ -133,23 +139,14 @@ public class NpcTradeConfig {
         this.dailyStock = Math.max(-1, dailyStock);
     }
 
-    /**
-     * Проверяет, задан ли хотя бы один способ оплаты.
-     */
     public boolean hasPrice() {
         return priceMoney > 0L || !priceItems.isEmpty();
     }
 
-    /**
-     * Проверяет, можно ли использовать предложение в торговле.
-     */
     public boolean isValid() {
         return !result.isEmpty() && hasPrice();
     }
 
-    /**
-     * Сохраняет предложение в NBT.
-     */
     public NBTTagCompound writeToNBT() {
         NBTTagCompound tag = new NBTTagCompound();
 
@@ -162,6 +159,7 @@ public class NpcTradeConfig {
         );
 
         tag.setLong("PriceMoney", priceMoney);
+        tag.setLong("SellPriceMoney", sellPriceMoney);
         tag.setInteger("MaxPerDay", maxPerDay);
         tag.setInteger("DailyStock", dailyStock);
 
@@ -180,13 +178,9 @@ public class NpcTradeConfig {
         return tag;
     }
 
-    /**
-     * Загружает предложение из NBT.
-     */
     public static NpcTradeConfig readFromNBT(NBTTagCompound tag) {
-        String id = tag.getString("Id");
-
-        NpcTradeConfig config = new NpcTradeConfig(id);
+        NpcTradeConfig config =
+                new NpcTradeConfig(tag.getString("Id"));
 
         if (tag.hasKey("Result", 10)) {
             config.result = new ItemStack(
@@ -197,6 +191,11 @@ public class NpcTradeConfig {
         config.priceMoney = Math.max(
                 0L,
                 tag.getLong("PriceMoney")
+        );
+
+        config.sellPriceMoney = Math.max(
+                0L,
+                tag.getLong("SellPriceMoney")
         );
 
         if (tag.hasKey("MaxPerDay", 3)) {
@@ -214,7 +213,8 @@ public class NpcTradeConfig {
         }
 
         if (tag.hasKey("PriceItems", 9)) {
-            NBTTagList items = tag.getTagList("PriceItems", 10);
+            NBTTagList items =
+                    tag.getTagList("PriceItems", 10);
 
             for (int i = 0; i < items.tagCount(); i++) {
                 ItemStack stack = new ItemStack(
