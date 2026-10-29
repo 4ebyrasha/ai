@@ -149,7 +149,44 @@ public class TraderSellContainer extends Container {
 
     @Override
     public void onContainerClosed(@Nonnull EntityPlayer player) {
-        super.onContainerClosed(player);
+        /*
+         * Сначала сохраняем личный предмет, если он остался на курсоре.
+         * Базовый Container при закрытии выбрасывает предмет с курсора,
+         * поэтому нельзя передавать ему непустой защищенный предмет
+         */
+        ItemStack cursor = player.inventory.getItemStack();
+
+        if (TraderItemProtection.isProtected(player, cursor)) {
+            ItemStack remaining = cursor.copy();
+
+            player.inventory.setItemStack(ItemStack.EMPTY);
+            player.inventory.addItemStackToInventory(remaining);
+
+            /*
+             * Если инвентарь заполнен, сохраняем остаток на курсоре.
+             * Намеренно не вызываем super с защищенным предметом
+             */
+            if (!remaining.isEmpty()) {
+                player.inventory.setItemStack(remaining);
+
+                if (!player.world.isRemote) {
+                    player.sendMessage(new TextComponentTranslation(
+                            "cheba.trader.message.protected_item_return_failed"
+                    ));
+                }
+            }
+        }
+
+        /*
+         * Вызываем базовый метод только тогда, когда курсор пуст
+         * или на нем нет защищенного предмета
+         */
+        if (!TraderItemProtection.isProtected(
+                player,
+                player.inventory.getItemStack()
+        )) {
+            super.onContainerClosed(player);
+        }
 
         if (player.world.isRemote || returned) {
             return;
@@ -157,6 +194,9 @@ public class TraderSellContainer extends Container {
 
         returned = true;
 
+        /*
+         * Возвращаем все, что осталось в буфере продажи
+         */
         for (int i = 0; i < escrow.getSizeInventory(); i++) {
             ItemStack stack = escrow.getStackInSlot(i);
 

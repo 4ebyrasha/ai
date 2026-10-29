@@ -1,7 +1,6 @@
 package com.cheba.gui;
 
 import com.cheba.trader.NpcTradeConfig;
-import com.cheba.trader.TraderItemProtection;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -32,7 +31,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
     private int page;
     private EntityNPCInterface npc;
     private RoleTrader role;
-    private String statusMessage = "";
 
     public GuiDynamicTraderBuy(int npcEntityId, int page) {
         this.npcEntityId = npcEntityId;
@@ -116,10 +114,12 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         if (button.id == 0) {
             page = Math.max(0, page - 1);
             initGui();
+
         } else if (button.id == 1) {
             mc.displayGuiScreen(
                     new GuiDynamicTraderMenu(npcEntityId)
             );
+
         } else if (button.id == 2) {
             page = Math.min(getPageCount() - 1, page + 1);
             initGui();
@@ -132,6 +132,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
+
         if (mouseButton == 0 && role != null) {
             int gridX = getGridX();
             int gridY = getGridY();
@@ -158,15 +159,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                         NpcTradeConfig offer = offers.get(offerIndex);
 
                         if (offer != null && offer.isValid()) {
-                            ItemStack result = offer.getResult();
-
-                            if (TraderItemProtection.hasProtectedNbt(result)) {
-                                statusMessage = I18n.translateToLocal(
-                                        "cheba.trader.message.protected_item"
-                                );
-                                return;
-                            }
-
                             mc.displayGuiScreen(
                                     new GuiDynamicTraderConfirm(
                                             npcEntityId,
@@ -174,6 +166,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                                             offer
                                     )
                             );
+
                             return;
                         }
                     }
@@ -235,9 +228,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                 continue;
             }
 
-            boolean protectedItem =
-                    TraderItemProtection.hasProtectedNbt(result);
-
             RenderHelper.enableGUIStandardItemLighting();
 
             itemRender.renderItemAndEffectIntoGUI(
@@ -254,16 +244,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             );
 
             RenderHelper.disableStandardItemLighting();
-
-            if (protectedItem) {
-                drawRect(x + 1, y + 1, x + 19, y + 19, 0x88AA0000);
-                fontRenderer.drawStringWithShadow(
-                        "X",
-                        x + 7,
-                        y + 5,
-                        0xFFFF5555
-                );
-            }
         }
 
         drawCenteredString(
@@ -277,16 +257,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                 getGridY() + ROWS * CELL_SIZE + 31,
                 0xFFFFFF
         );
-
-        if (!statusMessage.isEmpty()) {
-            drawCenteredString(
-                    fontRenderer,
-                    statusMessage,
-                    width / 2,
-                    height - 38,
-                    0xFF5555
-            );
-        }
 
         super.drawScreen(mouseX, mouseY, partialTicks);
 
@@ -373,12 +343,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                 lines.add(TextFormatting.GRAY + priceItem.getDisplayName()
                         + " x" + priceItem.getCount());
             }
-        }
-
-        if (TraderItemProtection.hasProtectedNbt(result)) {
-            lines.add(TextFormatting.RED + I18n.translateToLocal(
-                    "cheba.trader.message.protected_item"
-            ));
         }
 
         int tooltipY = mouseY;
