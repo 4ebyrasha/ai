@@ -158,7 +158,11 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         ));
 
         buttonList.add(new GuiButton(
-                6, x + 296, y + 147, 51, 20,
+                barterEditMode ? 11 : 6,
+                x + 296,
+                y + 147,
+                51,
+                20,
                 I18n.translateToLocal(
                         barterEditMode
                                 ? "cheba.trader.editor.barter_done"
@@ -468,24 +472,28 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             }
 
             case 6:
-                if (barterEditMode) {
-                    barterEditMode = false;
-                    selectedPaymentIndex = -1;
-                    refreshFields();
+                // Вход в режим редактирования бартера
+                barterEditMode = true;
+                selectedPaymentIndex = -1;
 
-                    statusMessage = I18n.translateToLocal(
-                            "cheba.trader.editor.barter_closed"
-                    );
-                } else {
-                    barterEditMode = true;
-                    selectedPaymentIndex = -1;
-
-                    statusMessage = I18n.translateToLocal(
-                            "cheba.trader.editor.barter_opened"
-                    );
-                }
+                statusMessage = I18n.translateToLocal(
+                        "cheba.trader.editor.barter_opened"
+                );
 
                 initGui();
+                break;
+
+            case 11:
+                // Возврат к цене и лимитам основного предложения
+                barterEditMode = false;
+                selectedPaymentIndex = -1;
+
+                statusMessage = I18n.translateToLocal(
+                        "cheba.trader.editor.barter_closed"
+                );
+
+                initGui();
+                refreshFields();
                 break;
 
             case 7: {
@@ -1185,9 +1193,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                         ? "cheba.trader.tooltip.editor.remove_payment_item"
                         : "cheba.trader.tooltip.editor.clear_product";
             case 6:
-                return barterEditMode
-                        ? "cheba.trader.tooltip.editor.barter_done"
-                        : "cheba.trader.tooltip.editor.barter_mode";
+                return "cheba.trader.tooltip.editor.barter_mode";
             case 7:
                 return "cheba.trader.tooltip.editor.clear_payment";
             case 8:
@@ -1196,6 +1202,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 return "cheba.trader.tooltip.editor.next_page";
             case 10:
                 return "cheba.trader.tooltip.editor.buyback";
+            case 11:
+                return "cheba.trader.tooltip.editor.barter_done";
             default:
                 return null;
         }
