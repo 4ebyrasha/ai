@@ -1,3 +1,4 @@
+
 package com.cheba.network;
 
 import com.cheba.currency.StalkerBaseCurrencyBridge;
@@ -271,6 +272,13 @@ public final class TraderPacketService {
                 sendMessage(
                         player,
                         "cheba.trader.message.inventory_changed"
+                );
+                break;
+
+            case INVENTORY_FULL:
+                sendMessage(
+                        player,
+                        "cheba.trader.message.inventory_full"
                 );
                 break;
 

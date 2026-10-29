@@ -609,6 +609,7 @@ item.npcsoulstonefilled.name=Камень душ (полон)
 
 item.scripted_item.name=Скриптовый предмет
 
+
 # Dynamic trader
 cheba.trader.title=Торговец
 cheba.trader.buy=КУПИТЬ
@@ -620,10 +621,17 @@ cheba.trader.buy.title=Покупка товаров
 cheba.trader.buy.load_error=Не удалось получить список предложений NPC
 cheba.trader.page=Страница %s / %s
 cheba.trader.price=Цена: %s рублей
+cheba.trader.quantity=Количество: %s
 cheba.trader.confirm.title=Подтверждение покупки
 cheba.trader.cancel=Отмена
 cheba.trader.sell.title=Предметы для продажи
 cheba.trader.sell.buffer=Буфер продажи
+cheba.trader.sell.contents=Содержимое:
+cheba.trader.sell.empty_buffer=Буфер пуст
+cheba.trader.sell.more=Ещё предметов: %s
+cheba.trader.sell.total=Сумма: %s рублей
+cheba.trader.sell.total_partial=Сумма продаваемых предметов: %s рублей
+cheba.trader.sell.unsellable_count=Не продаётся: %s
 
 cheba.trader.message.invalid_offer=Некорректное предложение.
 cheba.trader.message.not_found=Торговец не найден.
@@ -638,7 +646,8 @@ cheba.trader.message.payment_failed=Не удалось списать день�
 cheba.trader.message.not_enough_items=Недостаточно предметов для оплаты.
 cheba.trader.message.out_of_stock=Товар закончился.
 cheba.trader.message.daily_limit=Достигнут дневной лимит покупки.
-cheba.trader.message.inventory_changed=Инвентарь изменился. Повторите покупку.
+cheba.trader.message.inventory_changed=Инвентарь изменился во время покупки. Попробуйте ещё раз.
+cheba.trader.message.inventory_full=Инвентарь полон. Покупка отменена.
 cheba.trader.message.refund_failed=Ошибка возврата оплаты. Обратитесь к администратору.
 cheba.trader.message.generic_failure=Не удалось выполнить покупку.
 
@@ -651,16 +660,16 @@ cheba.trader.message.sell.payment_failed=Не удалось начислить 
 
 cheba.trader.editor.open=Динамические предложения
 cheba.trader.editor.title=Редактор предложений
-cheba.trader.editor.add=Добавить
+cheba.trader.editor.add=Создать
 cheba.trader.editor.remove=Удалить
 cheba.trader.editor.save=Сохранить
 cheba.trader.editor.back=Назад
-cheba.trader.editor.set_product=Товар
-cheba.trader.editor.clear_product=Убрать
-cheba.trader.editor.add_payment=Оплата+
-cheba.trader.editor.clear_payment=Очистить
-cheba.trader.editor.buy_price=Цена игроку:
-cheba.trader.editor.sell_price=Выкуп:
+cheba.trader.editor.set_product=Добавить
+cheba.trader.editor.clear_product=Очистить
+cheba.trader.editor.add_payment=Бартер
+cheba.trader.editor.clear_payment=Убрать
+cheba.trader.editor.buy_price=Цена:
+cheba.trader.editor.sell_price=Цена продажи:
 cheba.trader.editor.max_day=Лимит/день:
 cheba.trader.editor.stock=Запас:
 cheba.trader.editor.payment_count=Предметов оплаты: %s
@@ -677,3 +686,6 @@ cheba.trader.editor.payment_cleared=Предметы оплаты очищены
 cheba.trader.editor.select_item=Сначала выбери предмет в инвентаре.
 cheba.trader.editor.prev=<
 cheba.trader.editor.next=>
+cheba.trader.editor.sell_price_tooltip=Цена выкупа: %s рублей
+cheba.trader.editor.max_day_tooltip=Лимит на игрока в день: %s
+cheba.trader.editor.stock_tooltip=Запас в день: %s

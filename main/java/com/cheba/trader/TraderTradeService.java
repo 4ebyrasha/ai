@@ -35,6 +35,7 @@ public final class TraderTradeService {
         OUT_OF_STOCK,
         DAILY_LIMIT_REACHED,
         INVENTORY_CHANGED,
+        INVENTORY_FULL,
         REFUND_FAILED
     }
 
@@ -53,7 +54,7 @@ public final class TraderTradeService {
 
     /**
      * Покупает предложение по его ID.
-     * Вызывать только на серверной стороне
+     * Вызывать только на серверной стороне.
      */
     public Result buy(
             EntityPlayer player,
@@ -94,9 +95,8 @@ public final class TraderTradeService {
         }
 
         /*
-         * Ключи привязаны к конкретному предложению.
-         * Одинаковые товары из разных предложений
-         * не разделяют запас и лимиты
+         * Запас и лимит привязаны к ID конкретного предложения.
+         * Одинаковые товары в разных предложениях независимы.
          */
         String marketKey = getMarketKey(role);
 
@@ -125,7 +125,7 @@ public final class TraderTradeService {
         }
 
         /*
-         * Составляем план списания предметов
+         * Создаём план списания предметов оплаты.
          */
         List<Removal> removals = buildRemovalPlan(
                 player,
@@ -149,21 +149,21 @@ public final class TraderTradeService {
         }
 
         /*
-         * Проверяем план списания и возможность разместить
-         * покупку в основном инвентаре после списания цены.
-         * Курсор игрока не используется. Предметы не выбрасываются
+         * Проверяем план списания и вместимость до оплаты.
+         * Основной инвентарь проверяется с учётом освобождения
+         * слотов предметами, которые игрок отдаёт в оплату.
          */
         if (isRemovalPlanInvalid(player, removals)) {
             return Result.INVENTORY_CHANGED;
         }
 
         if (!canFitProduct(player, removals, product)) {
-            return Result.INVENTORY_CHANGED;
+            return Result.INVENTORY_FULL;
         }
 
         /*
-         * Сохраняем копию инвентаря на случай неожиданной
-         * ошибки во время выдачи товара
+         * Резервная копия основного инвентаря на случай
+         * неожиданной ошибки при выдаче.
          */
         NonNullList<ItemStack> inventoryBackup =
                 copyMainInventory(player);
@@ -179,12 +179,9 @@ public final class TraderTradeService {
         }
 
         /*
-         * Повторная проверка после оплаты.
-         * Если инвентарь изменился, пытаемся вернуть деньги
+         * Повторно проверяем инвентарь после списания денег.
          */
-        if (isRemovalPlanInvalid(player, removals)
-                || !canFitProduct(player, removals, product)) {
-
+        if (isRemovalPlanInvalid(player, removals)) {
             if (moneyWithdrawn
                     && !currency.deposit(player, moneyPrice)) {
                 currency.notifyBalanceChange(player, -moneyPrice);
@@ -194,15 +191,24 @@ public final class TraderTradeService {
             return Result.INVENTORY_CHANGED;
         }
 
+        if (!canFitProduct(player, removals, product)) {
+            if (moneyWithdrawn
+                    && !currency.deposit(player, moneyPrice)) {
+                currency.notifyBalanceChange(player, -moneyPrice);
+                return Result.REFUND_FAILED;
+            }
+
+            return Result.INVENTORY_FULL;
+        }
+
         /*
-         * Сначала списываем цену предметами
+         * Списываем предметы оплаты.
          */
         applyRemovalPlan(player, removals);
 
         /*
-         * Выдаем товар только в основной инвентарь.
-         * Если выдача неожиданно не удалась, восстанавливаем
-         * исходный инвентарь и пытаемся вернуть деньги
+         * Выдаём товар только в основной инвентарь.
+         * Если выдача не удалась, восстанавливаем инвентарь.
          */
         if (!deliverProduct(player, product)) {
             restoreMainInventory(player, inventoryBackup);
@@ -217,12 +223,12 @@ public final class TraderTradeService {
         }
 
         /*
-         * Лимиты записываем только после успешной выдачи товара
+         * Лимиты изменяются только после успешной выдачи товара.
          */
         state.recordPurchase(stockKey, playerKey, quantity);
 
         /*
-         * Обновляем валютный HUD после успешной покупки
+         * Уведомляем HUD об успешном списании денег.
          */
         if (moneyPrice > 0L) {
             currency.notifyBalanceChange(player, -moneyPrice);
@@ -255,9 +261,8 @@ public final class TraderTradeService {
     }
 
     /**
-     * Создает план списания предметов.
-     * Метаданные и NBT не учитываются: сравнивается Item,
-     * как и в исходной реализации.
+     * Создаёт план списания предметов.
+     * Сравнивает Item, как и исходная реализация.
      */
     private List<Removal> buildRemovalPlan(
             EntityPlayer player,
@@ -271,6 +276,7 @@ public final class TraderTradeService {
             }
 
             Item item = required.getItem();
+
             long current = requiredItems.getOrDefault(item, 0L);
 
             requiredItems.put(
@@ -380,8 +386,8 @@ public final class TraderTradeService {
     }
 
     /**
-     * Проверяет вместимость товара после предполагаемого
-     * списания цены. Реальный инвентарь не изменяется
+     * Проверяет возможность разместить товар после списания цены.
+     * Реальный инвентарь при проверке не изменяется.
      */
     private boolean canFitProduct(
             EntityPlayer player,
@@ -419,8 +425,8 @@ public final class TraderTradeService {
     }
 
     /**
-     * Выдает предмет только в основной инвентарь.
-     * Не трогает курсор и не выбрасывает остаток в мир
+     * Выдаёт товар в основной инвентарь.
+     * Не использует курсор и не выбрасывает предметы.
      */
     private boolean deliverProduct(
             EntityPlayer player,
@@ -440,9 +446,8 @@ public final class TraderTradeService {
     }
 
     /**
-     * Помещает предмет в список слотов: сначала объединяет
-     * совместимые стаки, затем использует пустые слоты.
-     * Метод изменяет переданный список
+     * Сначала объединяет совместимые стаки, затем использует
+     * пустые слоты. Изменяет переданный список инвентаря.
      */
     private boolean insertProductIntoInventory(
             NonNullList<ItemStack> inventory,
@@ -455,7 +460,7 @@ public final class TraderTradeService {
         ItemStack remaining = product.copy();
 
         /*
-         * Сначала пополняем уже существующие стаки
+         * Сначала пополняем существующие стаки.
          */
         for (int slot = 0;
              slot < inventory.size() && !remaining.isEmpty();
@@ -489,7 +494,7 @@ public final class TraderTradeService {
         }
 
         /*
-         * Затем размещаем остаток в пустых слотах
+         * Затем размещаем остаток в пустых слотах.
          */
         for (int slot = 0;
              slot < inventory.size() && !remaining.isEmpty();

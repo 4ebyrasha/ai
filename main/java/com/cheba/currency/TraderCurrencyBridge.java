@@ -14,8 +14,8 @@ public interface TraderCurrencyBridge {
     boolean deposit(EntityPlayer player, long amount);
 
     /**
-     * Уведомляет клиент об изменении баланса.
-     * Реализация по умолчанию ничего не делает
+     * Сообщает об изменении баланса.
+     * Мост валюты может реализовать отправку обновления HUD.
      */
     default void notifyBalanceChange(
             EntityPlayer player,

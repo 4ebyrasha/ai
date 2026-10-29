@@ -1,3 +1,4 @@
+
 package com.cheba.trader;
 
 import com.cheba.container.TraderSellContainer;
@@ -51,7 +52,10 @@ public final class TraderSellService {
         }
     }
 
-    public Outcome sell(EntityPlayerMP player, int npcEntityId) {
+    public Outcome sell(
+            EntityPlayerMP player,
+            int npcEntityId
+    ) {
         if (player == null
                 || !(player.openContainer instanceof TraderSellContainer)) {
             return new Outcome(Status.INVALID_CONTAINER, 0L);
@@ -88,7 +92,10 @@ public final class TraderSellService {
         long total = 0L;
         boolean hasItems = false;
 
-        // Сначала проверяем каждый предмет ничего не удаляя
+        /*
+         * Сначала проверяем каждый предмет.
+         * Буфер не изменяем, пока продажа не подтверждена.
+         */
         for (int i = 0; i < escrow.getSizeInventory(); i++) {
             ItemStack stack = escrow.getStackInSlot(i);
 
@@ -98,7 +105,7 @@ public final class TraderSellService {
 
             hasItems = true;
 
-            long unitPrice = findSellPrice(role, stack);
+            long unitPrice = getSellPrice(role, stack);
 
             if (unitPrice <= 0L) {
                 return new Outcome(
@@ -134,24 +141,38 @@ public final class TraderSellService {
             );
         }
 
-        // Если начисление не удалось предметы остаются в буфере
+        /*
+         * Если начисление не удалось, предметы остаются в буфере.
+         */
         if (!currency.deposit(player, total)) {
             return new Outcome(Status.PAYMENT_FAILED, 0L);
         }
 
-        // Удаление предметов только после успешного начисления
+        /*
+         * Удаляем предметы только после успешного начисления.
+         */
         container.clearEscrowAfterSale();
 
         player.inventory.markDirty();
         player.inventoryContainer.detectAndSendChanges();
 
+        currency.notifyBalanceChange(player, total);
+
         return new Outcome(Status.SUCCESS, total);
     }
 
-    private long findSellPrice(
+    /**
+     * Возвращает цену одной единицы предмета.
+     * Ноль означает, что торговец не покупает предмет.
+     */
+    public static long getSellPrice(
             RoleTrader role,
             ItemStack stack
     ) {
+        if (role == null || stack == null || stack.isEmpty()) {
+            return 0L;
+        }
+
         for (NpcTradeConfig offer : role.getDynamicOffers()) {
             ItemStack configured = offer.getResult();
 
