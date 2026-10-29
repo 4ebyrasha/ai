@@ -689,3 +689,15 @@ cheba.trader.editor.next=>
 cheba.trader.editor.sell_price_tooltip=Цена выкупа: %s рублей
 cheba.trader.editor.max_day_tooltip=Лимит на игрока в день: %s
 cheba.trader.editor.stock_tooltip=Запас в день: %s
+
+cheba.trader.editor.buyback=Выкуп
+
+cheba.trader.buyback.title=Настройка выкупа
+cheba.trader.buyback.add=Добавить
+cheba.trader.buyback.price=Цена за единицу:
+cheba.trader.buyback.price_tooltip=Цена выкупа: %s рублей
+cheba.trader.buyback.select_item=Сначала выбери предмет в инвентаре.
+cheba.trader.buyback.duplicate=Этот предмет уже есть в списке выкупа.
+cheba.trader.buyback.added=Предмет добавлен в список выкупа.
+cheba.trader.buyback.removed=Предмет удалён из списка выкупа.
+cheba.trader.buyback.saved=Список выкупа сохранён.

@@ -254,14 +254,20 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             );
         }
 
-        String totalText = unsellableItems == 0
-                ? I18n.translateToLocalFormatted(
+        String totalText = I18n.translateToLocalFormatted(
                 "cheba.trader.sell.total",
                 total
-        )
-                : I18n.translateToLocalFormatted(
-                "cheba.trader.sell.total_partial",
-                total
+        );
+
+        drawString(
+                fontRenderer,
+                fontRenderer.trimStringToWidth(
+                        totalText,
+                        textWidth
+                ),
+                textX,
+                guiTop + 99,
+                total > 0L ? 0x55FF55 : 0xFFFFFF
         );
 
         drawString(

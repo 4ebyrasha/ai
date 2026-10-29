@@ -1,4 +1,3 @@
-
 package com.cheba.trader;
 
 import com.cheba.container.TraderSellContainer;
@@ -52,10 +51,7 @@ public final class TraderSellService {
         }
     }
 
-    public Outcome sell(
-            EntityPlayerMP player,
-            int npcEntityId
-    ) {
+    public Outcome sell(EntityPlayerMP player, int npcEntityId) {
         if (player == null
                 || !(player.openContainer instanceof TraderSellContainer)) {
             return new Outcome(Status.INVALID_CONTAINER, 0L);
@@ -92,10 +88,7 @@ public final class TraderSellService {
         long total = 0L;
         boolean hasItems = false;
 
-        /*
-         * Сначала проверяем каждый предмет.
-         * Буфер не изменяем, пока продажа не подтверждена.
-         */
+        // Сначала проверяем все предметы, не изменяя буфер
         for (int i = 0; i < escrow.getSizeInventory(); i++) {
             ItemStack stack = escrow.getStackInSlot(i);
 
@@ -108,19 +101,13 @@ public final class TraderSellService {
             long unitPrice = getSellPrice(role, stack);
 
             if (unitPrice <= 0L) {
-                return new Outcome(
-                        Status.ITEM_NOT_BUYABLE,
-                        0L
-                );
+                return new Outcome(Status.ITEM_NOT_BUYABLE, 0L);
             }
 
             long count = stack.getCount();
 
             if (count > (Long.MAX_VALUE - total) / unitPrice) {
-                return new Outcome(
-                        Status.INVALID_AMOUNT,
-                        0L
-                );
+                return new Outcome(Status.INVALID_AMOUNT, 0L);
             }
 
             total += unitPrice * count;
@@ -135,22 +122,15 @@ public final class TraderSellService {
         }
 
         if (currency == null || !currency.isAvailable()) {
-            return new Outcome(
-                    Status.CURRENCY_UNAVAILABLE,
-                    0L
-            );
+            return new Outcome(Status.CURRENCY_UNAVAILABLE, 0L);
         }
 
-        /*
-         * Если начисление не удалось, предметы остаются в буфере.
-         */
+        // Если начисление денег не удалось, предметы остаются в буфере
         if (!currency.deposit(player, total)) {
             return new Outcome(Status.PAYMENT_FAILED, 0L);
         }
 
-        /*
-         * Удаляем предметы только после успешного начисления.
-         */
+        // Удаляем предметы только после успешного начисления
         container.clearEscrowAfterSale();
 
         player.inventory.markDirty();
@@ -162,8 +142,8 @@ public final class TraderSellService {
     }
 
     /**
-     * Возвращает цену одной единицы предмета.
-     * Ноль означает, что торговец не покупает предмет.
+     * Цена выкупа одной единицы предмета.
+     * Ноль означает, что предмет не принимается
      */
     public static long getSellPrice(
             RoleTrader role,
@@ -173,6 +153,9 @@ public final class TraderSellService {
             return 0L;
         }
 
+        // Сначала проверяем основную витрину.
+        // Один предмет может одновременно продаваться NPC
+        // и покупаться NPC у игрока
         for (NpcTradeConfig offer : role.getDynamicOffers()) {
             ItemStack configured = offer.getResult();
 
@@ -180,19 +163,31 @@ public final class TraderSellService {
                 continue;
             }
 
-            boolean sameItemAndMetadata =
+            boolean sameItem =
                     ItemStack.areItemsEqual(stack, configured);
 
             boolean sameNbt =
                     ItemStack.areItemStackTagsEqual(stack, configured);
 
-            if (sameItemAndMetadata
-                    && sameNbt
+            if (sameItem && sameNbt
                     && offer.getSellPriceMoney() > 0L) {
                 return offer.getSellPriceMoney();
             }
         }
 
+        // Если основной витриной цена выкупа не задана,
+        // ищем предмет в отдельном списке закупки
+        for (NpcBuybackConfig offer : role.getBuybackOffers()) {
+            if (offer == null || offer.getPriceMoney() <= 0L) {
+                continue;
+            }
+
+            if (offer.matches(stack)) {
+                return offer.getPriceMoney();
+            }
+        }
+
+        // Нулевая цена означает, что торговец предмет не покупает
         return 0L;
     }
 }

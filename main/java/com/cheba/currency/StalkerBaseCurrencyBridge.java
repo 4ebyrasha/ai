@@ -1,7 +1,4 @@
-
 package com.cheba.currency;
-
-import com.cheba.network.currency.TraderCurrencyNetwork;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -15,15 +12,21 @@ public final class StalkerBaseCurrencyBridge
     private static final String STORAGE_CLASS =
             "com.cheba.stalkerbase.currency.storage.CurrencyStorage";
 
+    private static final String BALANCE_SENDER_CLASS =
+            "com.cheba.stalkerbase.currency.network.TraderBalancePacketSender";
+
     private Method getBalanceMethod;
     private Method withdrawMethod;
     private Method depositMethod;
+    private Method sendBalanceUpdateMethod;
 
     private boolean available;
     private boolean runtimeErrorLogged;
+    private boolean senderErrorLogged;
 
     public StalkerBaseCurrencyBridge() {
         loadCurrencyMethods();
+        loadBalanceSenderMethod();
     }
 
     private void loadCurrencyMethods() {
@@ -57,7 +60,7 @@ public final class StalkerBaseCurrencyBridge
             available = true;
 
             System.out.println(
-                    "[TraderCurrency] Хранилище валюты подключено."
+                    "[TraderCurrency] Хранилище валюты подключено"
             );
 
         } catch (ReflectiveOperationException
@@ -66,9 +69,36 @@ public final class StalkerBaseCurrencyBridge
 
             available = false;
 
-            System.err.println(
-                    "[TraderCurrency] Не удалось подключить валюту. "
-                            + "Класс или методы CurrencyStorage недоступны: "
+            logRuntimeError(
+                    "Не удалось подключить CurrencyStorage: "
+                            + e.getMessage()
+            );
+        }
+    }
+
+    private void loadBalanceSenderMethod() {
+        try {
+            Class<?> sender = Class.forName(
+                    BALANCE_SENDER_CLASS,
+                    false,
+                    StalkerBaseCurrencyBridge.class.getClassLoader()
+            );
+
+            sendBalanceUpdateMethod = sender.getMethod(
+                    "sendBalanceUpdate",
+                    EntityPlayerMP.class,
+                    long.class,
+                    long.class
+            );
+
+        } catch (ReflectiveOperationException
+                 | LinkageError
+                 | SecurityException e) {
+
+            sendBalanceUpdateMethod = null;
+
+            logSenderError(
+                    "Не найден отправитель обновления баланса: "
                             + e.getMessage()
             );
         }
@@ -103,13 +133,14 @@ public final class StalkerBaseCurrencyBridge
             }
 
             logRuntimeError(
-                    "CurrencyStorage.getBalance вернул неожиданный тип."
+                    "CurrencyStorage.getBalance вернул неожиданный тип"
             );
 
             return 0L;
 
         } catch (ReflectiveOperationException
                  | RuntimeException e) {
+
             logRuntimeError(
                     "Ошибка чтения баланса: " + e.getMessage()
             );
@@ -119,10 +150,7 @@ public final class StalkerBaseCurrencyBridge
     }
 
     @Override
-    public boolean withdraw(
-            EntityPlayer player,
-            long amount
-    ) {
+    public boolean withdraw(EntityPlayer player, long amount) {
         if (amount < 0L || !available || player == null) {
             return false;
         }
@@ -149,6 +177,7 @@ public final class StalkerBaseCurrencyBridge
 
         } catch (ReflectiveOperationException
                  | RuntimeException e) {
+
             logRuntimeError(
                     "Ошибка списания денег: " + e.getMessage()
             );
@@ -158,10 +187,7 @@ public final class StalkerBaseCurrencyBridge
     }
 
     @Override
-    public boolean deposit(
-            EntityPlayer player,
-            long amount
-    ) {
+    public boolean deposit(EntityPlayer player, long amount) {
         if (amount < 0L || !available || player == null) {
             return false;
         }
@@ -188,6 +214,7 @@ public final class StalkerBaseCurrencyBridge
 
         } catch (ReflectiveOperationException
                  | RuntimeException e) {
+
             logRuntimeError(
                     "Ошибка начисления денег: " + e.getMessage()
             );
@@ -205,14 +232,33 @@ public final class StalkerBaseCurrencyBridge
             return;
         }
 
+        if (sendBalanceUpdateMethod == null) {
+            logSenderError(
+                    "Обновление HUD не отправлено: "
+                            + "отправитель баланса недоступен"
+            );
+            return;
+        }
+
         EntityPlayerMP serverPlayer = (EntityPlayerMP) player;
         long newBalance = getBalance(player);
 
-        TraderCurrencyNetwork.sendBalanceUpdate(
-                serverPlayer,
-                delta,
-                newBalance
-        );
+        try {
+            sendBalanceUpdateMethod.invoke(
+                    null,
+                    serverPlayer,
+                    delta,
+                    newBalance
+            );
+
+        } catch (ReflectiveOperationException
+                 | RuntimeException e) {
+
+            logSenderError(
+                    "Не удалось отправить обновление HUD: "
+                            + e.getMessage()
+            );
+        }
     }
 
     private MinecraftServer getServer(EntityPlayer player) {
@@ -229,6 +275,18 @@ public final class StalkerBaseCurrencyBridge
         }
 
         runtimeErrorLogged = true;
+
+        System.err.println(
+                "[TraderCurrency] " + message
+        );
+    }
+
+    private void logSenderError(String message) {
+        if (senderErrorLogged) {
+            return;
+        }
+
+        senderErrorLogged = true;
 
         System.err.println(
                 "[TraderCurrency] " + message

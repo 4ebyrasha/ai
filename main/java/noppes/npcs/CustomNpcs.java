@@ -165,8 +165,6 @@ public class CustomNpcs {
 		Channel = NetworkRegistry.INSTANCE.newEventDrivenChannel("CustomNPCs");
 		ChannelPlayer = NetworkRegistry.INSTANCE.newEventDrivenChannel("CustomNPCsPlayer");
 
-		com.cheba.network.currency.TraderCurrencyNetwork.init();
-
 		Dir = new File(new File(ev.getModConfigurationDirectory(), ".."), "customnpcs");
 		Dir.mkdir();
 
