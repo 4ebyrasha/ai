@@ -21,6 +21,18 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
     private static final int MAX_VISIBLE_ITEMS = 7;
 
+    private static final int ESCROW_SIZE = 25;
+
+    private final ItemStack[] cachedEscrowStacks =
+            new ItemStack[ESCROW_SIZE];
+
+    private final long[] cachedUnitPrices =
+            new long[ESCROW_SIZE];
+
+    private RoleTrader cachedPriceRole;
+
+    private long cachedPriceRevision = Long.MIN_VALUE;
+
     private final TraderSellContainer container;
 
     public GuiDynamicTraderSell(
@@ -34,6 +46,74 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
         this.ySize = 225;
         this.closeOnEsc = true;
         this.drawDefaultBackground = true;
+    }
+
+    private void refreshSellPriceCache(
+            RoleTrader role,
+            IInventory escrow
+    ) {
+        long revision = role == null
+                ? Long.MIN_VALUE
+                : role.getTradeConfigRevision();
+
+        boolean catalogChanged = role != cachedPriceRole
+                || revision != cachedPriceRevision;
+
+        int slots = Math.min(
+                ESCROW_SIZE,
+                escrow.getSizeInventory()
+        );
+
+        for (int slot = 0; slot < slots; slot++) {
+            ItemStack current = escrow.getStackInSlot(slot);
+            ItemStack cached = cachedEscrowStacks[slot];
+
+            if (!catalogChanged
+                    && cached != null
+                    && sameStackForCache(current, cached)) {
+                continue;
+            }
+
+            cachedEscrowStacks[slot] = current.isEmpty()
+                    ? ItemStack.EMPTY
+                    : current.copy();
+
+            long unitPrice = 0L;
+
+            if (role != null
+                    && !current.isEmpty()
+                    && !TraderItemProtection.isProtected(player, current)) {
+                unitPrice = TraderSellService.getSellPrice(role, current);
+            }
+
+            cachedUnitPrices[slot] = unitPrice;
+        }
+
+        // На случай если размер буфера когда либо изменится
+        for (int slot = slots; slot < ESCROW_SIZE; slot++) {
+            cachedEscrowStacks[slot] = ItemStack.EMPTY;
+            cachedUnitPrices[slot] = 0L;
+        }
+
+        cachedPriceRole = role;
+        cachedPriceRevision = revision;
+    }
+
+    private boolean sameStackForCache(
+            ItemStack first,
+            ItemStack second
+    ) {
+        if (first == null || second == null) {
+            return first == second;
+        }
+
+        if (first.isEmpty() || second.isEmpty()) {
+            return first.isEmpty() && second.isEmpty();
+        }
+
+        return first.getCount() == second.getCount()
+                && ItemStack.areItemsEqual(first, second)
+                && ItemStack.areItemStackTagsEqual(first, second);
     }
 
     @Override
@@ -162,12 +242,19 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
         IInventory escrow = container.getEscrowInventory();
 
+        refreshSellPriceCache(role, escrow);
+
         int visible = 0;
         int totalItems = 0;
         int unsellableItems = 0;
         long total = 0L;
 
-        for (int slot = 0; slot < escrow.getSizeInventory(); slot++) {
+        int slots = Math.min(
+                ESCROW_SIZE,
+                escrow.getSizeInventory()
+        );
+
+        for (int slot = 0; slot < slots; slot++) {
             ItemStack stack = escrow.getStackInSlot(slot);
 
             if (stack.isEmpty()) {
@@ -176,13 +263,7 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
             totalItems++;
 
-            boolean protectedItem =
-                    TraderItemProtection.isProtected(player, stack);
-
-            long unitPrice = role == null || protectedItem
-                    ? 0L
-                    : TraderSellService.getSellPrice(role, stack);
-
+            long unitPrice = cachedUnitPrices[slot];
             boolean sellable = unitPrice > 0L;
 
             if (sellable) {
@@ -205,7 +286,10 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                     + " x"
                     + stack.getCount();
 
-            line = fontRenderer.trimStringToWidth(line, textWidth);
+            line = fontRenderer.trimStringToWidth(
+                    line,
+                    textWidth
+            );
 
             drawString(
                     fontRenderer,
@@ -226,6 +310,7 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                     guiTop + 12,
                     0xAAAAAA
             );
+
         } else if (totalItems > MAX_VISIBLE_ITEMS) {
             drawString(
                     fontRenderer,
@@ -239,7 +324,6 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             );
         }
 
-        // Всегда один формат: никакой отдельной жёлтой надписи суммы.
         String totalText = I18n.translateToLocalFormatted(
                 "cheba.trader.sell.total",
                 total

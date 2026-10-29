@@ -153,20 +153,16 @@ public final class TraderSellService {
             return 0L;
         }
 
+        // Сначала проверяем цену продажи из основной витрины
         for (NpcTradeConfig offer : role.getDynamicOffers()) {
-            ItemStack configured = offer.getResult();
-
-            if (configured.isEmpty()) {
-                continue;
-            }
-
-            if (ItemStack.areItemsEqual(stack, configured)
-                    && ItemStack.areItemStackTagsEqual(stack, configured)
-                    && offer.getSellPriceMoney() > 0L) {
+            if (offer.getSellPriceMoney() > 0L
+                    && offer.matchesResult(stack)) {
                 return offer.getSellPriceMoney();
             }
         }
 
+        // Если основной витрины недостаточно, ищем предмет
+        // в отдельном списке выкупа
         for (NpcBuybackConfig offer : role.getBuybackOffers()) {
             if (offer != null
                     && offer.getPriceMoney() > 0L

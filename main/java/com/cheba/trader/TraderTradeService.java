@@ -75,7 +75,7 @@ public final class TraderTradeService {
     /**
      * Покупает multiplier комплектов предложения.
      * Например, 5 предметов в предложении при multiplier=10
-     * превращаются в 50 предметов.
+     * превращаются в 50 предметов
      */
     public Result buy(
             EntityPlayer player,
@@ -159,14 +159,23 @@ public final class TraderTradeService {
         int dailyStock = offer.getDailyStock();
         int maxPerDay = offer.getMaxPerDay();
 
+        // Проверяем общий дневной запас товара
         if (dailyStock >= 0
-                && state.getSoldCount(stockKey) + outputCount > dailyStock) {
+                && exceedsLimit(
+                state.getSoldCount(stockKey),
+                outputCount,
+                dailyStock
+        )) {
             return Result.OUT_OF_STOCK;
         }
 
+        // Проверяем персональный дневной лимит игрока
         if (maxPerDay >= 0
-                && state.getPlayerPurchaseCount(playerKey) + outputCount
-                > maxPerDay) {
+                && exceedsLimit(
+                state.getPlayerPurchaseCount(playerKey),
+                outputCount,
+                maxPerDay
+        )) {
             return Result.DAILY_LIMIT_REACHED;
         }
 
@@ -244,9 +253,10 @@ public final class TraderTradeService {
             return Result.INVENTORY_CHANGED;
         }
 
+        // Записываем только те счетчики которые действительно используются
         state.recordPurchase(
-                stockKey,
-                playerKey,
+                dailyStock >= 0 ? stockKey : null,
+                maxPerDay >= 0 ? playerKey : null,
                 outputCount
         );
 
@@ -255,6 +265,14 @@ public final class TraderTradeService {
         }
 
         return Result.SUCCESS;
+    }
+
+    private boolean exceedsLimit(
+            long current,
+            long increment,
+            long limit
+    ) {
+        return current > limit || increment > limit - current;
     }
 
     private NpcTradeConfig findOffer(

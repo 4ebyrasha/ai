@@ -315,6 +315,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     private void saveRole() {
         saveFields();
 
+        role.markTradeConfigChanged();
+
         Client.sendData(
                 EnumPacketServer.RoleSave,
                 role.writeToNBT(new NBTTagCompound())

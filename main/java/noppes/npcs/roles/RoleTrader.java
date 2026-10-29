@@ -1,10 +1,11 @@
 package noppes.npcs.roles;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -43,8 +44,51 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	public boolean toSave = false;
 	public boolean sharedLimits = true;
 
+	private static final int MAX_CACHED_MARKETS = 128;
+
+	private static final Map<String, CachedMarketPreset> MARKET_PRESET_CACHE =
+			new LinkedHashMap<String, CachedMarketPreset>(16, 0.75F, true) {
+				@Override
+				protected boolean removeEldestEntry(
+						Map.Entry<String, CachedMarketPreset> eldest
+				) {
+					return size() > MAX_CACHED_MARKETS;
+				}
+			};
+
+	private long tradeConfigRevision;
+
+	private static final class CachedMarketPreset {
+
+		private final NBTTagCompound data;
+		private final long lastModified;
+		private final long fileLength;
+
+		private CachedMarketPreset(
+				NBTTagCompound data,
+				File file
+		) {
+			this.data = data.copy();
+			this.lastModified = file.lastModified();
+			this.fileLength = file.length();
+		}
+
+		private boolean matches(File file) {
+			return lastModified == file.lastModified()
+					&& fileLength == file.length();
+		}
+	}
+
 	public RoleTrader(EntityNPCInterface npc) {
 		super(npc);
+	}
+
+	public long getTradeConfigRevision() {
+		return tradeConfigRevision;
+	}
+
+	public void markTradeConfigChanged() {
+		tradeConfigRevision++;
 	}
 
 
@@ -76,6 +120,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 
 		if (getDynamicOffer(offer.getId()) == null) {
 			dynamicOffers.add(offer);
+			markTradeConfigChanged();
 		}
 	}
 
@@ -87,6 +132,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		for (int i = 0; i < dynamicOffers.size(); i++) {
 			if (id.equals(dynamicOffers.get(i).getId())) {
 				dynamicOffers.remove(i);
+				markTradeConfigChanged();
 				return true;
 			}
 		}
@@ -95,7 +141,10 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	}
 
 	public void clearDynamicOffers() {
-		dynamicOffers.clear();
+		if (!dynamicOffers.isEmpty()) {
+			dynamicOffers.clear();
+			markTradeConfigChanged();
+		}
 	}
 
 
@@ -136,6 +185,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		}
 
 		buybackOffers.add(offer);
+		markTradeConfigChanged();
 		return true;
 	}
 
@@ -147,6 +197,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		for (int i = 0; i < buybackOffers.size(); i++) {
 			if (id.equals(buybackOffers.get(i).getId())) {
 				buybackOffers.remove(i);
+				markTradeConfigChanged();
 				return true;
 			}
 		}
@@ -155,7 +206,10 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	}
 
 	public void clearBuybackOffers() {
-		buybackOffers.clear();
+		if (!buybackOffers.isEmpty()) {
+			buybackOffers.clear();
+			markTradeConfigChanged();
+		}
 	}
 
 
@@ -178,19 +232,26 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 
 	@Override
 	public void readFromNBT(NBTTagCompound tag) {
-		marketName = tag.getString("TraderMarket");
+		marketName = normalizeMarketName(
+				tag.getString("TraderMarket")
+		);
+
 		readNBT(tag);
 
-		if (npc.world.isRemote
-				|| marketName == null
-				|| marketName.trim().isEmpty()) {
+		if (npc.world.isRemote || marketName.isEmpty()) {
 			return;
 		}
 
 		String name = marketName;
 		boolean savedSharedLimits = sharedLimits;
 
-		if (getFile(name).exists()) {
+		File file = getFile(name);
+
+		if (file == null) {
+			return;
+		}
+
+		if (file.exists()) {
 			load(this, name);
 		} else {
 			save(this, name);
@@ -267,6 +328,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		}
 		sharedLimits = !tag.hasKey("TraderSharedLimits", 1)
 				|| tag.getBoolean("TraderSharedLimits");
+		markTradeConfigChanged();
 	}
 
 	/**
@@ -304,10 +366,6 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	private void readMarketPresetNBT(NBTTagCompound tag) {
 		readLegacyNBT(tag);
 
-		/*
-		 * Если в старом файле нет динамических предложений,
-		 * сохраняем локальный список до первого нового сохранения
-		 */
 		if (tag.hasKey("DynamicTraderOffers", 9)) {
 			dynamicOffers.clear();
 
@@ -341,15 +399,14 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 				}
 			}
 		}
+
+		markTradeConfigChanged();
 	}
 
 	// Стандартные методы RoleTrader.
 	public void interact(EntityPlayer player) {
-		if (!npc.world.isRemote
-				&& marketName != null
-				&& !marketName.trim().isEmpty()) {
-			load(this, marketName);
-		}
+		// Не читаем JSON при каждом открытии магазина
+
 		npc.say(player, npc.advanced.getInteractLine());
 
 		NoppesUtilServer.sendOpenGui(
@@ -508,56 +565,109 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	}
 
 	public static void save(RoleTrader role, String name) {
-		if (role == null || name == null || name.trim().isEmpty()) {
+		if (role == null) {
 			return;
 		}
 
-		File file = getFile(name + "_new");
-		File oldFile = getFile(name);
+		String normalizedName = normalizeMarketName(name);
+
+		if (normalizedName.isEmpty()) {
+			return;
+		}
+
+		File target = getFile(normalizedName);
+
+		if (target == null) {
+			return;
+		}
+
+		File directory = target.getParentFile();
+		File temporary = null;
 
 		try {
-			/*
-			 * Сохраняются исходные поля CustomNPCs,
-			 * динамическая витрина и отдельный список выкупа.
-			 *
-			 * Флаг общих лимитов принадлежит конкретному NPC,
-			 * поэтому в общий пресет не записывается
-			 */
+			if (!directory.exists() && !directory.mkdirs()) {
+				throw new IOException(
+						"Cannot create market directory: " + directory
+				);
+			}
+
+			temporary = File.createTempFile(
+					target.getName() + ".",
+					".tmp",
+					directory
+			);
+
 			NBTTagCompound marketTag =
 					role.writeNBT(new NBTTagCompound());
 
+			// Этот параметр относится к конкретному NPC,
+			// а не к общему набору товаров.
 			marketTag.removeTag("TraderSharedLimits");
 
-			NBTJsonUtil.SaveFile(file, marketTag);
+			NBTJsonUtil.SaveFile(temporary, marketTag);
 
-			if (oldFile.exists()) {
-				oldFile.delete();
+			// Перед заменой проверяем, что временный JSON можно прочитать.
+			NBTTagCompound validation =
+					NBTJsonUtil.LoadFile(temporary);
+
+			if (validation == null) {
+				throw new IOException(
+						"Saved market preset is empty: " + normalizedName
+				);
 			}
 
-			file.renameTo(oldFile);
+			try {
+				Files.move(
+						temporary.toPath(),
+						target.toPath(),
+						StandardCopyOption.REPLACE_EXISTING,
+						StandardCopyOption.ATOMIC_MOVE
+				);
+			} catch (AtomicMoveNotSupportedException ignored) {
+				Files.move(
+						temporary.toPath(),
+						target.toPath(),
+						StandardCopyOption.REPLACE_EXISTING
+				);
+			}
+
+			// Заполняем кэш только после успешной замены файла.
+			cacheMarketPreset(target, marketTag);
 
 		} catch (Exception e) {
 			e.printStackTrace();
+
+		} finally {
+			if (temporary != null && temporary.exists()) {
+				try {
+					Files.deleteIfExists(temporary.toPath());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 
 	public static void load(RoleTrader role, String name) {
 		if (role == null
+				|| role.npc.world.isRemote
 				|| name == null
-				|| name.trim().isEmpty()
-				|| role.npc.world.isRemote) {
+				|| name.trim().isEmpty()) {
 			return;
 		}
 
 		File file = getFile(name);
 
-		if (!file.exists()) {
+		if (file == null || !file.isFile()) {
 			return;
 		}
 
 		try {
-			NBTTagCompound marketTag = NBTJsonUtil.LoadFile(file);
-			role.readMarketPresetNBT(marketTag);
+			NBTTagCompound marketTag = readCachedMarketPreset(file);
+
+			if (marketTag != null) {
+				role.readMarketPresetNBT(marketTag);
+			}
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -565,16 +675,131 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	}
 
 	private static File getFile(String name) {
-		File dir = new File(
-				CustomNpcs.getWorldSaveDirectory(),
-				"markets"
-		);
+		String normalizedName = normalizeMarketName(name);
 
-		if (!dir.exists()) {
-			dir.mkdir();
+		if (normalizedName.isEmpty()) {
+			return null;
 		}
 
-		return new File(dir, name.toLowerCase() + ".json");
+		File worldDirectory = CustomNpcs.getWorldSaveDirectory();
+
+		if (worldDirectory == null) {
+			return null;
+		}
+
+		File directory = new File(worldDirectory, "markets");
+
+		if (!directory.exists() && !directory.mkdirs()) {
+			return null;
+		}
+
+		File file = new File(
+				directory,
+				normalizedName.toLowerCase(Locale.ROOT) + ".json"
+		);
+
+		try {
+			String directoryPath =
+					directory.getCanonicalPath() + File.separator;
+
+			if (!file.getCanonicalPath().startsWith(directoryPath)) {
+				return null;
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+
+		return file;
+	}
+
+	private static String normalizeMarketName(String name) {
+		if (name == null) {
+			return "";
+		}
+
+		String input = name.trim();
+
+		if (input.isEmpty()) {
+			return "";
+		}
+
+		// Ограничение длины названия.
+		if (input.length() > 64) {
+			input = input.substring(0, 64);
+		}
+
+		StringBuilder safe = new StringBuilder(input.length());
+
+		for (int i = 0; i < input.length(); i++) {
+			char c = input.charAt(i);
+
+			if (Character.isLetterOrDigit(c)
+					|| c == ' '
+					|| c == '_'
+					|| c == '-'
+					|| c == '.') {
+				safe.append(c);
+			} else if (safe.length() == 0
+					|| safe.charAt(safe.length() - 1) != '_') {
+				safe.append('_');
+			}
+		}
+
+		String result = safe.toString().trim();
+
+		while (!result.isEmpty() && result.charAt(0) == '.') {
+			result = result.substring(1).trim();
+		}
+
+		while (!result.isEmpty()
+				&& result.charAt(result.length() - 1) == '.') {
+			result = result.substring(0, result.length() - 1).trim();
+		}
+
+		return result;
+	}
+
+	private static NBTTagCompound readCachedMarketPreset(File file)
+			throws IOException, NBTJsonUtil.JsonException {
+
+		String key = file.getCanonicalPath();
+
+		synchronized (MARKET_PRESET_CACHE) {
+			CachedMarketPreset cached = MARKET_PRESET_CACHE.get(key);
+
+			if (cached != null && cached.matches(file)) {
+				return cached.data.copy();
+			}
+		}
+
+		NBTTagCompound data = NBTJsonUtil.LoadFile(file);
+
+		cacheMarketPreset(file, data);
+
+		return data.copy();
+	}
+
+	private static void cacheMarketPreset(
+			File file,
+			NBTTagCompound data
+	) {
+		if (file == null || data == null) {
+			return;
+		}
+
+		try {
+			String key = file.getCanonicalPath();
+			CachedMarketPreset cached = new CachedMarketPreset(data, file);
+
+			synchronized (MARKET_PRESET_CACHE) {
+				MARKET_PRESET_CACHE.put(key, cached);
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public static void setMarket(
@@ -589,9 +814,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 
 		RoleTrader role = (RoleTrader) npc.roleInterface;
 
-		String name = marketName == null
-				? ""
-				: marketName.trim();
+		String name = normalizeMarketName(marketName);
 
 		role.marketName = name;
 
@@ -602,8 +825,12 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 
 		File file = getFile(name);
 
+		if (file == null) {
+			npc.updateClient = true;
+			return;
+		}
+
 		if (!file.exists()) {
-			// Первое использование имени создает пресет из текущих данных
 			save(role, name);
 		}
 

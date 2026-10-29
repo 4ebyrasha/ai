@@ -60,10 +60,18 @@ public class TraderRuntimeState extends WorldSavedData {
     }
 
     public long getSoldCount(String key) {
+        if (key == null || key.isEmpty()) {
+            return 0L;
+        }
+
         return stockSales.getLong(key);
     }
 
     public long getPlayerPurchaseCount(String key) {
+        if (key == null || key.isEmpty()) {
+            return 0L;
+        }
+
         return playerPurchases.getLong(key);
     }
 
@@ -76,15 +84,42 @@ public class TraderRuntimeState extends WorldSavedData {
             return;
         }
 
-        long stockCount = stockSales.getLong(stockKey);
-        long playerCount = playerPurchases.getLong(playerKey);
+        boolean changed = false;
 
-        stockSales.setLong(stockKey, stockCount + quantity);
-        playerPurchases.setLong(playerKey, playerCount + quantity);
+        if (stockKey != null && !stockKey.isEmpty()) {
+            long current = stockSales.getLong(stockKey);
 
-        markDirty();
+            stockSales.setLong(
+                    stockKey,
+                    addSaturated(current, quantity)
+            );
+
+            changed = true;
+        }
+
+        if (playerKey != null && !playerKey.isEmpty()) {
+            long current = playerPurchases.getLong(playerKey);
+
+            playerPurchases.setLong(
+                    playerKey,
+                    addSaturated(current, quantity)
+            );
+
+            changed = true;
+        }
+
+        if (changed) {
+            markDirty();
+        }
     }
 
+    private long addSaturated(long current, long increment) {
+        if (increment > 0L && current > Long.MAX_VALUE - increment) {
+            return Long.MAX_VALUE;
+        }
+
+        return current + increment;
+    }
 
     @Override
     public void readFromNBT(NBTTagCompound tag) {

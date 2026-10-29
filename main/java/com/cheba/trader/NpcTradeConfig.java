@@ -45,6 +45,14 @@ public class NpcTradeConfig {
         return id;
     }
 
+    public boolean matchesResult(ItemStack stack) {
+        return stack != null
+                && !stack.isEmpty()
+                && !result.isEmpty()
+                && ItemStack.areItemsEqual(result, stack)
+                && ItemStack.areItemStackTagsEqual(result, stack);
+    }
+
     public ItemStack getResult() {
         return result.isEmpty()
                 ? ItemStack.EMPTY
