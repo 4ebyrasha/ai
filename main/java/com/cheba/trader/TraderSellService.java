@@ -27,13 +27,13 @@ public final class TraderSellService {
         NOT_TRADER,
         EMPTY,
         ITEM_NOT_BUYABLE,
+        PROTECTED_ITEM,
         CURRENCY_UNAVAILABLE,
         PAYMENT_FAILED,
         INVALID_AMOUNT
     }
 
     public static final class Outcome {
-
         private final Status status;
         private final long amount;
 
@@ -88,7 +88,6 @@ public final class TraderSellService {
         long total = 0L;
         boolean hasItems = false;
 
-        // Сначала проверяем все предметы, не изменяя буфер
         for (int i = 0; i < escrow.getSizeInventory(); i++) {
             ItemStack stack = escrow.getStackInSlot(i);
 
@@ -97,6 +96,10 @@ public final class TraderSellService {
             }
 
             hasItems = true;
+
+            if (TraderItemProtection.isProtected(player, stack)) {
+                return new Outcome(Status.PROTECTED_ITEM, 0L);
+            }
 
             long unitPrice = getSellPrice(role, stack);
 
@@ -125,12 +128,11 @@ public final class TraderSellService {
             return new Outcome(Status.CURRENCY_UNAVAILABLE, 0L);
         }
 
-        // Если начисление денег не удалось, предметы остаются в буфере
+        // Сначала начисляем деньги. При ошибке предметы остаются в буфере.
         if (!currency.deposit(player, total)) {
             return new Outcome(Status.PAYMENT_FAILED, 0L);
         }
 
-        // Удаляем предметы только после успешного начисления
         container.clearEscrowAfterSale();
 
         player.inventory.markDirty();
@@ -142,20 +144,15 @@ public final class TraderSellService {
     }
 
     /**
-     * Цена выкупа одной единицы предмета.
-     * Ноль означает, что предмет не принимается
+     * Цена за одну единицу предмета.
+     * Приоритет: «Цена продажи» основной витрины,
+     * затем отдельный список выкупа.
      */
-    public static long getSellPrice(
-            RoleTrader role,
-            ItemStack stack
-    ) {
+    public static long getSellPrice(RoleTrader role, ItemStack stack) {
         if (role == null || stack == null || stack.isEmpty()) {
             return 0L;
         }
 
-        // Сначала проверяем основную витрину.
-        // Один предмет может одновременно продаваться NPC
-        // и покупаться NPC у игрока
         for (NpcTradeConfig offer : role.getDynamicOffers()) {
             ItemStack configured = offer.getResult();
 
@@ -163,31 +160,21 @@ public final class TraderSellService {
                 continue;
             }
 
-            boolean sameItem =
-                    ItemStack.areItemsEqual(stack, configured);
-
-            boolean sameNbt =
-                    ItemStack.areItemStackTagsEqual(stack, configured);
-
-            if (sameItem && sameNbt
+            if (ItemStack.areItemsEqual(stack, configured)
+                    && ItemStack.areItemStackTagsEqual(stack, configured)
                     && offer.getSellPriceMoney() > 0L) {
                 return offer.getSellPriceMoney();
             }
         }
 
-        // Если основной витриной цена выкупа не задана,
-        // ищем предмет в отдельном списке закупки
         for (NpcBuybackConfig offer : role.getBuybackOffers()) {
-            if (offer == null || offer.getPriceMoney() <= 0L) {
-                continue;
-            }
-
-            if (offer.matches(stack)) {
+            if (offer != null
+                    && offer.getPriceMoney() > 0L
+                    && offer.matches(stack)) {
                 return offer.getPriceMoney();
             }
         }
 
-        // Нулевая цена означает, что торговец предмет не покупает
         return 0L;
     }
 }

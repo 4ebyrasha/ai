@@ -1,7 +1,7 @@
-
 package com.cheba.gui;
 
 import com.cheba.container.TraderSellContainer;
+import com.cheba.trader.TraderItemProtection;
 import com.cheba.trader.TraderSellService;
 
 import net.minecraft.client.gui.GuiButton;
@@ -64,16 +64,10 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
         if (button.id == 0 && npc != null) {
             int npcEntityId = npc.getEntityId();
 
-            /*
-             * При закрытии серверный контейнер вернёт предметы,
-             * которые остались в буфере.
-             */
             player.closeScreen();
-
             mc.displayGuiScreen(
                     new GuiDynamicTraderMenu(npcEntityId)
             );
-
             return;
         }
 
@@ -82,7 +76,6 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                     EnumPacketServer.TraderSell,
                     npc.getEntityId()
             );
-
             return;
         }
 
@@ -96,7 +89,6 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             int mouseY
     ) {
         drawDefaultBackground();
-
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
         drawRect(
@@ -130,9 +122,7 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             drawSlotFrame(x, y);
         }
 
-        /*
-         * Основной инвентарь игрока.
-         */
+        // Основной инвентарь игрока.
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 drawSlotFrame(
@@ -142,9 +132,7 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             }
         }
 
-        /*
-         * Панель быстрого доступа.
-         */
+        // Панель быстрого доступа.
         for (int col = 0; col < 9; col++) {
             drawSlotFrame(
                     guiLeft + 13 + col * 18,
@@ -188,7 +176,10 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
             totalItems++;
 
-            long unitPrice = role == null
+            boolean protectedItem =
+                    TraderItemProtection.isProtected(player, stack);
+
+            long unitPrice = role == null || protectedItem
                     ? 0L
                     : TraderSellService.getSellPrice(role, stack);
 
@@ -214,10 +205,7 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                     + " x"
                     + stack.getCount();
 
-            line = fontRenderer.trimStringToWidth(
-                    line,
-                    textWidth
-            );
+            line = fontRenderer.trimStringToWidth(line, textWidth);
 
             drawString(
                     fontRenderer,
@@ -233,14 +221,11 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
         if (totalItems == 0) {
             drawString(
                     fontRenderer,
-                    I18n.translateToLocal(
-                            "cheba.trader.sell.empty_buffer"
-                    ),
+                    I18n.translateToLocal("cheba.trader.sell.empty_buffer"),
                     textX,
                     guiTop + 12,
                     0xAAAAAA
             );
-
         } else if (totalItems > MAX_VISIBLE_ITEMS) {
             drawString(
                     fontRenderer,
@@ -254,6 +239,7 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             );
         }
 
+        // Всегда один формат: никакой отдельной жёлтой надписи суммы.
         String totalText = I18n.translateToLocalFormatted(
                 "cheba.trader.sell.total",
                 total
@@ -261,24 +247,10 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
         drawString(
                 fontRenderer,
-                fontRenderer.trimStringToWidth(
-                        totalText,
-                        textWidth
-                ),
+                fontRenderer.trimStringToWidth(totalText, textWidth),
                 textX,
                 guiTop + 99,
                 total > 0L ? 0x55FF55 : 0xFFFFFF
-        );
-
-        drawString(
-                fontRenderer,
-                fontRenderer.trimStringToWidth(
-                        totalText,
-                        textWidth
-                ),
-                textX,
-                guiTop + 99,
-                unsellableItems == 0 ? 0x55FF55 : 0xFFFF55
         );
 
         if (unsellableItems > 0) {
@@ -299,25 +271,12 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
     }
 
     private void drawSlotFrame(int x, int y) {
-        drawRect(
-                x - 1,
-                y - 1,
-                x + 17,
-                y + 17,
-                0xFF777777
-        );
-
-        drawRect(
-                x,
-                y,
-                x + 16,
-                y + 16,
-                0xFF303030
-        );
+        drawRect(x - 1, y - 1, x + 17, y + 17, 0xFF777777);
+        drawRect(x, y, x + 16, y + 16, 0xFF303030);
     }
 
     @Override
     public void save() {
-        // Предметы возвращает серверный контейнер.
+        // Буфером продажи управляет серверный контейнер
     }
 }

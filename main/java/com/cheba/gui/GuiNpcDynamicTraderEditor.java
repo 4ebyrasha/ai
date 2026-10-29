@@ -2,6 +2,7 @@ package com.cheba.gui;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.cheba.trader.NpcTradeConfig;
@@ -34,16 +35,24 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             OFFER_COLUMNS * OFFER_ROWS;
     private static final int OFFER_SLOT_SIZE = 18;
 
-    private int offerPage = 0;
+    private static final int PAYMENT_COLUMNS = 12;
+    private static final int PAYMENT_ROWS = 6;
+    private static final int MAX_VISIBLE_PAYMENT_ITEMS =
+            PAYMENT_COLUMNS * PAYMENT_ROWS;
+
+    private int offerPage;
+    private boolean barterEditMode;
+
+    private int selectedOfferIndex = -1;
+    private int selectedInventorySlot = -1;
+    private int selectedPaymentIndex = -1;
 
     private final EntityNPCInterface npc;
     private final GuiNpcTraderSetup parent;
     private final RoleTrader role;
 
-    private int selectedOfferIndex = -1;
-    private int selectedInventorySlot = -1;
-
     private GuiTextField buyPriceField;
+    private GuiTextField sellPriceField;
     private GuiTextField maxPerDayField;
     private GuiTextField dailyStockField;
 
@@ -107,15 +116,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 I18n.translateToLocal("cheba.trader.editor.back")
         ));
 
-        // Отдельный редактор предметов, которые NPC покупает.
         buttonList.add(new GuiButton(
                 10, x + 121, y + 7, 66, 18,
                 I18n.translateToLocal("cheba.trader.editor.buyback")
         ));
-
-        buyPriceField = createField(0, x + 292, y + 57);
-        maxPerDayField = createField(1, x + 292, y + 79);
-        dailyStockField = createField(2, x + 292, y + 101);
 
         GuiButton previousPage = new GuiButton(
                 8, x + 7, y + 7, 54, 18,
@@ -135,23 +139,40 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
         buttonList.add(new GuiButton(
                 4, x + 190, y + 147, 51, 20,
-                I18n.translateToLocal("cheba.trader.editor.set_product")
+                I18n.translateToLocal(
+                        barterEditMode
+                                ? "cheba.trader.editor.add_payment_item"
+                                : "cheba.trader.editor.set_product"
+                )
         ));
 
         buttonList.add(new GuiButton(
                 5, x + 243, y + 147, 51, 20,
-                I18n.translateToLocal("cheba.trader.editor.clear_product")
+                I18n.translateToLocal(
+                        barterEditMode
+                                ? "cheba.trader.editor.remove_payment_item"
+                                : "cheba.trader.editor.clear_product"
+                )
         ));
 
         buttonList.add(new GuiButton(
                 6, x + 296, y + 147, 51, 20,
-                I18n.translateToLocal("cheba.trader.editor.add_payment")
+                I18n.translateToLocal(
+                        barterEditMode
+                                ? "cheba.trader.editor.barter_done"
+                                : "cheba.trader.editor.add_payment"
+                )
         ));
 
         buttonList.add(new GuiButton(
                 7, x + 349, y + 147, 59, 20,
-                I18n.translateToLocal("cheba.trader.editor.clear_payment")
+                I18n.translateToLocal("cheba.trader.editor.clear_payment_all")
         ));
+
+        buyPriceField = createField(0, x + 292, y + 57);
+        sellPriceField = createField(1, x + 292, y + 79);
+        maxPerDayField = createField(2, x + 292, y + 101);
+        dailyStockField = createField(3, x + 292, y + 123);
 
         refreshFields();
     }
@@ -186,6 +207,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
         if (offer == null) {
             buyPriceField.setText("0");
+            sellPriceField.setText("0");
             maxPerDayField.setText("-1");
             dailyStockField.setText("-1");
             return;
@@ -193,6 +215,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
         buyPriceField.setText(
                 String.valueOf(offer.getPriceMoney())
+        );
+
+        sellPriceField.setText(
+                String.valueOf(offer.getSellPriceMoney())
         );
 
         maxPerDayField.setText(
@@ -207,13 +233,19 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     private void saveFields() {
         NpcTradeConfig offer = getSelectedOffer();
 
-        if (offer == null) {
+        if (offer == null || barterEditMode) {
             return;
         }
 
         offer.setPriceMoney(parseLong(
                 buyPriceField.getText(),
                 offer.getPriceMoney(),
+                0L
+        ));
+
+        offer.setSellPriceMoney(parseLong(
+                sellPriceField.getText(),
+                offer.getSellPriceMoney(),
                 0L
         ));
 
@@ -284,7 +316,6 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     @Override
     protected void actionPerformed(GuiButton button)
             throws IOException {
-
         saveFields();
 
         switch (button.id) {
@@ -296,6 +327,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
                 offerPage =
                         selectedOfferIndex / OFFERS_PER_PAGE;
+
+                selectedPaymentIndex = -1;
 
                 statusMessage = I18n.translateToLocal(
                         "cheba.trader.editor.created"
@@ -312,15 +345,15 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 if (offer != null) {
                     role.removeDynamicOffer(offer.getId());
 
-                    int size = role.getDynamicOffers().size();
+                    int count = role.getDynamicOffers().size();
 
-                    if (size == 0) {
+                    if (count == 0) {
                         selectedOfferIndex = -1;
                         offerPage = 0;
                     } else {
                         selectedOfferIndex = Math.min(
                                 selectedOfferIndex,
-                                size - 1
+                                count - 1
                         );
 
                         offerPage = Math.min(
@@ -328,6 +361,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                                 getOfferPageCount() - 1
                         );
                     }
+
+                    selectedPaymentIndex = -1;
 
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.editor.removed"
@@ -356,7 +391,34 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 NpcTradeConfig offer = getSelectedOffer();
                 ItemStack stack = getSelectedInventoryStack();
 
-                if (offer != null && !stack.isEmpty()) {
+                if (offer == null) {
+                    statusMessage = I18n.translateToLocal(
+                            "cheba.trader.editor.empty_offer"
+                    );
+                    break;
+                }
+
+                if (barterEditMode) {
+                    if (stack.isEmpty()) {
+                        statusMessage = I18n.translateToLocal(
+                                "cheba.trader.editor.select_item"
+                        );
+                    } else if (offer.getPriceItemCount()
+                            >= MAX_VISIBLE_PAYMENT_ITEMS) {
+                        statusMessage = I18n.translateToLocal(
+                                "cheba.trader.editor.payment_limit"
+                        );
+                    } else {
+                        offer.addPriceItem(stack.copy());
+
+                        selectedPaymentIndex =
+                                offer.getPriceItemCount() - 1;
+
+                        statusMessage = I18n.translateToLocal(
+                                "cheba.trader.editor.payment_added"
+                        );
+                    }
+                } else if (!stack.isEmpty()) {
                     offer.setResult(stack.copy());
 
                     statusMessage = I18n.translateToLocal(
@@ -374,7 +436,25 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             case 5: {
                 NpcTradeConfig offer = getSelectedOffer();
 
-                if (offer != null) {
+                if (offer == null) {
+                    break;
+                }
+
+                if (barterEditMode) {
+                    if (selectedPaymentIndex >= 0
+                            && selectedPaymentIndex < offer.getPriceItemCount()) {
+                        offer.removePriceItem(selectedPaymentIndex);
+                        selectedPaymentIndex = -1;
+
+                        statusMessage = I18n.translateToLocal(
+                                "cheba.trader.editor.payment_removed"
+                        );
+                    } else {
+                        statusMessage = I18n.translateToLocal(
+                                "cheba.trader.editor.select_payment_item"
+                        );
+                    }
+                } else {
                     offer.setResult(ItemStack.EMPTY);
 
                     statusMessage = I18n.translateToLocal(
@@ -385,30 +465,33 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 break;
             }
 
-            case 6: {
-                NpcTradeConfig offer = getSelectedOffer();
-                ItemStack stack = getSelectedInventoryStack();
-
-                if (offer != null && !stack.isEmpty()) {
-                    offer.addPriceItem(stack.copy());
+            case 6:
+                if (barterEditMode) {
+                    barterEditMode = false;
+                    selectedPaymentIndex = -1;
+                    refreshFields();
 
                     statusMessage = I18n.translateToLocal(
-                            "cheba.trader.editor.payment_added"
+                            "cheba.trader.editor.barter_closed"
                     );
                 } else {
+                    barterEditMode = true;
+                    selectedPaymentIndex = -1;
+
                     statusMessage = I18n.translateToLocal(
-                            "cheba.trader.editor.select_item"
+                            "cheba.trader.editor.barter_opened"
                     );
                 }
 
+                initGui();
                 break;
-            }
 
             case 7: {
                 NpcTradeConfig offer = getSelectedOffer();
 
                 if (offer != null) {
                     offer.clearPriceItems();
+                    selectedPaymentIndex = -1;
 
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.editor.payment_cleared"
@@ -454,9 +537,9 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     }
 
     private void selectFirstOfferOnPage() {
-        int size = role.getDynamicOffers().size();
+        int count = role.getDynamicOffers().size();
 
-        if (size == 0) {
+        if (count == 0) {
             selectedOfferIndex = -1;
             offerPage = 0;
             return;
@@ -464,8 +547,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
         selectedOfferIndex = Math.min(
                 offerPage * OFFERS_PER_PAGE,
-                size - 1
+                count - 1
         );
+
+        selectedPaymentIndex = -1;
     }
 
     @Override
@@ -474,24 +559,24 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
-
-        buyPriceField.mouseClicked(mouseX, mouseY, mouseButton);
-        maxPerDayField.mouseClicked(mouseX, mouseY, mouseButton);
-        dailyStockField.mouseClicked(mouseX, mouseY, mouseButton);
+        if (!barterEditMode) {
+            buyPriceField.mouseClicked(mouseX, mouseY, mouseButton);
+            sellPriceField.mouseClicked(mouseX, mouseY, mouseButton);
+            maxPerDayField.mouseClicked(mouseX, mouseY, mouseButton);
+            dailyStockField.mouseClicked(mouseX, mouseY, mouseButton);
+        }
 
         int x = left();
         int y = top();
 
+        // Основная сетка остаётся на месте в обоих режимах.
         int offerGridX = x + 7;
         int offerGridY = y + 31;
 
-        boolean insideOfferGrid =
-                mouseX >= offerGridX
-                        && mouseX < offerGridX
-                        + OFFER_COLUMNS * OFFER_SLOT_SIZE
-                        && mouseY >= offerGridY
-                        && mouseY < offerGridY
-                        + OFFER_ROWS * OFFER_SLOT_SIZE;
+        boolean insideOfferGrid = mouseX >= offerGridX
+                && mouseX < offerGridX + OFFER_COLUMNS * OFFER_SLOT_SIZE
+                && mouseY >= offerGridY
+                && mouseY < offerGridY + OFFER_ROWS * OFFER_SLOT_SIZE;
 
         if (mouseButton == 0 && insideOfferGrid) {
             int col = (mouseX - offerGridX) / OFFER_SLOT_SIZE;
@@ -503,12 +588,29 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
             if (index < role.getDynamicOffers().size()) {
                 saveFields();
+
                 selectedOfferIndex = index;
+                selectedPaymentIndex = -1;
+
                 refreshFields();
                 statusMessage = "";
             }
         }
 
+        // Выбор конкретного компонента бартера справа.
+        if (barterEditMode && mouseButton == 0) {
+            int paymentIndex = getHoveredPaymentIndex(mouseX, mouseY);
+            NpcTradeConfig selected = getSelectedOffer();
+
+            if (paymentIndex >= 0
+                    && selected != null
+                    && paymentIndex < selected.getPriceItemCount()) {
+                selectedPaymentIndex = paymentIndex;
+                statusMessage = "";
+            }
+        }
+
+        // Выбор исходного предмета из инвентаря.
         int inventoryX = x + (PANEL_WIDTH - 9 * 18) / 2;
         int mainY = y + 183;
         int hotbarY = y + 237;
@@ -522,9 +624,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             if (mouseY >= mainY && mouseY < mainY + 3 * 18) {
                 int row = (mouseY - mainY) / 18;
                 selectedInventorySlot = 9 + row * 9 + col;
-
-            } else if (mouseY >= hotbarY
-                    && mouseY < hotbarY + 18) {
+            } else if (mouseY >= hotbarY && mouseY < hotbarY + 18) {
                 selectedInventorySlot = col;
             }
         }
@@ -537,16 +637,18 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             char typedChar,
             int keyCode
     ) throws IOException {
-
         if (keyCode == 1) {
             saveRole();
             mc.displayGuiScreen(parent);
             return;
         }
 
-        buyPriceField.textboxKeyTyped(typedChar, keyCode);
-        maxPerDayField.textboxKeyTyped(typedChar, keyCode);
-        dailyStockField.textboxKeyTyped(typedChar, keyCode);
+        if (!barterEditMode) {
+            buyPriceField.textboxKeyTyped(typedChar, keyCode);
+            sellPriceField.textboxKeyTyped(typedChar, keyCode);
+            maxPerDayField.textboxKeyTyped(typedChar, keyCode);
+            dailyStockField.textboxKeyTyped(typedChar, keyCode);
+        }
 
         super.keyTyped(typedChar, keyCode);
     }
@@ -563,12 +665,13 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         int y = top();
 
         drawRect(
-                x, y,
-                x + PANEL_WIDTH, y + PANEL_HEIGHT,
+                x,
+                y,
+                x + PANEL_WIDTH,
+                y + PANEL_HEIGHT,
                 0xEE202020
         );
 
-        // Заголовок смещен вправо, чтобы кнопка "Выкуп" не перекрывала текст
         drawCenteredString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.title"),
@@ -577,11 +680,24 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 0xFFFFFF
         );
 
+        drawString(
+                fontRenderer,
+                I18n.translateToLocalFormatted(
+                        "cheba.trader.page",
+                        offerPage + 1,
+                        getOfferPageCount()
+                ),
+                x + 8,
+                y + 12,
+                0xFFFFFF
+        );
+
         List<NpcTradeConfig> offers = role.getDynamicOffers();
 
         for (int row = 0; row < OFFER_ROWS; row++) {
             for (int col = 0; col < OFFER_COLUMNS; col++) {
                 int localIndex = row * OFFER_COLUMNS + col;
+
                 int offerIndex =
                         offerPage * OFFERS_PER_PAGE + localIndex;
 
@@ -633,45 +749,46 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             }
         }
 
-        drawString(
-                fontRenderer,
-                I18n.translateToLocal("cheba.trader.editor.buy_price"),
-                x + 190,
-                y + 61,
-                0xFFFFFF
-        );
+        if (barterEditMode) {
+            drawBarterPanel(x, y);
+        } else {
+            drawString(
+                    fontRenderer,
+                    I18n.translateToLocal("cheba.trader.editor.buy_price"),
+                    x + 190,
+                    y + 61,
+                    0xFFFFFF
+            );
 
-        drawString(
-                fontRenderer,
-                I18n.translateToLocal("cheba.trader.editor.max_day"),
-                x + 190,
-                y + 83,
-                0xFFFFFF
-        );
+            drawString(
+                    fontRenderer,
+                    I18n.translateToLocal("cheba.trader.editor.sell_price"),
+                    x + 190,
+                    y + 83,
+                    0xFFFFFF
+            );
 
-        drawString(
-                fontRenderer,
-                I18n.translateToLocal("cheba.trader.editor.stock"),
-                x + 190,
-                y + 105,
-                0xFFFFFF
-        );
+            drawString(
+                    fontRenderer,
+                    I18n.translateToLocal("cheba.trader.editor.max_day"),
+                    x + 190,
+                    y + 105,
+                    0xFFFFFF
+            );
 
-        buyPriceField.drawTextBox();
-        maxPerDayField.drawTextBox();
-        dailyStockField.drawTextBox();
+            drawString(
+                    fontRenderer,
+                    I18n.translateToLocal("cheba.trader.editor.stock"),
+                    x + 190,
+                    y + 127,
+                    0xFFFFFF
+            );
 
-        drawString(
-                fontRenderer,
-                I18n.translateToLocalFormatted(
-                        "cheba.trader.page",
-                        offerPage + 1,
-                        getOfferPageCount()
-                ),
-                x + 8,
-                y + 145,
-                0xFFFFFF
-        );
+            buyPriceField.drawTextBox();
+            sellPriceField.drawTextBox();
+            maxPerDayField.drawTextBox();
+            dailyStockField.drawTextBox();
+        }
 
         NpcTradeConfig selectedOffer = getSelectedOffer();
 
@@ -685,7 +802,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                     fontRenderer,
                     fontRenderer.trimStringToWidth(payment, 170),
                     x + 8,
-                    y + 155,
+                    y + 145,
                     0xAAAAAA
             );
         }
@@ -756,16 +873,92 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         drawEditorTooltip(mouseX, mouseY);
     }
 
+    private void drawBarterPanel(int x, int y) {
+        NpcTradeConfig offer = getSelectedOffer();
+
+        drawString(
+                fontRenderer,
+                I18n.translateToLocal("cheba.trader.editor.barter_items"),
+                x + 190,
+                y + 13,
+                0xFFFFFF
+        );
+
+        if (offer == null) {
+            return;
+        }
+
+        List<ItemStack> priceItems = offer.getPriceItems();
+
+        for (int row = 0; row < PAYMENT_ROWS; row++) {
+            for (int col = 0; col < PAYMENT_COLUMNS; col++) {
+                int index = row * PAYMENT_COLUMNS + col;
+
+                int slotX = x + 190 + col * 18;
+                int slotY = y + 31 + row * 18;
+
+                boolean selected = index == selectedPaymentIndex;
+
+                drawRect(
+                        slotX,
+                        slotY,
+                        slotX + 18,
+                        slotY + 18,
+                        selected ? 0xFFFFFF55 : 0xFF777777
+                );
+
+                drawRect(
+                        slotX + 1,
+                        slotY + 1,
+                        slotX + 17,
+                        slotY + 17,
+                        selected ? 0xFF555522 : 0xFF303030
+                );
+
+                if (index >= priceItems.size()) {
+                    continue;
+                }
+
+                ItemStack stack = priceItems.get(index);
+
+                if (!stack.isEmpty()) {
+                    RenderHelper.enableGUIStandardItemLighting();
+
+                    itemRender.renderItemAndEffectIntoGUI(
+                            stack,
+                            slotX + 1,
+                            slotY + 1
+                    );
+
+                    itemRender.renderItemOverlays(
+                            fontRenderer,
+                            stack,
+                            slotX + 1,
+                            slotY + 1
+                    );
+
+                    RenderHelper.disableStandardItemLighting();
+                }
+            }
+        }
+    }
+
     private void drawInventorySlot(int x, int y, int slot) {
         boolean selected = slot == selectedInventorySlot;
 
         drawRect(
-                x, y, x + 18, y + 18,
+                x,
+                y,
+                x + 18,
+                y + 18,
                 selected ? 0xFFFFFF55 : 0xFF777777
         );
 
         drawRect(
-                x + 1, y + 1, x + 17, y + 17,
+                x + 1,
+                y + 1,
+                x + 17,
+                y + 17,
                 0xFF303030
         );
 
@@ -788,93 +981,6 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             );
 
             RenderHelper.disableStandardItemLighting();
-        }
-    }
-
-    private void drawEditorTooltip(int mouseX, int mouseY) {
-        int offerIndex = getHoveredOfferIndex(mouseX, mouseY);
-
-        if (offerIndex >= 0
-                && offerIndex < role.getDynamicOffers().size()) {
-
-            NpcTradeConfig offer =
-                    role.getDynamicOffers().get(offerIndex);
-
-            ItemStack product = offer.getResult();
-
-            if (!product.isEmpty()) {
-                List<String> lines = new ArrayList<>();
-
-                lines.addAll(
-                        product.getTooltip(
-                                mc.player,
-                                ITooltipFlag.TooltipFlags.ADVANCED
-                        )
-                );
-
-                lines.add(
-                        TextFormatting.GRAY
-                                + I18n.translateToLocalFormatted(
-                                "cheba.trader.quantity",
-                                product.getCount()
-                        )
-                );
-
-                if (offer.getPriceMoney() > 0L) {
-                    lines.add(
-                            TextFormatting.GOLD
-                                    + I18n.translateToLocalFormatted(
-                                    "cheba.trader.price",
-                                    offer.getPriceMoney()
-                            )
-                    );
-                }
-
-                for (ItemStack priceItem : offer.getPriceItems()) {
-                    if (!priceItem.isEmpty()) {
-                        lines.add(
-                                TextFormatting.GRAY
-                                        + priceItem.getDisplayName()
-                                        + " x"
-                                        + priceItem.getCount()
-                        );
-                    }
-                }
-
-                lines.add(
-                        I18n.translateToLocalFormatted(
-                                "cheba.trader.editor.max_day_tooltip",
-                                offer.getMaxPerDay()
-                        )
-                );
-
-                lines.add(
-                        I18n.translateToLocalFormatted(
-                                "cheba.trader.editor.stock_tooltip",
-                                offer.getDailyStock()
-                        )
-                );
-
-                drawHoveringText(lines, mouseX, mouseY);
-                return;
-            }
-        }
-
-        int slot = getHoveredInventorySlot(mouseX, mouseY);
-
-        if (slot >= 0) {
-            ItemStack stack = mc.player.inventory.getStackInSlot(slot);
-
-            if (!stack.isEmpty()) {
-                drawHoveringText(
-                        stack.getTooltip(
-                                mc.player,
-                                ITooltipFlag.TooltipFlags.ADVANCED
-                        ),
-                        mouseX,
-                        mouseY
-                );
-            }
         }
     }
 
@@ -901,6 +1007,24 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 : -1;
     }
 
+    private int getHoveredPaymentIndex(int mouseX, int mouseY) {
+        int x = left() + 190;
+        int y = top() + 31;
+
+        if (!barterEditMode
+                || mouseX < x
+                || mouseX >= x + PAYMENT_COLUMNS * 18
+                || mouseY < y
+                || mouseY >= y + PAYMENT_ROWS * 18) {
+            return -1;
+        }
+
+        int col = (mouseX - x) / 18;
+        int row = (mouseY - y) / 18;
+
+        return row * PAYMENT_COLUMNS + col;
+    }
+
     private int getHoveredInventorySlot(int mouseX, int mouseY) {
         int x = left() + (PANEL_WIDTH - 9 * 18) / 2;
         int mainY = top() + 183;
@@ -913,8 +1037,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         int col = (mouseX - x) / 18;
 
         if (mouseY >= mainY && mouseY < mainY + 3 * 18) {
-            int row = (mouseY - mainY) / 18;
-            return 9 + row * 9 + col;
+            return 9 + ((mouseY - mainY) / 18) * 9 + col;
         }
 
         if (mouseY >= hotbarY && mouseY < hotbarY + 18) {
@@ -922,6 +1045,159 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         }
 
         return -1;
+    }
+
+    private void drawEditorTooltip(int mouseX, int mouseY) {
+        // Сначала подсказка самого предмета, поверх кнопок и остальных элементов.
+        if (barterEditMode) {
+            int paymentIndex = getHoveredPaymentIndex(mouseX, mouseY);
+            NpcTradeConfig offer = getSelectedOffer();
+
+            if (paymentIndex >= 0
+                    && offer != null
+                    && paymentIndex < offer.getPriceItemCount()) {
+
+                ItemStack item = offer.getPriceItem(paymentIndex);
+
+                if (!item.isEmpty()) {
+                    List<String> lines = item.getTooltip(
+                            mc.player,
+                            ITooltipFlag.TooltipFlags.ADVANCED
+                    );
+
+                    drawHoveringText(lines, mouseX, mouseY);
+                    return;
+                }
+            }
+        }
+
+        int offerIndex = getHoveredOfferIndex(mouseX, mouseY);
+
+        if (offerIndex >= 0
+                && offerIndex < role.getDynamicOffers().size()) {
+
+            NpcTradeConfig offer =
+                    role.getDynamicOffers().get(offerIndex);
+
+            ItemStack product = offer.getResult();
+
+            if (!product.isEmpty()) {
+                List<String> lines = new ArrayList<>(
+                        product.getTooltip(
+                                mc.player,
+                                ITooltipFlag.TooltipFlags.ADVANCED
+                        )
+                );
+
+                lines.add(TextFormatting.GRAY
+                        + I18n.translateToLocalFormatted(
+                        "cheba.trader.quantity",
+                        product.getCount()
+                ));
+
+                if (offer.getPriceMoney() > 0L) {
+                    lines.add(TextFormatting.GOLD
+                            + I18n.translateToLocalFormatted(
+                            "cheba.trader.price",
+                            offer.getPriceMoney()
+                    ));
+                }
+
+                if (offer.getSellPriceMoney() > 0L) {
+                    lines.add(TextFormatting.GREEN
+                            + I18n.translateToLocalFormatted(
+                            "cheba.trader.editor.sell_price_tooltip",
+                            offer.getSellPriceMoney()
+                    ));
+                }
+
+                for (ItemStack priceItem : offer.getPriceItems()) {
+                    if (!priceItem.isEmpty()) {
+                        lines.add(TextFormatting.GRAY
+                                + priceItem.getDisplayName()
+                                + " x"
+                                + priceItem.getCount());
+                    }
+                }
+
+                drawHoveringText(lines, mouseX, mouseY);
+                return;
+            }
+        }
+
+        int inventorySlot = getHoveredInventorySlot(mouseX, mouseY);
+
+        if (inventorySlot >= 0) {
+            ItemStack stack =
+                    mc.player.inventory.getStackInSlot(inventorySlot);
+
+            if (!stack.isEmpty()) {
+                drawHoveringText(
+                        stack.getTooltip(
+                                mc.player,
+                                ITooltipFlag.TooltipFlags.ADVANCED
+                        ),
+                        mouseX,
+                        mouseY
+                );
+                return;
+            }
+        }
+
+        // Текстовое пояснение действия каждой кнопки редактора.
+        for (GuiButton button : buttonList) {
+            if (!button.mousePressed(mc, mouseX, mouseY)) {
+                continue;
+            }
+
+            String key = getButtonTooltipKey(button.id);
+
+            if (key != null) {
+                drawHoveringText(
+                        Collections.singletonList(
+                                I18n.translateToLocal(key)
+                        ),
+                        mouseX,
+                        mouseY
+                );
+                return;
+            }
+        }
+    }
+
+    private String getButtonTooltipKey(int id) {
+        switch (id) {
+            case 0:
+                return "cheba.trader.tooltip.editor.add_offer";
+            case 1:
+                return "cheba.trader.tooltip.editor.remove_offer";
+            case 2:
+                return "cheba.trader.tooltip.editor.save";
+            case 3:
+                return "cheba.trader.tooltip.editor.back";
+            case 4:
+                return barterEditMode
+                        ? "cheba.trader.tooltip.editor.add_payment_item"
+                        : "cheba.trader.tooltip.editor.set_product";
+            case 5:
+                return barterEditMode
+                        ? "cheba.trader.tooltip.editor.remove_payment_item"
+                        : "cheba.trader.tooltip.editor.clear_product";
+            case 6:
+                return barterEditMode
+                        ? "cheba.trader.tooltip.editor.barter_done"
+                        : "cheba.trader.tooltip.editor.barter_mode";
+            case 7:
+                return "cheba.trader.tooltip.editor.clear_payment";
+            case 8:
+                return "cheba.trader.tooltip.editor.previous_page";
+            case 9:
+                return "cheba.trader.tooltip.editor.next_page";
+            case 10:
+                return "cheba.trader.tooltip.editor.buyback";
+            default:
+                return null;
+        }
     }
 
     @Override

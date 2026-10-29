@@ -136,11 +136,15 @@ public class PacketHandlerServer {
 		if (type == EnumPacketServer.TraderBuy) {
 			int npcEntityId = buffer.readInt();
 			String offerId = Server.readString(buffer);
+			int multiplier = buffer.isReadable()
+					? buffer.readInt()
+					: 1;
 
 			TraderPacketService.handleBuy(
 					player,
 					npcEntityId,
-					offerId
+					offerId,
+					multiplier
 			);
 
 		} else if (type == EnumPacketServer.TraderOpenSell) {

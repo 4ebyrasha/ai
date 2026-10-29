@@ -1,4 +1,3 @@
-
 package com.cheba.network;
 
 import com.cheba.currency.StalkerBaseCurrencyBridge;
@@ -32,17 +31,30 @@ public final class TraderPacketService {
     private TraderPacketService() {
     }
 
+    /** Старый вызов покупки одного комплекта. */
     public static void handleBuy(
             EntityPlayerMP player,
             int npcEntityId,
             String offerId
     ) {
+        handleBuy(player, npcEntityId, offerId, 1);
+    }
+
+    public static void handleBuy(
+            EntityPlayerMP player,
+            int npcEntityId,
+            String offerId,
+            int multiplier
+    ) {
         if (player == null || player.world.isRemote) {
             return;
         }
 
-        if (offerId == null || offerId.trim().isEmpty()
-                || offerId.length() > 128) {
+        if (offerId == null
+                || offerId.trim().isEmpty()
+                || offerId.length() > 128
+                || multiplier < 1
+                || multiplier > 64) {
             sendMessage(player, "cheba.trader.message.invalid_offer");
             return;
         }
@@ -66,9 +78,11 @@ public final class TraderPacketService {
             return;
         }
 
-        String requestKey = npcEntityId + "|" + offerId;
-        long currentTick = player.world.getTotalWorldTime();
+        // Разные множители считаются разными запросами.
+        String requestKey =
+                npcEntityId + "|" + offerId + "|" + multiplier;
 
+        long currentTick = player.world.getTotalWorldTime();
         LastRequest previous = LAST_REQUESTS.get(player);
 
         if (previous != null
@@ -85,7 +99,8 @@ public final class TraderPacketService {
         TraderTradeService.Result result = TRADE_SERVICE.buy(
                 player,
                 (RoleTrader) npc.roleInterface,
-                offerId
+                offerId,
+                multiplier
         );
 
         sendBuyResult(player, result);
@@ -120,67 +135,44 @@ public final class TraderPacketService {
                 break;
 
             case INVALID_CONTAINER:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.sell.invalid_container"
-                );
+                sendMessage(player, "cheba.trader.message.sell.invalid_container");
                 break;
 
             case INVALID_NPC:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.not_found"
-                );
+                sendMessage(player, "cheba.trader.message.not_found");
                 break;
 
             case TOO_FAR:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.too_far"
-                );
+                sendMessage(player, "cheba.trader.message.too_far");
                 break;
 
             case NOT_TRADER:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.not_trader"
-                );
+                sendMessage(player, "cheba.trader.message.not_trader");
                 break;
 
             case EMPTY:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.sell.empty"
-                );
+                sendMessage(player, "cheba.trader.message.sell.empty");
                 break;
 
             case ITEM_NOT_BUYABLE:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.sell.item_not_buyable"
-                );
+                sendMessage(player, "cheba.trader.message.sell.item_not_buyable");
+                break;
+
+            case PROTECTED_ITEM:
+                sendMessage(player, "cheba.trader.message.protected_item");
                 break;
 
             case CURRENCY_UNAVAILABLE:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.currency_unavailable"
-                );
+                sendMessage(player, "cheba.trader.message.currency_unavailable");
                 break;
 
             case PAYMENT_FAILED:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.sell.payment_failed"
-                );
+                sendMessage(player, "cheba.trader.message.sell.payment_failed");
                 break;
 
             case INVALID_AMOUNT:
             default:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.generic_failure"
-                );
+                sendMessage(player, "cheba.trader.message.generic_failure");
                 break;
         }
     }
@@ -190,110 +182,69 @@ public final class TraderPacketService {
             TraderTradeService.Result result
     ) {
         if (result == null) {
-            sendMessage(
-                    player,
-                    "cheba.trader.message.generic_failure"
-            );
+            sendMessage(player, "cheba.trader.message.generic_failure");
             return;
         }
 
         switch (result) {
             case SUCCESS:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.buy_success"
-                );
+                sendMessage(player, "cheba.trader.message.buy_success");
                 break;
 
             case SERVER_ONLY:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.server_only"
-                );
+                sendMessage(player, "cheba.trader.message.server_only");
                 break;
 
             case TOO_FAR:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.too_far"
-                );
+                sendMessage(player, "cheba.trader.message.too_far");
                 break;
 
             case INVALID_OFFER:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.offer_unavailable"
-                );
+                sendMessage(player, "cheba.trader.message.offer_unavailable");
+                break;
+
+            case PROTECTED_ITEM:
+                sendMessage(player, "cheba.trader.message.protected_item");
                 break;
 
             case CURRENCY_UNAVAILABLE:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.currency_unavailable"
-                );
+                sendMessage(player, "cheba.trader.message.currency_unavailable");
                 break;
 
             case NOT_ENOUGH_MONEY:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.not_enough_money"
-                );
+                sendMessage(player, "cheba.trader.message.not_enough_money");
                 break;
 
             case PAYMENT_FAILED:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.payment_failed"
-                );
+                sendMessage(player, "cheba.trader.message.payment_failed");
                 break;
 
             case NOT_ENOUGH_ITEMS:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.not_enough_items"
-                );
+                sendMessage(player, "cheba.trader.message.not_enough_items");
                 break;
 
             case OUT_OF_STOCK:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.out_of_stock"
-                );
+                sendMessage(player, "cheba.trader.message.out_of_stock");
                 break;
 
             case DAILY_LIMIT_REACHED:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.daily_limit"
-                );
+                sendMessage(player, "cheba.trader.message.daily_limit");
                 break;
 
             case INVENTORY_CHANGED:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.inventory_changed"
-                );
+                sendMessage(player, "cheba.trader.message.inventory_changed");
                 break;
 
             case INVENTORY_FULL:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.inventory_full"
-                );
+                sendMessage(player, "cheba.trader.message.inventory_full");
                 break;
 
             case REFUND_FAILED:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.refund_failed"
-                );
+                sendMessage(player, "cheba.trader.message.refund_failed");
                 break;
 
             default:
-                sendMessage(
-                        player,
-                        "cheba.trader.message.generic_failure"
-                );
+                sendMessage(player, "cheba.trader.message.generic_failure");
                 break;
         }
     }
@@ -308,7 +259,6 @@ public final class TraderPacketService {
     }
 
     private static final class LastRequest {
-
         private final String key;
         private final long tick;
 

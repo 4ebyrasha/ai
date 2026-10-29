@@ -1,7 +1,7 @@
-
 package com.cheba.gui;
 
 import com.cheba.trader.NpcTradeConfig;
+import com.cheba.trader.TraderItemProtection;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -30,9 +30,9 @@ public class GuiDynamicTraderBuy extends GuiScreen {
     private final int npcEntityId;
 
     private int page;
-
     private EntityNPCInterface npc;
     private RoleTrader role;
+    private String statusMessage = "";
 
     public GuiDynamicTraderBuy(int npcEntityId, int page) {
         this.npcEntityId = npcEntityId;
@@ -58,43 +58,38 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         int gridY = getGridY();
         int controlsY = gridY + ROWS * CELL_SIZE + 8;
 
-        GuiButton previous = new GuiButton(
+        buttonList.add(new GuiButton(
                 0,
                 width / 2 - 105,
                 controlsY,
                 65,
                 20,
                 I18n.translateToLocal("cheba.trader.back")
-        );
+        ));
 
-        GuiButton menu = new GuiButton(
+        buttonList.add(new GuiButton(
                 1,
                 width / 2 - 32,
                 controlsY,
                 64,
                 20,
                 I18n.translateToLocal("cheba.trader.menu")
-        );
+        ));
 
-        GuiButton next = new GuiButton(
+        buttonList.add(new GuiButton(
                 2,
                 width / 2 + 40,
                 controlsY,
                 65,
                 20,
                 I18n.translateToLocal("cheba.trader.next")
-        );
-
-        buttonList.add(previous);
-        buttonList.add(menu);
-        buttonList.add(next);
+        ));
 
         int pages = getPageCount();
 
         page = Math.min(page, pages - 1);
-
-        previous.enabled = page > 0;
-        next.enabled = page < pages - 1;
+        buttonList.get(0).enabled = page > 0;
+        buttonList.get(2).enabled = page < pages - 1;
     }
 
     private int getPageCount() {
@@ -117,18 +112,14 @@ public class GuiDynamicTraderBuy extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button)
-            throws IOException {
-
+    protected void actionPerformed(GuiButton button) throws IOException {
         if (button.id == 0) {
             page = Math.max(0, page - 1);
             initGui();
-
         } else if (button.id == 1) {
             mc.displayGuiScreen(
                     new GuiDynamicTraderMenu(npcEntityId)
             );
-
         } else if (button.id == 2) {
             page = Math.min(getPageCount() - 1, page + 1);
             initGui();
@@ -141,21 +132,18 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
-
         if (mouseButton == 0 && role != null) {
             int gridX = getGridX();
             int gridY = getGridY();
 
-            boolean insideGrid =
-                    mouseX >= gridX
-                            && mouseX < gridX + COLUMNS * CELL_SIZE
-                            && mouseY >= gridY
-                            && mouseY < gridY + ROWS * CELL_SIZE;
+            boolean insideGrid = mouseX >= gridX
+                    && mouseX < gridX + COLUMNS * CELL_SIZE
+                    && mouseY >= gridY
+                    && mouseY < gridY + ROWS * CELL_SIZE;
 
             if (insideGrid) {
                 int col = (mouseX - gridX) / CELL_SIZE;
                 int row = (mouseY - gridY) / CELL_SIZE;
-
                 int insideCellX = (mouseX - gridX) % CELL_SIZE;
                 int insideCellY = (mouseY - gridY) % CELL_SIZE;
 
@@ -170,6 +158,15 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                         NpcTradeConfig offer = offers.get(offerIndex);
 
                         if (offer != null && offer.isValid()) {
+                            ItemStack result = offer.getResult();
+
+                            if (TraderItemProtection.hasProtectedNbt(result)) {
+                                statusMessage = I18n.translateToLocal(
+                                        "cheba.trader.message.protected_item"
+                                );
+                                return;
+                            }
+
                             mc.displayGuiScreen(
                                     new GuiDynamicTraderConfirm(
                                             npcEntityId,
@@ -177,7 +174,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                                             offer
                                     )
                             );
-
                             return;
                         }
                     }
@@ -221,31 +217,16 @@ public class GuiDynamicTraderBuy extends GuiScreen {
 
         int start = page * PAGE_SIZE;
         int end = Math.min(offers.size(), start + PAGE_SIZE);
-
         int gridX = getGridX();
         int gridY = getGridY();
 
         for (int i = start; i < end; i++) {
             int localIndex = i - start;
-
             int x = gridX + (localIndex % COLUMNS) * CELL_SIZE;
             int y = gridY + (localIndex / COLUMNS) * CELL_SIZE;
 
-            drawRect(
-                    x,
-                    y,
-                    x + 20,
-                    y + 20,
-                    0xFF555555
-            );
-
-            drawRect(
-                    x + 1,
-                    y + 1,
-                    x + 19,
-                    y + 19,
-                    0xFF202020
-            );
+            drawRect(x, y, x + 20, y + 20, 0xFF555555);
+            drawRect(x + 1, y + 1, x + 19, y + 19, 0xFF202020);
 
             NpcTradeConfig offer = offers.get(i);
             ItemStack result = offer.getResult();
@@ -253,6 +234,9 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             if (result.isEmpty()) {
                 continue;
             }
+
+            boolean protectedItem =
+                    TraderItemProtection.hasProtectedNbt(result);
 
             RenderHelper.enableGUIStandardItemLighting();
 
@@ -270,6 +254,16 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             );
 
             RenderHelper.disableStandardItemLighting();
+
+            if (protectedItem) {
+                drawRect(x + 1, y + 1, x + 19, y + 19, 0x88AA0000);
+                fontRenderer.drawStringWithShadow(
+                        "X",
+                        x + 7,
+                        y + 5,
+                        0xFFFF5555
+                );
+            }
         }
 
         drawCenteredString(
@@ -284,9 +278,16 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                 0xFFFFFF
         );
 
-        /*
-         * Кнопки рисуются до подсказки, чтобы она была поверх них.
-         */
+        if (!statusMessage.isEmpty()) {
+            drawCenteredString(
+                    fontRenderer,
+                    statusMessage,
+                    width / 2,
+                    height - 38,
+                    0xFF5555
+            );
+        }
+
         super.drawScreen(mouseX, mouseY, partialTicks);
 
         int hoveredIndex = getHoveredOfferIndex(mouseX, mouseY);
@@ -306,10 +307,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         }
     }
 
-    private int getHoveredOfferIndex(
-            int mouseX,
-            int mouseY
-    ) {
+    private int getHoveredOfferIndex(int mouseX, int mouseY) {
         int gridX = getGridX();
         int gridY = getGridY();
 
@@ -344,42 +342,43 @@ public class GuiDynamicTraderBuy extends GuiScreen {
 
         boolean advanced = mc.gameSettings.advancedItemTooltips;
 
-        lines.addAll(
-                result.getTooltip(
-                        mc.player,
-                        advanced
-                                ? ITooltipFlag.TooltipFlags.ADVANCED
-                                : ITooltipFlag.TooltipFlags.NORMAL
-                )
-        );
+        lines.addAll(result.getTooltip(
+                mc.player,
+                advanced
+                        ? ITooltipFlag.TooltipFlags.ADVANCED
+                        : ITooltipFlag.TooltipFlags.NORMAL
+        ));
 
-        lines.add(
-                TextFormatting.GRAY
-                        + I18n.translateToLocalFormatted(
-                        "cheba.trader.quantity",
-                        result.getCount()
-                )
-        );
+        lines.add(TextFormatting.GRAY + I18n.translateToLocalFormatted(
+                "cheba.trader.quantity",
+                result.getCount()
+        ));
 
         if (offer.getPriceMoney() > 0L) {
-            lines.add(
-                    TextFormatting.GOLD
-                            + I18n.translateToLocalFormatted(
-                            "cheba.trader.price",
-                            offer.getPriceMoney()
-                    )
-            );
+            lines.add(TextFormatting.GOLD + I18n.translateToLocalFormatted(
+                    "cheba.trader.price",
+                    offer.getPriceMoney()
+            ));
+        }
+
+        if (offer.getSellPriceMoney() > 0L) {
+            lines.add(TextFormatting.GREEN + I18n.translateToLocalFormatted(
+                    "cheba.trader.editor.sell_price_tooltip",
+                    offer.getSellPriceMoney()
+            ));
         }
 
         for (ItemStack priceItem : offer.getPriceItems()) {
             if (priceItem != null && !priceItem.isEmpty()) {
-                lines.add(
-                        TextFormatting.GRAY
-                                + priceItem.getDisplayName()
-                                + " x"
-                                + priceItem.getCount()
-                );
+                lines.add(TextFormatting.GRAY + priceItem.getDisplayName()
+                        + " x" + priceItem.getCount());
             }
+        }
+
+        if (TraderItemProtection.hasProtectedNbt(result)) {
+            lines.add(TextFormatting.RED + I18n.translateToLocal(
+                    "cheba.trader.message.protected_item"
+            ));
         }
 
         int tooltipY = mouseY;

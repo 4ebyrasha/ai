@@ -1,21 +1,22 @@
-
 package com.cheba.trader;
 
 import com.cheba.currency.TraderCurrencyBridge;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.NonNullList;
 import net.minecraft.world.World;
+
 import noppes.npcs.roles.RoleTrader;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public final class TraderTradeService {
+
+    private static final int MAX_MULTIPLIER = 64;
 
     private final TraderCurrencyBridge currency;
 
@@ -28,6 +29,7 @@ public final class TraderTradeService {
         SERVER_ONLY,
         TOO_FAR,
         INVALID_OFFER,
+        PROTECTED_ITEM,
         CURRENCY_UNAVAILABLE,
         NOT_ENOUGH_MONEY,
         PAYMENT_FAILED,
@@ -40,28 +42,52 @@ public final class TraderTradeService {
     }
 
     private static final class Removal {
-
         private final int slot;
-        private final Item item;
+        private final ItemStack template;
         private final int count;
 
-        private Removal(int slot, Item item, int count) {
+        private Removal(int slot, ItemStack template, int count) {
             this.slot = slot;
-            this.item = item;
+            this.template = template.copy();
             this.count = count;
         }
     }
 
-    /**
-     * Покупает предложение по его ID.
-     * Вызывать только на серверной стороне.
-     */
+    private static final class Requirement {
+        private final ItemStack template;
+        private long count;
+
+        private Requirement(ItemStack template) {
+            this.template = template.copy();
+            this.count = template.getCount();
+        }
+    }
+
+    /** Старый вызов остаётся совместимым: один комплект. */
     public Result buy(
             EntityPlayer player,
             RoleTrader role,
             String offerId
     ) {
-        if (player == null || role == null || offerId == null) {
+        return buy(player, role, offerId, 1);
+    }
+
+    /**
+     * Покупает multiplier комплектов предложения.
+     * Например, 5 предметов в предложении при multiplier=10
+     * превращаются в 50 предметов.
+     */
+    public Result buy(
+            EntityPlayer player,
+            RoleTrader role,
+            String offerId,
+            int multiplier
+    ) {
+        if (player == null
+                || role == null
+                || offerId == null
+                || multiplier < 1
+                || multiplier > MAX_MULTIPLIER) {
             return Result.INVALID_OFFER;
         }
 
@@ -88,55 +114,70 @@ public final class TraderTradeService {
             return Result.INVALID_OFFER;
         }
 
+        long outputCountLong =
+                (long) product.getCount() * (long) multiplier;
+
+        if (outputCountLong <= 0L
+                || outputCountLong > Integer.MAX_VALUE) {
+            return Result.INVALID_OFFER;
+        }
+
+        product.setCount((int) outputCountLong);
+
+        long moneyPrice;
+
+        try {
+            moneyPrice = Math.multiplyExact(
+                    offer.getPriceMoney(),
+                    (long) multiplier
+            );
+        } catch (ArithmeticException e) {
+            return Result.INVALID_OFFER;
+        }
+
+        List<ItemStack> scaledPriceItems = scalePriceItems(
+                offer.getPriceItems(),
+                multiplier
+        );
+
+        if (scaledPriceItems == null) {
+            return Result.INVALID_OFFER;
+        }
+
         TraderRuntimeState state = TraderRuntimeState.get(world);
 
         if (state == null) {
             return Result.SERVER_ONLY;
         }
 
-        /*
-         * Запас и лимит привязаны к ID конкретного предложения.
-         * Одинаковые товары в разных предложениях независимы.
-         */
         String marketKey = getMarketKey(role);
+        String stockKey = marketKey + "|offer:" + offer.getId();
+        String playerKey = stockKey + "|" + player.getUniqueID();
 
-        String stockKey = marketKey
-                + "|offer:"
-                + offer.getId();
-
-        String playerKey = stockKey
-                + "|"
-                + player.getUniqueID();
+        long outputCount = outputCountLong;
 
         int dailyStock = offer.getDailyStock();
         int maxPerDay = offer.getMaxPerDay();
 
-        long quantity = product.getCount();
-
         if (dailyStock >= 0
-                && state.getSoldCount(stockKey) + quantity > dailyStock) {
+                && state.getSoldCount(stockKey) + outputCount > dailyStock) {
             return Result.OUT_OF_STOCK;
         }
 
         if (maxPerDay >= 0
-                && state.getPlayerPurchaseCount(playerKey) + quantity
+                && state.getPlayerPurchaseCount(playerKey) + outputCount
                 > maxPerDay) {
             return Result.DAILY_LIMIT_REACHED;
         }
 
-        /*
-         * Создаём план списания предметов оплаты.
-         */
         List<Removal> removals = buildRemovalPlan(
                 player,
-                offer.getPriceItems()
+                scaledPriceItems
         );
 
         if (removals == null) {
             return Result.NOT_ENOUGH_ITEMS;
         }
-
-        long moneyPrice = offer.getPriceMoney();
 
         if (moneyPrice > 0L) {
             if (currency == null || !currency.isAvailable()) {
@@ -148,11 +189,6 @@ public final class TraderTradeService {
             }
         }
 
-        /*
-         * Проверяем план списания и вместимость до оплаты.
-         * Основной инвентарь проверяется с учётом освобождения
-         * слотов предметами, которые игрок отдаёт в оплату.
-         */
         if (isRemovalPlanInvalid(player, removals)) {
             return Result.INVENTORY_CHANGED;
         }
@@ -161,10 +197,6 @@ public final class TraderTradeService {
             return Result.INVENTORY_FULL;
         }
 
-        /*
-         * Резервная копия основного инвентаря на случай
-         * неожиданной ошибки при выдаче.
-         */
         NonNullList<ItemStack> inventoryBackup =
                 copyMainInventory(player);
 
@@ -178,9 +210,6 @@ public final class TraderTradeService {
             moneyWithdrawn = true;
         }
 
-        /*
-         * Повторно проверяем инвентарь после списания денег.
-         */
         if (isRemovalPlanInvalid(player, removals)) {
             if (moneyWithdrawn
                     && !currency.deposit(player, moneyPrice)) {
@@ -201,15 +230,8 @@ public final class TraderTradeService {
             return Result.INVENTORY_FULL;
         }
 
-        /*
-         * Списываем предметы оплаты.
-         */
         applyRemovalPlan(player, removals);
 
-        /*
-         * Выдаём товар только в основной инвентарь.
-         * Если выдача не удалась, восстанавливаем инвентарь.
-         */
         if (!deliverProduct(player, product)) {
             restoreMainInventory(player, inventoryBackup);
 
@@ -222,14 +244,12 @@ public final class TraderTradeService {
             return Result.INVENTORY_CHANGED;
         }
 
-        /*
-         * Лимиты изменяются только после успешной выдачи товара.
-         */
-        state.recordPurchase(stockKey, playerKey, quantity);
+        state.recordPurchase(
+                stockKey,
+                playerKey,
+                outputCount
+        );
 
-        /*
-         * Уведомляем HUD об успешном списании денег.
-         */
         if (moneyPrice > 0L) {
             currency.notifyBalanceChange(player, -moneyPrice);
         }
@@ -260,45 +280,74 @@ public final class TraderTradeService {
         return "npc:" + role.npc.getUniqueID();
     }
 
-    /**
-     * Создаёт план списания предметов.
-     * Сравнивает Item, как и исходная реализация.
-     */
+    private List<ItemStack> scalePriceItems(
+            List<ItemStack> priceItems,
+            int multiplier
+    ) {
+        List<ItemStack> scaled = new ArrayList<>();
+
+        for (ItemStack original : priceItems) {
+            if (original == null || original.isEmpty()) {
+                continue;
+            }
+
+            if (TraderItemProtection.hasProtectedNbt(original)) {
+                // Нельзя использовать защищённый предмет как бартерную оплату.
+                return null;
+            }
+
+            long scaledCount =
+                    (long) original.getCount() * multiplier;
+
+            if (scaledCount <= 0L || scaledCount > Integer.MAX_VALUE) {
+                return null;
+            }
+
+            ItemStack copy = original.copy();
+            copy.setCount((int) scaledCount);
+            scaled.add(copy);
+        }
+
+        return scaled;
+    }
+
     private List<Removal> buildRemovalPlan(
             EntityPlayer player,
             List<ItemStack> requirements
     ) {
-        Map<Item, Long> requiredItems = new LinkedHashMap<>();
+        List<Requirement> required = new ArrayList<>();
 
-        for (ItemStack required : requirements) {
-            if (required == null || required.isEmpty()) {
+        for (ItemStack stack : requirements) {
+            if (stack == null || stack.isEmpty()) {
                 continue;
             }
 
-            Item item = required.getItem();
+            Requirement found = null;
 
-            long current = requiredItems.getOrDefault(item, 0L);
+            for (Requirement requirement : required) {
+                if (sameItemAndTag(requirement.template, stack)) {
+                    found = requirement;
+                    break;
+                }
+            }
 
-            requiredItems.put(
-                    item,
-                    current + required.getCount()
-            );
+            if (found == null) {
+                required.add(new Requirement(stack));
+            } else {
+                found.count += stack.getCount();
+            }
         }
 
         List<Removal> plan = new ArrayList<>();
+        NonNullList<ItemStack> inventory = player.inventory.mainInventory;
 
-        NonNullList<ItemStack> inventory =
-                player.inventory.mainInventory;
-
-        for (Map.Entry<Item, Long> entry : requiredItems.entrySet()) {
-            Item requiredItem = entry.getKey();
-            long remaining = entry.getValue();
-
+        for (Requirement requirement : required) {
+            long remaining = requirement.count;
             long available = 0L;
 
             for (ItemStack stack : inventory) {
                 if (!stack.isEmpty()
-                        && stack.getItem() == requiredItem) {
+                        && sameItemAndTag(stack, requirement.template)) {
                     available += stack.getCount();
                 }
             }
@@ -311,7 +360,7 @@ public final class TraderTradeService {
                 ItemStack stack = inventory.get(slot);
 
                 if (stack.isEmpty()
-                        || stack.getItem() != requiredItem) {
+                        || !sameItemAndTag(stack, requirement.template)) {
                     continue;
                 }
 
@@ -321,12 +370,7 @@ public final class TraderTradeService {
                 );
 
                 if (take > 0) {
-                    plan.add(new Removal(
-                            slot,
-                            requiredItem,
-                            take
-                    ));
-
+                    plan.add(new Removal(slot, stack, take));
                     remaining -= take;
                 }
 
@@ -349,12 +393,9 @@ public final class TraderTradeService {
                 return true;
             }
 
-            ItemStack stack = player.inventory.getStackInSlot(
-                    removal.slot
-            );
+            ItemStack stack = player.inventory.getStackInSlot(removal.slot);
 
-            if (stack.isEmpty()
-                    || stack.getItem() != removal.item
+            if (!sameItemAndTag(stack, removal.template)
                     || stack.getCount() < removal.count) {
                 return true;
             }
@@ -368,9 +409,7 @@ public final class TraderTradeService {
             List<Removal> plan
     ) {
         for (Removal removal : plan) {
-            ItemStack stack = player.inventory.getStackInSlot(
-                    removal.slot
-            );
+            ItemStack stack = player.inventory.getStackInSlot(removal.slot);
 
             if (stack.getCount() == removal.count) {
                 player.inventory.setInventorySlotContents(
@@ -385,28 +424,21 @@ public final class TraderTradeService {
         player.inventory.markDirty();
     }
 
-    /**
-     * Проверяет возможность разместить товар после списания цены.
-     * Реальный инвентарь при проверке не изменяется.
-     */
     private boolean canFitProduct(
             EntityPlayer player,
             List<Removal> removals,
             ItemStack product
     ) {
-        NonNullList<ItemStack> simulated =
-                copyMainInventory(player);
+        NonNullList<ItemStack> simulated = copyMainInventory(player);
 
         for (Removal removal : removals) {
-            if (removal.slot < 0
-                    || removal.slot >= simulated.size()) {
+            if (removal.slot < 0 || removal.slot >= simulated.size()) {
                 return false;
             }
 
             ItemStack stack = simulated.get(removal.slot);
 
-            if (stack.isEmpty()
-                    || stack.getItem() != removal.item
+            if (!sameItemAndTag(stack, removal.template)
                     || stack.getCount() < removal.count) {
                 return false;
             }
@@ -418,20 +450,10 @@ public final class TraderTradeService {
             }
         }
 
-        return insertProductIntoInventory(
-                simulated,
-                product
-        );
+        return insertProductIntoInventory(simulated, product);
     }
 
-    /**
-     * Выдаёт товар в основной инвентарь.
-     * Не использует курсор и не выбрасывает предметы.
-     */
-    private boolean deliverProduct(
-            EntityPlayer player,
-            ItemStack product
-    ) {
+    private boolean deliverProduct(EntityPlayer player, ItemStack product) {
         boolean inserted = insertProductIntoInventory(
                 player.inventory.mainInventory,
                 product
@@ -445,10 +467,6 @@ public final class TraderTradeService {
         return inserted;
     }
 
-    /**
-     * Сначала объединяет совместимые стаки, затем использует
-     * пустые слоты. Изменяет переданный список инвентаря.
-     */
     private boolean insertProductIntoInventory(
             NonNullList<ItemStack> inventory,
             ItemStack product
@@ -459,33 +477,23 @@ public final class TraderTradeService {
 
         ItemStack remaining = product.copy();
 
-        /*
-         * Сначала пополняем существующие стаки.
-         */
         for (int slot = 0;
              slot < inventory.size() && !remaining.isEmpty();
              slot++) {
 
             ItemStack stack = inventory.get(slot);
 
-            if (stack.isEmpty() || !canStack(stack, remaining)) {
+            if (stack.isEmpty() || !sameItemAndTag(stack, remaining)) {
                 continue;
             }
 
-            int maxStackSize = Math.min(
+            int maxSize = Math.min(
                     stack.getMaxStackSize(),
                     remaining.getMaxStackSize()
             );
 
-            int space = Math.max(
-                    0,
-                    maxStackSize - stack.getCount()
-            );
-
-            int moved = Math.min(
-                    space,
-                    remaining.getCount()
-            );
+            int space = Math.max(0, maxSize - stack.getCount());
+            int moved = Math.min(space, remaining.getCount());
 
             if (moved > 0) {
                 stack.grow(moved);
@@ -493,9 +501,6 @@ public final class TraderTradeService {
             }
         }
 
-        /*
-         * Затем размещаем остаток в пустых слотах.
-         */
         for (int slot = 0;
              slot < inventory.size() && !remaining.isEmpty();
              slot++) {
@@ -504,17 +509,13 @@ public final class TraderTradeService {
                 continue;
             }
 
-            int maxStackSize = remaining.getMaxStackSize();
+            int maxSize = remaining.getMaxStackSize();
 
-            if (maxStackSize <= 0) {
+            if (maxSize <= 0) {
                 return false;
             }
 
-            int moved = Math.min(
-                    remaining.getCount(),
-                    maxStackSize
-            );
-
+            int moved = Math.min(remaining.getCount(), maxSize);
             ItemStack inserted = remaining.copy();
             inserted.setCount(moved);
 
@@ -525,19 +526,19 @@ public final class TraderTradeService {
         return remaining.isEmpty();
     }
 
-    private boolean canStack(
+    private boolean sameItemAndTag(
             ItemStack first,
             ItemStack second
     ) {
-        return !first.isEmpty()
+        return first != null
+                && second != null
+                && !first.isEmpty()
                 && !second.isEmpty()
                 && ItemStack.areItemsEqual(first, second)
                 && ItemStack.areItemStackTagsEqual(first, second);
     }
 
-    private NonNullList<ItemStack> copyMainInventory(
-            EntityPlayer player
-    ) {
+    private NonNullList<ItemStack> copyMainInventory(EntityPlayer player) {
         NonNullList<ItemStack> copy = NonNullList.withSize(
                 player.inventory.mainInventory.size(),
                 ItemStack.EMPTY

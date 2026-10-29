@@ -32,7 +32,9 @@ public class NpcBuybackConfig {
     }
 
     public ItemStack getItem() {
-        return item.isEmpty() ? ItemStack.EMPTY : item.copy();
+        return item.isEmpty()
+                ? ItemStack.EMPTY
+                : item.copy();
     }
 
     public void setItem(ItemStack item) {
@@ -66,7 +68,10 @@ public class NpcBuybackConfig {
         NBTTagCompound tag = new NBTTagCompound();
 
         tag.setString("Id", id);
-        tag.setTag("Item", item.writeToNBT(new NBTTagCompound()));
+        tag.setTag(
+                "Item",
+                item.writeToNBT(new NBTTagCompound())
+        );
         tag.setLong("PriceMoney", priceMoney);
 
         return tag;
@@ -77,7 +82,9 @@ public class NpcBuybackConfig {
                 new NpcBuybackConfig(tag.getString("Id"));
 
         if (tag.hasKey("Item", 10)) {
-            config.setItem(new ItemStack(tag.getCompoundTag("Item")));
+            config.setItem(
+                    new ItemStack(tag.getCompoundTag("Item"))
+            );
         }
 
         config.setPriceMoney(tag.getLong("PriceMoney"));

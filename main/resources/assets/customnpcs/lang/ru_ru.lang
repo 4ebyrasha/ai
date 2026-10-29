@@ -701,3 +701,56 @@ cheba.trader.buyback.duplicate=Этот предмет уже есть в спи
 cheba.trader.buyback.added=Предмет добавлен в список выкупа.
 cheba.trader.buyback.removed=Предмет удалён из списка выкупа.
 cheba.trader.buyback.saved=Список выкупа сохранён.
+
+# Защищённые предметы
+cheba.trader.message.protected_item=Личные предметы нельзя покупать или продавать через торговца.
+cheba.trader.message.protected_item_return_failed=Личный предмет не удалось вернуть в инвентарь. Освободите место и проверьте инвентарь.
+
+# Количество и суммарная цена
+cheba.trader.price.total=Общая цена: %s рублей
+cheba.trader.quantity.multiplier=Комплектов:
+cheba.trader.quantity.total=Будет получено предметов: %s
+cheba.trader.confirm.more_payment_items=И ещё предметов оплаты: %s
+
+# Отдельный список выкупа
+cheba.trader.editor.buyback=Выкуп
+cheba.trader.buyback.title=Настройка выкупа
+cheba.trader.buyback.add=Добавить
+cheba.trader.buyback.price=Цена за единицу:
+cheba.trader.buyback.price_tooltip=Цена выкупа: %s рублей
+cheba.trader.buyback.select_item=Сначала выбери предмет в инвентаре.
+cheba.trader.buyback.duplicate=Этот предмет уже есть в списке выкупа.
+cheba.trader.buyback.added=Предмет добавлен в список выкупа.
+cheba.trader.buyback.removed=Предмет удалён из списка выкупа.
+cheba.trader.buyback.saved=Список выкупа сохранён.
+
+# Редактирование бартера
+cheba.trader.editor.add_payment_item=Добавить
+cheba.trader.editor.remove_payment_item=Убрать предмет
+cheba.trader.editor.barter_done=Основная
+cheba.trader.editor.clear_payment_all=Очистить бартер
+cheba.trader.editor.barter_items=Предметы оплаты:
+cheba.trader.editor.payment_removed=Предмет бартера удалён.
+cheba.trader.editor.select_payment_item=Сначала выбери предмет бартера.
+cheba.trader.editor.payment_limit=В одном предложении допускается до 72 компонентов бартера.
+cheba.trader.editor.barter_opened=Режим редактирования бартера включён.
+cheba.trader.editor.barter_closed=Возврат к основной настройке предложения.
+
+# Подсказки кнопок редактора основной витрины
+cheba.trader.tooltip.editor.add_offer=Создать новое предложение торговца.
+cheba.trader.tooltip.editor.remove_offer=Удалить выбранное предложение целиком.
+cheba.trader.tooltip.editor.save=Сохранить настройки NPC.
+cheba.trader.tooltip.editor.back=Сохранить и вернуться к настройкам роли.
+cheba.trader.tooltip.editor.previous_page=Перейти к предыдущей странице предложений.
+cheba.trader.tooltip.editor.next_page=Перейти к следующей странице предложений.
+cheba.trader.tooltip.editor.buyback=Открыть отдельный список предметов, которые NPC покупает у игрока.
+cheba.trader.tooltip.editor.set_product=Назначить выбранный предмет товаром, который NPC продаёт игроку.
+cheba.trader.tooltip.editor.clear_product=Убрать товар из выбранного предложения.
+cheba.trader.tooltip.editor.barter_mode=Переключиться на редактирование бартерной оплаты выбранного предложения.
+cheba.trader.tooltip.editor.barter_done=Вернуться к цене и лимитам основного предложения.
+cheba.trader.tooltip.editor.add_payment_item=Добавить выбранный в инвентаре предмет в требования бартера.
+cheba.trader.tooltip.editor.remove_payment_item=Удалить выделенный компонент бартера из выбранного предложения.
+cheba.trader.tooltip.editor.clear_payment=Очистить все предметы бартера в выбранном предложении.
+
+# Подсказки отдельного списка выкупа
+cheba.trader.tooltip.buyback.add=Добавить выбранный в инвентаре предмет в отдельный список выкупа.
