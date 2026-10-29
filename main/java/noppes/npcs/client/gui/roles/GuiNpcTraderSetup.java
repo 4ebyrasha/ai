@@ -69,6 +69,20 @@ public class GuiNpcTraderSetup
 		));
 
 		this.addLabel(new GuiNpcLabel(
+				3,
+				"cheba.trader.shared_limits",
+				this.guiLeft + 214,
+				this.guiTop + 186
+		));
+
+		this.addButton(new GuiNpcButtonYesNo(
+				4,
+				this.guiLeft + 344,
+				this.guiTop + 181,
+				this.role.sharedLimits
+		));
+
+		this.addLabel(new GuiNpcLabel(
 				1,
 				"gui.ignoreDamage",
 				this.guiLeft + 260,
@@ -133,6 +147,10 @@ public class GuiNpcTraderSetup
 							this.role
 					)
 			);
+		}
+		if (button.id == 4) {
+			this.role.sharedLimits =
+					((GuiNpcButtonYesNo) button).getBoolean();
 		}
 	}
 

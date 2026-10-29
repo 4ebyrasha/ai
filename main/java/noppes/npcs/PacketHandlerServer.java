@@ -655,8 +655,27 @@ public class PacketHandlerServer {
 																			return;
 																		}
 																	} else if (type == EnumPacketServer.RoleSave) {
-																		npc.roleInterface
-																				.readFromNBT(Server.readNBT(buffer));
+																		NBTTagCompound roleTag = Server.readNBT(buffer);
+
+																		if (npc.roleInterface instanceof RoleTrader) {
+																			RoleTrader traderRole = (RoleTrader) npc.roleInterface;
+
+																			traderRole.readFromNBTForSave(roleTag);
+
+																			String marketName = traderRole.marketName;
+
+																			if (marketName != null && !marketName.trim().isEmpty()) {
+																				RoleTrader.save(traderRole, marketName);
+
+																				RoleTrader.refreshLinkedMarkets(
+																						player.world,
+																						marketName
+																				);
+																			}
+																		} else {
+																			npc.roleInterface.readFromNBT(roleTag);
+																		}
+
 																		npc.updateClient = true;
 																	} else if (type == EnumPacketServer.RoleGet) {
 																		if (npc.roleInterface == null) {
@@ -715,14 +734,26 @@ public class PacketHandlerServer {
 																			String name;
 																			if (type == EnumPacketServer.TraderMarketSave) {
 																				name = Server.readString(buffer);
-																				boolean bo1 = buffer.readBoolean();
+																				boolean loadMarket = buffer.readBoolean();
+
 																				if (npc.roleInterface instanceof RoleTrader) {
-																					if (bo1) {
+																					if (loadMarket) {
 																						RoleTrader.setMarket(npc, name);
+
+																						NoppesUtilServer.sendRoleData(player, npc);
+
 																					} else {
 																						RoleTrader.save(
 																								(RoleTrader) npc.roleInterface,
-																								name);
+																								name
+																						);
+
+																						RoleTrader.refreshLinkedMarkets(
+																								player.world,
+																								name
+																						);
+
+																						NoppesUtilServer.sendRoleData(player, npc);
 																					}
 																				}
 																			} else if (type == EnumPacketServer.MovingPathGet) {

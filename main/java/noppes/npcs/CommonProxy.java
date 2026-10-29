@@ -101,7 +101,7 @@ public class CommonProxy implements IGuiHandler {
 			return new ContainerNPCCompanion(npc, player);
 		}
 		else if (gui == EnumGuiType.DynamicTraderMenu) {
-			return new TraderMenuContainer(player);
+			return null;
 		}
 		else if (gui == EnumGuiType.DynamicTraderSell) {
 			return new TraderSellContainer(player, npc);

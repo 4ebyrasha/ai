@@ -96,25 +96,27 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         int x = left();
         int y = top();
 
-        buttonList.add(new GuiButton(
-                0, x + 190, y + 25, 48, 20,
-                I18n.translateToLocal("cheba.trader.editor.add")
-        ));
+        if (!barterEditMode) {
+            buttonList.add(new GuiButton(
+                    0, x + 190, y + 25, 48, 20,
+                    I18n.translateToLocal("cheba.trader.editor.add")
+            ));
 
-        buttonList.add(new GuiButton(
-                1, x + 240, y + 25, 54, 20,
-                I18n.translateToLocal("cheba.trader.editor.remove")
-        ));
+            buttonList.add(new GuiButton(
+                    1, x + 240, y + 25, 54, 20,
+                    I18n.translateToLocal("cheba.trader.editor.remove")
+            ));
 
-        buttonList.add(new GuiButton(
-                2, x + 296, y + 25, 54, 20,
-                I18n.translateToLocal("cheba.trader.editor.save")
-        ));
+            buttonList.add(new GuiButton(
+                    2, x + 296, y + 25, 54, 20,
+                    I18n.translateToLocal("cheba.trader.editor.save")
+            ));
 
-        buttonList.add(new GuiButton(
-                3, x + 352, y + 25, 56, 20,
-                I18n.translateToLocal("cheba.trader.editor.back")
-        ));
+            buttonList.add(new GuiButton(
+                    3, x + 352, y + 25, 56, 20,
+                    I18n.translateToLocal("cheba.trader.editor.back")
+            ));
+        }
 
         buttonList.add(new GuiButton(
                 10, x + 121, y + 7, 66, 18,
@@ -122,12 +124,12 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         ));
 
         GuiButton previousPage = new GuiButton(
-                8, x + 7, y + 7, 54, 18,
+                8, x + 48, y + 7, 31, 18,
                 I18n.translateToLocal("cheba.trader.editor.prev")
         );
 
         GuiButton nextPage = new GuiButton(
-                9, x + 64, y + 7, 54, 18,
+                9, x + 81, y + 7, 31, 18,
                 I18n.translateToLocal("cheba.trader.editor.next")
         );
 
@@ -683,11 +685,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         drawString(
                 fontRenderer,
                 I18n.translateToLocalFormatted(
-                        "cheba.trader.page",
-                        offerPage + 1,
-                        getOfferPageCount()
+                        "cheba.trader.editor.page_short",
+                        offerPage + 1
                 ),
-                x + 8,
+                x + 7,
                 y + 12,
                 0xFFFFFF
         );

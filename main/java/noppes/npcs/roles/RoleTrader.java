@@ -6,11 +6,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 
+import net.minecraft.world.World;
 import noppes.npcs.CustomNpcs;
 import noppes.npcs.NoppesUtilPlayer;
 import noppes.npcs.NoppesUtilServer;
@@ -39,6 +41,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	public boolean ignoreDamage = false;
 	public boolean ignoreNBT = false;
 	public boolean toSave = false;
+	public boolean sharedLimits = true;
 
 	public RoleTrader(EntityNPCInterface npc) {
 		super(npc);
@@ -177,6 +180,24 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	public void readFromNBT(NBTTagCompound tag) {
 		marketName = tag.getString("TraderMarket");
 		readNBT(tag);
+
+		if (npc.world.isRemote
+				|| marketName == null
+				|| marketName.trim().isEmpty()) {
+			return;
+		}
+
+		String name = marketName;
+		boolean savedSharedLimits = sharedLimits;
+
+		if (getFile(name).exists()) {
+			load(this, name);
+		} else {
+			save(this, name);
+		}
+
+		marketName = name;
+		sharedLimits = savedSharedLimits;
 	}
 
 	public NBTTagCompound writeNBT(NBTTagCompound tag) {
@@ -201,6 +222,7 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		}
 
 		tag.setTag("TraderBuybackOffers", buybackTag);
+		tag.setBoolean("TraderSharedLimits", sharedLimits);
 
 		return tag;
 	}
@@ -243,6 +265,18 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 				}
 			}
 		}
+		sharedLimits = !tag.hasKey("TraderSharedLimits", 1)
+				|| tag.getBoolean("TraderSharedLimits");
+	}
+
+	/**
+	 * Загрузка данных, пришедших от редактора через RoleSave.
+	 * Не перезагружает старый пресет поверх только что изменённых
+	 * пользователем предложений.
+	 */
+	public void readFromNBTForSave(NBTTagCompound tag) {
+		marketName = tag.getString("TraderMarket");
+		readNBT(tag);
 	}
 
 	private NBTTagCompound writeLegacyNBT(NBTTagCompound tag) {
@@ -267,8 +301,55 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		ignoreNBT = tag.getBoolean("TraderIgnoreNBT");
 	}
 
+	private void readMarketPresetNBT(NBTTagCompound tag) {
+		readLegacyNBT(tag);
+
+		/*
+		 * Если в старом файле нет динамических предложений,
+		 * сохраняем локальный список до первого нового сохранения
+		 */
+		if (tag.hasKey("DynamicTraderOffers", 9)) {
+			dynamicOffers.clear();
+
+			NBTTagList offersTag =
+					tag.getTagList("DynamicTraderOffers", 10);
+
+			for (int i = 0; i < offersTag.tagCount(); i++) {
+				NpcTradeConfig offer = NpcTradeConfig.readFromNBT(
+						offersTag.getCompoundTagAt(i)
+				);
+
+				if (offer != null) {
+					addDynamicOffer(offer);
+				}
+			}
+		}
+
+		if (tag.hasKey("TraderBuybackOffers", 9)) {
+			buybackOffers.clear();
+
+			NBTTagList buybackTag =
+					tag.getTagList("TraderBuybackOffers", 10);
+
+			for (int i = 0; i < buybackTag.tagCount(); i++) {
+				NpcBuybackConfig offer = NpcBuybackConfig.readFromNBT(
+						buybackTag.getCompoundTagAt(i)
+				);
+
+				if (offer != null) {
+					addBuybackOffer(offer);
+				}
+			}
+		}
+	}
+
 	// Стандартные методы RoleTrader.
 	public void interact(EntityPlayer player) {
+		if (!npc.world.isRemote
+				&& marketName != null
+				&& !marketName.trim().isEmpty()) {
+			load(this, marketName);
+		}
 		npc.say(player, npc.advanced.getInteractLine());
 
 		NoppesUtilServer.sendOpenGui(
@@ -379,16 +460,55 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 	}
 
 	public void setMarket(String name) {
-		marketName = name;
-		load(this, name);
+		setMarket(npc, name);
 	}
 
 	public String getMarket() {
 		return marketName;
 	}
 
+	public static void refreshLinkedMarkets(
+			World world,
+			String marketName
+	) {
+		if (world == null
+				|| world.isRemote
+				|| marketName == null
+				|| marketName.trim().isEmpty()) {
+			return;
+		}
+
+		for (Entity entity : new ArrayList<>(world.loadedEntityList)) {
+			if (!(entity instanceof EntityNPCInterface)) {
+				continue;
+			}
+
+			EntityNPCInterface linkedNpc =
+					(EntityNPCInterface) entity;
+
+			if (!(linkedNpc.roleInterface instanceof RoleTrader)) {
+				continue;
+			}
+
+			RoleTrader linkedRole =
+					(RoleTrader) linkedNpc.roleInterface;
+
+			if (linkedRole.marketName == null
+					|| !linkedRole.marketName.equalsIgnoreCase(marketName)) {
+				continue;
+			}
+
+			boolean savedSharedLimits = linkedRole.sharedLimits;
+
+			load(linkedRole, marketName);
+
+			linkedRole.sharedLimits = savedSharedLimits;
+			linkedNpc.updateClient = true;
+		}
+	}
+
 	public static void save(RoleTrader role, String name) {
-		if (name == null || name.isEmpty()) {
+		if (role == null || name == null || name.trim().isEmpty()) {
 			return;
 		}
 
@@ -396,34 +516,51 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		File oldFile = getFile(name);
 
 		try {
-			NBTJsonUtil.SaveFile(
-					file,
-					role.writeLegacyNBT(new NBTTagCompound())
-			);
+			/*
+			 * Сохраняются исходные поля CustomNPCs,
+			 * динамическая витрина и отдельный список выкупа.
+			 *
+			 * Флаг общих лимитов принадлежит конкретному NPC,
+			 * поэтому в общий пресет не записывается
+			 */
+			NBTTagCompound marketTag =
+					role.writeNBT(new NBTTagCompound());
+
+			marketTag.removeTag("TraderSharedLimits");
+
+			NBTJsonUtil.SaveFile(file, marketTag);
 
 			if (oldFile.exists()) {
 				oldFile.delete();
 			}
 
 			file.renameTo(oldFile);
-		} catch (Exception ignored) {
+
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
 	public static void load(RoleTrader role, String name) {
-		if (name == null
-				|| name.isEmpty()
+		if (role == null
+				|| name == null
+				|| name.trim().isEmpty()
 				|| role.npc.world.isRemote) {
 			return;
 		}
 
 		File file = getFile(name);
 
-		if (file.exists()) {
-			try {
-				role.readLegacyNBT(NBTJsonUtil.LoadFile(file));
-			} catch (Exception ignored) {
-			}
+		if (!file.exists()) {
+			return;
+		}
+
+		try {
+			NBTTagCompound marketTag = NBTJsonUtil.LoadFile(file);
+			role.readMarketPresetNBT(marketTag);
+
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -444,14 +581,35 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 			EntityNPCInterface npc,
 			String marketName
 	) {
-		if (marketName == null || marketName.isEmpty()) {
+		if (npc == null
+				|| !(npc.roleInterface instanceof RoleTrader)
+				|| npc.world.isRemote) {
 			return;
 		}
 
-		if (!getFile(marketName).exists()) {
-			save((RoleTrader) npc.roleInterface, marketName);
+		RoleTrader role = (RoleTrader) npc.roleInterface;
+
+		String name = marketName == null
+				? ""
+				: marketName.trim();
+
+		role.marketName = name;
+
+		if (name.isEmpty()) {
+			npc.updateClient = true;
+			return;
 		}
 
-		load((RoleTrader) npc.roleInterface, marketName);
+		File file = getFile(name);
+
+		if (!file.exists()) {
+			// Первое использование имени создает пресет из текущих данных
+			save(role, name);
+		}
+
+		load(role, name);
+
+		npc.updateClient = true;
 	}
+
 }

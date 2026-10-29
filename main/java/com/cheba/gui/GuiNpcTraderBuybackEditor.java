@@ -28,10 +28,10 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
     private static final int PANEL_WIDTH = 420;
     private static final int PANEL_HEIGHT = 270;
 
-    private static final int COLUMNS = 9;
-    private static final int ROWS = 6;
+    private static final int COLUMNS = 10;
+    private static final int ROWS = 8;
     private static final int PAGE_SIZE = COLUMNS * ROWS;
-    private static final int SLOT_SIZE = 18;
+    private static final int SLOT_SIZE = 16;
 
     private final EntityNPCInterface npc;
     private final GuiScreen parent;
@@ -345,9 +345,12 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             }
         }
 
+        /*
+         * Выбор предмета из обычного инвентаря игрока
+         */
         int inventoryX = x + (PANEL_WIDTH - 9 * 18) / 2;
-        int mainY = y + 183;
-        int hotbarY = y + 237;
+        int mainY = y + 198;
+        int hotbarY = y + 252;
 
         if (mouseButton == 0
                 && mouseX >= inventoryX
@@ -358,6 +361,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             if (mouseY >= mainY && mouseY < mainY + 3 * 18) {
                 selectedInventorySlot =
                         9 + ((mouseY - mainY) / 18) * 9 + col;
+
             } else if (mouseY >= hotbarY && mouseY < hotbarY + 18) {
                 selectedInventorySlot = col;
             }
@@ -394,10 +398,8 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
         int y = top();
 
         drawRect(
-                x,
-                y,
-                x + PANEL_WIDTH,
-                y + PANEL_HEIGHT,
+                x, y,
+                x + PANEL_WIDTH, y + PANEL_HEIGHT,
                 0xEE202020
         );
 
@@ -423,52 +425,52 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
 
         List<NpcBuybackConfig> offers = role.getBuybackOffers();
 
+        // Компактная сетка 10 × 8.
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLUMNS; col++) {
-                int localIndex = row * COLUMNS + col;
-                int offerIndex = page * PAGE_SIZE + localIndex;
+                int index = page * PAGE_SIZE + row * COLUMNS + col;
 
                 int slotX = x + 7 + col * SLOT_SIZE;
                 int slotY = y + 31 + row * SLOT_SIZE;
 
-                boolean selected = offerIndex == selectedOfferIndex;
+                boolean selected = index == selectedOfferIndex;
 
                 drawRect(
                         slotX,
                         slotY,
-                        slotX + 18,
-                        slotY + 18,
+                        slotX + SLOT_SIZE,
+                        slotY + SLOT_SIZE,
                         selected ? 0xFFFFFF55 : 0xFF777777
                 );
 
                 drawRect(
                         slotX + 1,
                         slotY + 1,
-                        slotX + 17,
-                        slotY + 17,
+                        slotX + SLOT_SIZE - 1,
+                        slotY + SLOT_SIZE - 1,
                         selected ? 0xFF555522 : 0xFF303030
                 );
 
-                if (offerIndex >= offers.size()) {
+                if (index >= offers.size()) {
                     continue;
                 }
 
-                ItemStack stack = offers.get(offerIndex).getItem();
+                ItemStack stack = offers.get(index).getItem();
 
                 if (!stack.isEmpty()) {
                     RenderHelper.enableGUIStandardItemLighting();
 
                     itemRender.renderItemAndEffectIntoGUI(
                             stack,
-                            slotX + 1,
-                            slotY + 1
+                            slotX,
+                            slotY
                     );
 
                     itemRender.renderItemOverlays(
                             fontRenderer,
                             stack,
-                            slotX + 1,
-                            slotY + 1
+                            slotX,
+                            slotY
                     );
 
                     RenderHelper.disableStandardItemLighting();
@@ -476,6 +478,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             }
         }
 
+        // Цена выбранного предложения — на прежнем месте.
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.buyback.price"),
@@ -501,6 +504,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             );
         }
 
+        // Инвентарь игрока не перемещаем.
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.inventory"),
@@ -688,8 +692,8 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
 
     private int getHoveredInventorySlot(int mouseX, int mouseY) {
         int x = left() + (PANEL_WIDTH - 9 * 18) / 2;
-        int mainY = top() + 183;
-        int hotbarY = top() + 237;
+        int mainY = top() + 198;
+        int hotbarY = top() + 252;
 
         if (mouseX < x || mouseX >= x + 9 * 18) {
             return -1;

@@ -754,3 +754,6 @@ cheba.trader.tooltip.editor.clear_payment=Очистить все предмет
 
 # Подсказки отдельного списка выкупа
 cheba.trader.tooltip.buyback.add=Добавить выбранный в инвентаре предмет в отдельный список выкупа.
+
+cheba.trader.editor.page_short=Стр.%s
+cheba.trader.shared_limits=Общие лимиты магазина:

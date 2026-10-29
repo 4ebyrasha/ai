@@ -273,7 +273,9 @@ public final class TraderTradeService {
     private String getMarketKey(RoleTrader role) {
         String market = role.getMarket();
 
-        if (market != null && !market.trim().isEmpty()) {
+        if (role.sharedLimits
+                && market != null
+                && !market.trim().isEmpty()) {
             return "market:" + market.trim().toLowerCase(Locale.ROOT);
         }
 
