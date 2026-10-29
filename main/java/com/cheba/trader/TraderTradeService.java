@@ -1,7 +1,7 @@
+
 package com.cheba.trader;
 
 import com.cheba.currency.TraderCurrencyBridge;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -14,12 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-
-import net.minecraft.nbt.NBTTagCompound;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 public final class TraderTradeService {
 
@@ -45,6 +39,7 @@ public final class TraderTradeService {
     }
 
     private static final class Removal {
+
         private final int slot;
         private final Item item;
         private final int count;
@@ -58,7 +53,7 @@ public final class TraderTradeService {
 
     /**
      * Покупает предложение по его ID.
-     * Вызывать на серверной стороне.
+     * Вызывать только на серверной стороне
      */
     public Result buy(
             EntityPlayer player,
@@ -98,11 +93,20 @@ public final class TraderTradeService {
             return Result.SERVER_ONLY;
         }
 
+        /*
+         * Ключи привязаны к конкретному предложению.
+         * Одинаковые товары из разных предложений
+         * не разделяют запас и лимиты
+         */
         String marketKey = getMarketKey(role);
-        String stockKey = marketKey + "|" + getStockProductKey(product);
+
+        String stockKey = marketKey
+                + "|offer:"
+                + offer.getId();
 
         String playerKey = stockKey
-                + "|" + player.getUniqueID();
+                + "|"
+                + player.getUniqueID();
 
         int dailyStock = offer.getDailyStock();
         int maxPerDay = offer.getMaxPerDay();
@@ -115,10 +119,14 @@ public final class TraderTradeService {
         }
 
         if (maxPerDay >= 0
-                && state.getPlayerPurchaseCount(playerKey) + quantity > maxPerDay) {
+                && state.getPlayerPurchaseCount(playerKey) + quantity
+                > maxPerDay) {
             return Result.DAILY_LIMIT_REACHED;
         }
 
+        /*
+         * Составляем план списания предметов
+         */
         List<Removal> removals = buildRemovalPlan(
                 player,
                 offer.getPriceItems()
@@ -141,11 +149,24 @@ public final class TraderTradeService {
         }
 
         /*
-         * Повторная проверка непосредственно перед списанием.
+         * Проверяем план списания и возможность разместить
+         * покупку в основном инвентаре после списания цены.
+         * Курсор игрока не используется. Предметы не выбрасываются
          */
         if (isRemovalPlanInvalid(player, removals)) {
             return Result.INVENTORY_CHANGED;
         }
+
+        if (!canFitProduct(player, removals, product)) {
+            return Result.INVENTORY_CHANGED;
+        }
+
+        /*
+         * Сохраняем копию инвентаря на случай неожиданной
+         * ошибки во время выдачи товара
+         */
+        NonNullList<ItemStack> inventoryBackup =
+                copyMainInventory(player);
 
         boolean moneyWithdrawn = false;
 
@@ -158,64 +179,56 @@ public final class TraderTradeService {
         }
 
         /*
-         * Если инвентарь изменился, пытаемся вернуть деньги.
-         * На обычном серверном потоке ситуация маловероятна,
-         * так как план уже проверен.
+         * Повторная проверка после оплаты.
+         * Если инвентарь изменился, пытаемся вернуть деньги
          */
-        if (isRemovalPlanInvalid(player, removals)) {
+        if (isRemovalPlanInvalid(player, removals)
+                || !canFitProduct(player, removals, product)) {
+
             if (moneyWithdrawn
                     && !currency.deposit(player, moneyPrice)) {
+                currency.notifyBalanceChange(player, -moneyPrice);
                 return Result.REFUND_FAILED;
             }
 
             return Result.INVENTORY_CHANGED;
         }
 
+        /*
+         * Сначала списываем цену предметами
+         */
         applyRemovalPlan(player, removals);
 
         /*
-         * Запас и дневные лимиты обновляются только после оплаты
-         * и фактического списания предметов
+         * Выдаем товар только в основной инвентарь.
+         * Если выдача неожиданно не удалась, восстанавливаем
+         * исходный инвентарь и пытаемся вернуть деньги
+         */
+        if (!deliverProduct(player, product)) {
+            restoreMainInventory(player, inventoryBackup);
+
+            if (moneyWithdrawn
+                    && !currency.deposit(player, moneyPrice)) {
+                currency.notifyBalanceChange(player, -moneyPrice);
+                return Result.REFUND_FAILED;
+            }
+
+            return Result.INVENTORY_CHANGED;
+        }
+
+        /*
+         * Лимиты записываем только после успешной выдачи товара
          */
         state.recordPurchase(stockKey, playerKey, quantity);
 
-        deliverProduct(player, product);
+        /*
+         * Обновляем валютный HUD после успешной покупки
+         */
+        if (moneyPrice > 0L) {
+            currency.notifyBalanceChange(player, -moneyPrice);
+        }
 
         return Result.SUCCESS;
-    }
-
-    private String getStockProductKey(ItemStack product) {
-        ItemStack normalized = product.copy();
-        normalized.setCount(1);
-
-        String productData = normalized
-                .writeToNBT(new NBTTagCompound())
-                .toString();
-
-        try {
-            byte[] hash = MessageDigest
-                    .getInstance("SHA-256")
-                    .digest(productData.getBytes(StandardCharsets.UTF_8));
-
-            StringBuilder key = new StringBuilder(hash.length * 2);
-
-            for (byte value : hash) {
-                int unsignedValue = value & 0xFF;
-
-                if (unsignedValue < 16) {
-                    key.append('0');
-                }
-
-                key.append(Integer.toHexString(unsignedValue));
-            }
-
-            return "product:" + key;
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(
-                    "SHA-256 is unavailable",
-                    e
-            );
-        }
     }
 
     private NpcTradeConfig findOffer(
@@ -242,9 +255,9 @@ public final class TraderTradeService {
     }
 
     /**
-     * Создаёт план списания предметов.
-     * Возвращает null, если предметов недостаточно.
-     * Метаданные и NBT не учитываются: сравнивается Item.
+     * Создает план списания предметов.
+     * Метаданные и NBT не учитываются: сравнивается Item,
+     * как и в исходной реализации.
      */
     private List<Removal> buildRemovalPlan(
             EntityPlayer player,
@@ -267,6 +280,7 @@ public final class TraderTradeService {
         }
 
         List<Removal> plan = new ArrayList<>();
+
         NonNullList<ItemStack> inventory =
                 player.inventory.mainInventory;
 
@@ -301,7 +315,12 @@ public final class TraderTradeService {
                 );
 
                 if (take > 0) {
-                    plan.add(new Removal(slot, requiredItem, take));
+                    plan.add(new Removal(
+                            slot,
+                            requiredItem,
+                            take
+                    ));
+
                     remaining -= take;
                 }
 
@@ -319,6 +338,11 @@ public final class TraderTradeService {
             List<Removal> plan
     ) {
         for (Removal removal : plan) {
+            if (removal.slot < 0
+                    || removal.slot >= player.inventory.mainInventory.size()) {
+                return true;
+            }
+
             ItemStack stack = player.inventory.getStackInSlot(
                     removal.slot
             );
@@ -356,63 +380,187 @@ public final class TraderTradeService {
     }
 
     /**
-     * Сначала пытаемся положить покупку в курсор.
-     * Остаток помещаем в инвентарь, а при нехватке места
-     * выбрасываем рядом с игроком.
+     * Проверяет вместимость товара после предполагаемого
+     * списания цены. Реальный инвентарь не изменяется
      */
-    private void deliverProduct(
+    private boolean canFitProduct(
             EntityPlayer player,
+            List<Removal> removals,
             ItemStack product
     ) {
-        ItemStack remaining = product.copy();
-        ItemStack cursor = player.inventory.getItemStack();
+        NonNullList<ItemStack> simulated =
+                copyMainInventory(player);
 
-        if (cursor.isEmpty()) {
-            int toCursor = Math.min(
-                    remaining.getCount(),
-                    remaining.getMaxStackSize()
-            );
+        for (Removal removal : removals) {
+            if (removal.slot < 0
+                    || removal.slot >= simulated.size()) {
+                return false;
+            }
 
-            ItemStack cursorStack = remaining.copy();
-            cursorStack.setCount(toCursor);
+            ItemStack stack = simulated.get(removal.slot);
 
-            player.inventory.setItemStack(cursorStack);
-            remaining.shrink(toCursor);
+            if (stack.isEmpty()
+                    || stack.getItem() != removal.item
+                    || stack.getCount() < removal.count) {
+                return false;
+            }
 
-        } else if (ItemStack.areItemsEqual(cursor, remaining)
-                && ItemStack.areItemStackTagsEqual(cursor, remaining)) {
-
-            int space = Math.max(
-                    0,
-                    cursor.getMaxStackSize() - cursor.getCount()
-            );
-
-            int toMerge = Math.min(space, remaining.getCount());
-
-            if (toMerge > 0) {
-                cursor.grow(toMerge);
-                remaining.shrink(toMerge);
+            if (stack.getCount() == removal.count) {
+                simulated.set(removal.slot, ItemStack.EMPTY);
+            } else {
+                stack.shrink(removal.count);
             }
         }
 
-        if (!remaining.isEmpty()) {
-            player.inventory.addItemStackToInventory(remaining);
+        return insertProductIntoInventory(
+                simulated,
+                product
+        );
+    }
 
-            if (!remaining.isEmpty()) {
-                EntityItem dropped = player.dropItem(remaining, false);
+    /**
+     * Выдает предмет только в основной инвентарь.
+     * Не трогает курсор и не выбрасывает остаток в мир
+     */
+    private boolean deliverProduct(
+            EntityPlayer player,
+            ItemStack product
+    ) {
+        boolean inserted = insertProductIntoInventory(
+                player.inventory.mainInventory,
+                product
+        );
 
-                if (dropped == null) {
-                    player.world.spawnEntity(
-                            new EntityItem(
-                                    player.world,
-                                    player.posX,
-                                    player.posY + 0.5D,
-                                    player.posZ,
-                                    remaining.copy()
-                            )
-                    );
-                }
+        if (inserted) {
+            player.inventory.markDirty();
+            player.inventoryContainer.detectAndSendChanges();
+        }
+
+        return inserted;
+    }
+
+    /**
+     * Помещает предмет в список слотов: сначала объединяет
+     * совместимые стаки, затем использует пустые слоты.
+     * Метод изменяет переданный список
+     */
+    private boolean insertProductIntoInventory(
+            NonNullList<ItemStack> inventory,
+            ItemStack product
+    ) {
+        if (product == null || product.isEmpty()) {
+            return true;
+        }
+
+        ItemStack remaining = product.copy();
+
+        /*
+         * Сначала пополняем уже существующие стаки
+         */
+        for (int slot = 0;
+             slot < inventory.size() && !remaining.isEmpty();
+             slot++) {
+
+            ItemStack stack = inventory.get(slot);
+
+            if (stack.isEmpty() || !canStack(stack, remaining)) {
+                continue;
             }
+
+            int maxStackSize = Math.min(
+                    stack.getMaxStackSize(),
+                    remaining.getMaxStackSize()
+            );
+
+            int space = Math.max(
+                    0,
+                    maxStackSize - stack.getCount()
+            );
+
+            int moved = Math.min(
+                    space,
+                    remaining.getCount()
+            );
+
+            if (moved > 0) {
+                stack.grow(moved);
+                remaining.shrink(moved);
+            }
+        }
+
+        /*
+         * Затем размещаем остаток в пустых слотах
+         */
+        for (int slot = 0;
+             slot < inventory.size() && !remaining.isEmpty();
+             slot++) {
+
+            if (!inventory.get(slot).isEmpty()) {
+                continue;
+            }
+
+            int maxStackSize = remaining.getMaxStackSize();
+
+            if (maxStackSize <= 0) {
+                return false;
+            }
+
+            int moved = Math.min(
+                    remaining.getCount(),
+                    maxStackSize
+            );
+
+            ItemStack inserted = remaining.copy();
+            inserted.setCount(moved);
+
+            inventory.set(slot, inserted);
+            remaining.shrink(moved);
+        }
+
+        return remaining.isEmpty();
+    }
+
+    private boolean canStack(
+            ItemStack first,
+            ItemStack second
+    ) {
+        return !first.isEmpty()
+                && !second.isEmpty()
+                && ItemStack.areItemsEqual(first, second)
+                && ItemStack.areItemStackTagsEqual(first, second);
+    }
+
+    private NonNullList<ItemStack> copyMainInventory(
+            EntityPlayer player
+    ) {
+        NonNullList<ItemStack> copy = NonNullList.withSize(
+                player.inventory.mainInventory.size(),
+                ItemStack.EMPTY
+        );
+
+        for (int slot = 0; slot < copy.size(); slot++) {
+            copy.set(
+                    slot,
+                    player.inventory.mainInventory.get(slot).copy()
+            );
+        }
+
+        return copy;
+    }
+
+    private void restoreMainInventory(
+            EntityPlayer player,
+            NonNullList<ItemStack> backup
+    ) {
+        for (int slot = 0;
+             slot < player.inventory.mainInventory.size()
+                     && slot < backup.size();
+             slot++) {
+
+            player.inventory.setInventorySlotContents(
+                    slot,
+                    backup.get(slot).copy()
+            );
         }
 
         player.inventory.markDirty();

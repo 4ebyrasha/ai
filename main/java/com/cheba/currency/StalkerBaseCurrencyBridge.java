@@ -1,6 +1,8 @@
+
 package com.cheba.currency;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 
 import java.lang.reflect.Method;
@@ -11,13 +13,24 @@ public final class StalkerBaseCurrencyBridge
     private static final String STORAGE_CLASS =
             "com.cheba.stalkerbase.currency.storage.CurrencyStorage";
 
+    private static final String HUD_HANDLER_CLASS =
+            "com.cheba.em.network.EMPacketHandler";
+
     private Method getBalanceMethod;
     private Method withdrawMethod;
     private Method depositMethod;
 
+    private Method moneyNotificationMethod;
+    private Method balanceUpdateMethod;
+
     private boolean available;
 
     public StalkerBaseCurrencyBridge() {
+        loadCurrencyMethods();
+        loadHudMethods();
+    }
+
+    private void loadCurrencyMethods() {
         try {
             Class<?> storage = Class.forName(
                     STORAGE_CLASS,
@@ -60,6 +73,46 @@ public final class StalkerBaseCurrencyBridge
         }
     }
 
+    private void loadHudMethods() {
+        try {
+            Class<?> handler = Class.forName(
+                    HUD_HANDLER_CLASS,
+                    false,
+                    StalkerBaseCurrencyBridge.class.getClassLoader()
+            );
+
+            try {
+                moneyNotificationMethod = handler.getMethod(
+                        "sendMoneyPickupNotification",
+                        EntityPlayerMP.class,
+                        long.class,
+                        long.class
+                );
+            } catch (ReflectiveOperationException
+                     | SecurityException ignored) {
+                moneyNotificationMethod = null;
+            }
+
+            try {
+                balanceUpdateMethod = handler.getMethod(
+                        "sendBalanceUpdate",
+                        EntityPlayerMP.class,
+                        long.class
+                );
+            } catch (ReflectiveOperationException
+                     | SecurityException ignored) {
+                balanceUpdateMethod = null;
+            }
+
+        } catch (ReflectiveOperationException
+                 | LinkageError
+                 | SecurityException ignored) {
+
+            moneyNotificationMethod = null;
+            balanceUpdateMethod = null;
+        }
+    }
+
     @Override
     public boolean isAvailable() {
         return available;
@@ -96,11 +149,11 @@ public final class StalkerBaseCurrencyBridge
 
     @Override
     public boolean withdraw(EntityPlayer player, long amount) {
-        if (amount < 0 || !available || player == null) {
+        if (amount < 0L || !available || player == null) {
             return false;
         }
 
-        if (amount == 0) {
+        if (amount == 0L) {
             return true;
         }
 
@@ -128,11 +181,11 @@ public final class StalkerBaseCurrencyBridge
 
     @Override
     public boolean deposit(EntityPlayer player, long amount) {
-        if (amount < 0 || !available || player == null) {
+        if (amount < 0L || !available || player == null) {
             return false;
         }
 
-        if (amount == 0) {
+        if (amount == 0L) {
             return true;
         }
 
@@ -155,6 +208,57 @@ public final class StalkerBaseCurrencyBridge
         } catch (ReflectiveOperationException
                  | RuntimeException e) {
             return false;
+        }
+    }
+
+    @Override
+    public void notifyBalanceChange(
+            EntityPlayer player,
+            long delta
+    ) {
+        if (!(player instanceof EntityPlayerMP)) {
+            return;
+        }
+
+        EntityPlayerMP serverPlayer = (EntityPlayerMP) player;
+        long newBalance = getBalance(player);
+
+        /*
+         * Основной вариант: отправляем изменение суммы
+         * и новый баланс, чтобы обновить HUD и уведомление
+         */
+        if (moneyNotificationMethod != null) {
+            try {
+                moneyNotificationMethod.invoke(
+                        null,
+                        serverPlayer,
+                        delta,
+                        newBalance
+                );
+
+                return;
+
+            } catch (ReflectiveOperationException
+                     | RuntimeException ignored) {
+                // Пробуем запасной способ ниже.
+            }
+        }
+
+        /*
+         * Запасной вариант: отправляем только новый баланс
+         */
+        if (balanceUpdateMethod != null) {
+            try {
+                balanceUpdateMethod.invoke(
+                        null,
+                        serverPlayer,
+                        newBalance
+                );
+
+            } catch (ReflectiveOperationException
+                     | RuntimeException ignored) {
+                // Уведомление недоступно; покупка уже обработана
+            }
         }
     }
 
