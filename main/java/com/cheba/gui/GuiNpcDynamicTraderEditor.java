@@ -58,6 +58,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
     private String statusMessage = "";
 
+    private boolean rebuildGuiAfterClick;
+
     public GuiNpcDynamicTraderEditor(
             EntityNPCInterface npc,
             GuiNpcTraderSetup parent,
@@ -341,7 +343,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 );
 
                 refreshFields();
-                initGui();
+                rebuildGuiAfterClick = true;
                 break;
             }
 
@@ -376,7 +378,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 }
 
                 refreshFields();
-                initGui();
+                rebuildGuiAfterClick = true;
                 break;
             }
 
@@ -472,7 +474,6 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             }
 
             case 6:
-                // Вход в режим редактирования бартера
                 barterEditMode = true;
                 selectedPaymentIndex = -1;
 
@@ -480,11 +481,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                         "cheba.trader.editor.barter_opened"
                 );
 
-                initGui();
+                rebuildGuiAfterClick = true;
                 break;
 
             case 11:
-                // Возврат к цене и лимитам основного предложения
                 barterEditMode = false;
                 selectedPaymentIndex = -1;
 
@@ -492,8 +492,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                         "cheba.trader.editor.barter_closed"
                 );
 
-                initGui();
                 refreshFields();
+                rebuildGuiAfterClick = true;
                 break;
 
             case 7: {
@@ -515,7 +515,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 offerPage = Math.max(0, offerPage - 1);
                 selectFirstOfferOnPage();
                 refreshFields();
-                initGui();
+                rebuildGuiAfterClick = true;
                 break;
 
             case 9:
@@ -526,7 +526,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
                 selectFirstOfferOnPage();
                 refreshFields();
-                initGui();
+                rebuildGuiAfterClick = true;
                 break;
 
             case 10:
@@ -640,6 +640,11 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         }
 
         super.mouseClicked(mouseX, mouseY, mouseButton);
+
+        if (rebuildGuiAfterClick) {
+            rebuildGuiAfterClick = false;
+            initGui();
+        }
     }
 
     @Override
