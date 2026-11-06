@@ -14,23 +14,12 @@ import noppes.npcs.controllers.data.Line;
 import noppes.npcs.controllers.data.Lines;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.JobBard;
-import noppes.npcs.roles.JobBuilder;
 import noppes.npcs.roles.JobChunkLoader;
 import noppes.npcs.roles.JobConversation;
-import noppes.npcs.roles.JobFarmer;
-import noppes.npcs.roles.JobFollower;
-import noppes.npcs.roles.JobGuard;
-import noppes.npcs.roles.JobHealer;
-import noppes.npcs.roles.JobItemGiver;
 import noppes.npcs.roles.JobPuppet;
-import noppes.npcs.roles.JobSpawner;
-import noppes.npcs.roles.RoleBank;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleDialog;
-import noppes.npcs.roles.RoleFollower;
 import noppes.npcs.roles.RolePostman;
 import noppes.npcs.roles.RoleTrader;
-import noppes.npcs.roles.RoleTransporter;
 import noppes.npcs.util.ValueUtil;
 
 public class DataAdvanced implements INPCAdvanced {
@@ -271,24 +260,19 @@ public class DataAdvanced implements INPCAdvanced {
 		}
 
 		this.role = i % 8;
+
 		if (this.role == 0) {
 			this.npc.roleInterface = null;
-		} else if (this.role == 3 && !(this.npc.roleInterface instanceof RoleBank)) {
-			this.npc.roleInterface = new RoleBank(this.npc);
-		} else if (this.role == 2 && !(this.npc.roleInterface instanceof RoleFollower)) {
-			this.npc.roleInterface = new RoleFollower(this.npc);
-		} else if (this.role == 5 && !(this.npc.roleInterface instanceof RolePostman)) {
-			this.npc.roleInterface = new RolePostman(this.npc);
 		} else if (this.role == 1 && !(this.npc.roleInterface instanceof RoleTrader)) {
 			this.npc.roleInterface = new RoleTrader(this.npc);
-		} else if (this.role == 4 && !(this.npc.roleInterface instanceof RoleTransporter)) {
-			this.npc.roleInterface = new RoleTransporter(this.npc);
-		} else if (this.role == 6 && !(this.npc.roleInterface instanceof RoleCompanion)) {
-			this.npc.roleInterface = new RoleCompanion(this.npc);
+		} else if (this.role == 5 && !(this.npc.roleInterface instanceof RolePostman)) {
+			this.npc.roleInterface = new RolePostman(this.npc);
 		} else if (this.role == 7 && !(this.npc.roleInterface instanceof RoleDialog)) {
 			this.npc.roleInterface = new RoleDialog(this.npc);
+		} else if (this.role != 1 && this.role != 5 && this.role != 7) {
+			this.role = 0;
+			this.npc.roleInterface = null;
 		}
-
 	}
 
 	public void setJob(int i) {
@@ -297,32 +281,21 @@ public class DataAdvanced implements INPCAdvanced {
 		}
 
 		this.job = i % 12;
+
 		if (this.job == 0) {
 			this.npc.jobInterface = null;
 		} else if (this.job == 1 && !(this.npc.jobInterface instanceof JobBard)) {
 			this.npc.jobInterface = new JobBard(this.npc);
-		} else if (this.job == 2 && !(this.npc.jobInterface instanceof JobHealer)) {
-			this.npc.jobInterface = new JobHealer(this.npc);
-		} else if (this.job == 3 && !(this.npc.jobInterface instanceof JobGuard)) {
-			this.npc.jobInterface = new JobGuard(this.npc);
-		} else if (this.job == 4 && !(this.npc.jobInterface instanceof JobItemGiver)) {
-			this.npc.jobInterface = new JobItemGiver(this.npc);
-		} else if (this.job == 5 && !(this.npc.jobInterface instanceof JobFollower)) {
-			this.npc.jobInterface = new JobFollower(this.npc);
-		} else if (this.job == 6 && !(this.npc.jobInterface instanceof JobSpawner)) {
-			this.npc.jobInterface = new JobSpawner(this.npc);
 		} else if (this.job == 7 && !(this.npc.jobInterface instanceof JobConversation)) {
 			this.npc.jobInterface = new JobConversation(this.npc);
 		} else if (this.job == 8 && !(this.npc.jobInterface instanceof JobChunkLoader)) {
 			this.npc.jobInterface = new JobChunkLoader(this.npc);
 		} else if (this.job == 9 && !(this.npc.jobInterface instanceof JobPuppet)) {
 			this.npc.jobInterface = new JobPuppet(this.npc);
-		} else if (this.job == 10 && !(this.npc.jobInterface instanceof JobBuilder)) {
-			this.npc.jobInterface = new JobBuilder(this.npc);
-		} else if (this.job == 11 && !(this.npc.jobInterface instanceof JobFarmer)) {
-			this.npc.jobInterface = new JobFarmer(this.npc);
+		} else if (this.job != 1 && this.job != 7 && this.job != 8 && this.job != 9) {
+			this.job = 0;
+			this.npc.jobInterface = null;
 		}
-
 	}
 
 	public boolean hasWorldLines() {

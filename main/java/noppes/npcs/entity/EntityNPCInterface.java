@@ -149,12 +149,11 @@ import noppes.npcs.entity.data.DataStats;
 import noppes.npcs.entity.data.DataTimers;
 import noppes.npcs.items.ItemSoulstoneFilled;
 import noppes.npcs.roles.JobBard;
-import noppes.npcs.roles.JobFollower;
 import noppes.npcs.roles.JobInterface;
-import noppes.npcs.roles.RoleCompanion;
-import noppes.npcs.roles.RoleFollower;
 import noppes.npcs.roles.RoleInterface;
 import noppes.npcs.util.GameProfileAlt;
+
+import javax.annotation.Nonnull;
 
 public abstract class EntityNPCInterface extends EntityCreature implements IEntityAdditionalSpawnData, ICommandSender, IRangedAttackMob, IAnimals, IPerceptionFilter {
 	public static final DataParameter<Boolean> Attacking;
@@ -326,7 +325,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	}
 
-	public boolean attackEntityAsMob(Entity par1Entity) {
+
+	public boolean attackEntityAsMob(@Nonnull Entity par1Entity) {
 		float f = (float) this.stats.melee.getStrength();
 		if (this.stats.melee.getDelay() < 10) {
 			par1Entity.hurtResistantTime = 0;
@@ -356,10 +356,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 								* (float) this.stats.melee.getKnockback() * 0.5F));
 				this.motionX *= 0.6D;
 				this.motionZ *= 0.6D;
-			}
-
-			if (this.advanced.role == 6) {
-				((RoleCompanion) this.roleInterface).attackedEntity(par1Entity);
 			}
 		}
 
@@ -1393,12 +1389,11 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.stats.spawnCycle == 4;
 	}
 
+	@Nonnull
 	public ItemStack getHeldItemMainhand() {
 		IItemStack item = null;
 		if (this.isAttacking()) {
 			item = this.inventory.getRightHand();
-		} else if (this.advanced.role == 6) {
-			item = ((RoleCompanion) this.roleInterface).getHeldItem();
 		} else if (this.jobInterface != null && this.jobInterface.overrideMainHand) {
 			item = this.jobInterface.getMainhand();
 		} else {
@@ -1408,6 +1403,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return ItemStackWrapper.MCItem(item);
 	}
 
+	@Nonnull
 	public ItemStack getHeldItemOffhand() {
 		IItemStack item = null;
 		if (this.isAttacking()) {
@@ -1421,7 +1417,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return ItemStackWrapper.MCItem(item);
 	}
 
-	public ItemStack getItemStackFromSlot(EntityEquipmentSlot slot) {
+	@Nonnull
+	public ItemStack getItemStackFromSlot(@Nonnull EntityEquipmentSlot slot) {
 		if (slot == EntityEquipmentSlot.MAINHAND) {
 			return this.getHeldItemMainhand();
 		} else {
@@ -1430,7 +1427,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void setItemStackToSlot(EntityEquipmentSlot slot, ItemStack item) {
+	public void setItemStackToSlot(@Nonnull EntityEquipmentSlot slot,@Nonnull ItemStack item) {
 		if (slot == EntityEquipmentSlot.MAINHAND) {
 			this.inventory.weapons.put(0, NpcAPI.Instance().getIItemStack(item));
 		} else if (slot == EntityEquipmentSlot.OFFHAND) {
@@ -1892,55 +1889,27 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public EntityLivingBase getOwner() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return this.advanced.scenes.getOwner();
-		} else if (this.advanced.role == 2 && this.roleInterface instanceof RoleFollower) {
-			return ((RoleFollower) this.roleInterface).owner;
-		} else if (this.advanced.role == 6 && this.roleInterface instanceof RoleCompanion) {
-			return ((RoleCompanion) this.roleInterface).owner;
-		} else {
-			return this.advanced.job == 5 && this.jobInterface instanceof JobFollower
-					? ((JobFollower) this.jobInterface).following
-					: null;
-		}
+		return this.advanced.scenes.getOwner();
 	}
 
 	public boolean hasOwner() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return true;
-		} else {
-			return this.advanced.role == 2 && ((RoleFollower) this.roleInterface).hasOwner()
-					|| this.advanced.role == 6 && ((RoleCompanion) this.roleInterface).hasOwner()
-					|| this.advanced.job == 5 && ((JobFollower) this.jobInterface).hasOwner();
-		}
+		return this.advanced.scenes.getOwner() != null;
 	}
 
 	public int followRange() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return 4;
-		} else if (this.advanced.role == 2 && this.roleInterface.isFollowing()) {
-			return 6;
-		} else if (this.advanced.role == 6 && this.roleInterface.isFollowing()) {
-			return 4;
-		} else {
-			return this.advanced.job == 5 && this.jobInterface.isFollowing() ? 4 : 15;
-		}
+		return this.advanced.scenes.getOwner() != null ? 4 : 15;
 	}
 
-	public void setHomePosAndDistance(BlockPos pos, int range) {
+	public void setHomePosAndDistance(@Nonnull BlockPos pos, int range) {
 		super.setHomePosAndDistance(pos, range);
 		this.ais.setStartPos(pos);
 	}
 
-	protected float applyArmorCalculations(DamageSource source, float damage) {
-		if (this.advanced.role == 6) {
-			damage = ((RoleCompanion) this.roleInterface).applyArmorCalculations(source, damage);
-		}
-
+	protected float applyArmorCalculations(@Nonnull DamageSource source, float damage) {
 		return damage;
 	}
 
-	public boolean isOnSameTeam(Entity entity) {
+	public boolean isOnSameTeam(@Nonnull Entity entity) {
 		if (!this.isRemote()) {
 			if (entity instanceof EntityPlayer && this.getFaction().isFriendlyToPlayer((EntityPlayer) entity)) {
 				return true;
@@ -1963,14 +1932,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public void travel(float f1, float f2, float f3) {
-		double d0 = this.posX;
-		double d1 = this.posY;
-		double d2 = this.posZ;
 		super.travel(f1, f2, f3);
-		if (this.advanced.role == 6 && !this.isRemote()) {
-			((RoleCompanion) this.roleInterface).addMovementStat(this.posX - d0, this.posY - d1, this.posZ - d2);
-		}
-
 	}
 
 	public boolean canBeLeashedTo(EntityPlayer player) {
