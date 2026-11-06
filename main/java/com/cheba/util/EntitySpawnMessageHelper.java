@@ -1,6 +1,7 @@
 package com.cheba.util;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.network.internal.FMLMessage;
 import noppes.npcs.LogWriter;
 
@@ -26,12 +27,11 @@ public class EntitySpawnMessageHelper {
             fromBytesMethod.setAccessible(true);
 
             // Клиентские штуки инициализируем ТОЛЬКО на клиенте
-            if (net.minecraftforge.fml.common.FMLCommonHandler.instance()
-                    .getSide().isClient()) {
+            if (FMLCommonHandler.instance().getSide().isClient()) {
                 try {
                     Class<?> handlerClass = Class.forName(
                             "net.minecraftforge.fml.common.network.internal.EntitySpawnHandler");
-                    handlerInstance = handlerClass.newInstance();
+                    handlerInstance = handlerClass.getDeclaredConstructor().newInstance();
 
                     for (Method m : handlerClass.getDeclaredMethods()) {
                         if (m.getParameterCount() == 1

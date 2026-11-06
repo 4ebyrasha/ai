@@ -36,9 +36,9 @@ public class LogWriter {
 		handler.flush();
 	}
 
-	public static void error(Object msg, Exception e) {
+	public static void error(Object msg, Throwable e) {
 		logger.log(Level.SEVERE, msg.toString());
-		logger.log(Level.SEVERE, e.getMessage(), e);
+		logger.log(Level.SEVERE, e.getMessage() != null ? e.getMessage() : e.getClass().getName(), e);
 		handler.flush();
 	}
 

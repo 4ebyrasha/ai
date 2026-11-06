@@ -146,6 +146,10 @@ import noppes.npcs.entity.EntityNpcPony;
 import noppes.npcs.entity.EntityNpcSlime;
 import noppes.npcs.entity.EntityProjectile;
 
+import com.cheba.container.TraderSellContainer;
+import com.cheba.gui.GuiDynamicTraderMenu;
+import com.cheba.gui.GuiDynamicTraderSell;
+
 public class ClientProxy extends CommonProxy {
 	public static PlayerData playerData = new PlayerData();
 	public static KeyBinding QuestLog;
@@ -482,6 +486,24 @@ public class ClientProxy extends CommonProxy {
 
 				if (gui == EnumGuiType.CustomGui) {
 					return new GuiCustom((ContainerCustomGui) container);
+				}
+				if (gui == EnumGuiType.DynamicTraderMenu) {
+					if (npc == null) {
+						return null;
+					}
+
+					return new GuiDynamicTraderMenu(npc.getEntityId());
+				}
+
+				if (gui == EnumGuiType.DynamicTraderSell) {
+					if (npc == null || !(container instanceof TraderSellContainer)) {
+						return null;
+					}
+
+					return new GuiDynamicTraderSell(
+							npc,
+							(TraderSellContainer) container
+					);
 				}
 			}
 

@@ -79,6 +79,8 @@ import noppes.npcs.roles.RoleTransporter;
 import noppes.npcs.schematics.SchematicWrapper;
 import noppes.npcs.util.IPermission;
 
+import com.cheba.network.TraderPacketService;
+
 public class PacketHandlerServer {
 	@SubscribeEvent
 	public void onServerPacket(ServerCustomPacketEvent event) {
@@ -131,7 +133,47 @@ public class PacketHandlerServer {
 
 	private void handlePacket(EnumPacketServer type, ByteBuf buffer, EntityPlayerMP player, EntityNPCInterface npc)
 			throws Exception {
-		if (type == EnumPacketServer.Delete) {
+		if (type == EnumPacketServer.TraderBuy) {
+			int npcEntityId = buffer.readInt();
+			String offerId = Server.readString(buffer);
+			int multiplier = buffer.isReadable()
+					? buffer.readInt()
+					: 1;
+
+			TraderPacketService.handleBuy(
+					player,
+					npcEntityId,
+					offerId,
+					multiplier
+			);
+
+		} else if (type == EnumPacketServer.TraderOpenSell) {
+			int npcEntityId = buffer.readInt();
+
+			Entity entity = player.world.getEntityByID(npcEntityId);
+
+			if (entity instanceof EntityNPCInterface) {
+				EntityNPCInterface traderNpc = (EntityNPCInterface) entity;
+
+				if (traderNpc.roleInterface instanceof RoleTrader
+						&& player.getDistanceSq(traderNpc) <= 64.0D) {
+
+					NoppesUtilServer.sendOpenGui(
+							player,
+							EnumGuiType.DynamicTraderSell,
+							traderNpc
+					);
+				}
+			}
+
+		} else if (type == EnumPacketServer.TraderSell) {
+			int npcEntityId = buffer.readInt();
+
+			TraderPacketService.handleSell(
+					player,
+					npcEntityId
+			);
+		} else if (type == EnumPacketServer.Delete) {
 			npc.delete();
 			NoppesUtilServer.deleteNpc(npc, player);
 		} else if (type == EnumPacketServer.SceneStart) {
@@ -613,8 +655,27 @@ public class PacketHandlerServer {
 																			return;
 																		}
 																	} else if (type == EnumPacketServer.RoleSave) {
-																		npc.roleInterface
-																				.readFromNBT(Server.readNBT(buffer));
+																		NBTTagCompound roleTag = Server.readNBT(buffer);
+
+																		if (npc.roleInterface instanceof RoleTrader) {
+																			RoleTrader traderRole = (RoleTrader) npc.roleInterface;
+
+																			traderRole.readFromNBTForSave(roleTag);
+
+																			String marketName = traderRole.marketName;
+
+																			if (marketName != null && !marketName.trim().isEmpty()) {
+																				RoleTrader.save(traderRole, marketName);
+
+																				RoleTrader.refreshLinkedMarkets(
+																						player.world,
+																						marketName
+																				);
+																			}
+																		} else {
+																			npc.roleInterface.readFromNBT(roleTag);
+																		}
+
 																		npc.updateClient = true;
 																	} else if (type == EnumPacketServer.RoleGet) {
 																		if (npc.roleInterface == null) {
@@ -673,14 +734,26 @@ public class PacketHandlerServer {
 																			String name;
 																			if (type == EnumPacketServer.TraderMarketSave) {
 																				name = Server.readString(buffer);
-																				boolean bo1 = buffer.readBoolean();
+																				boolean loadMarket = buffer.readBoolean();
+
 																				if (npc.roleInterface instanceof RoleTrader) {
-																					if (bo1) {
+																					if (loadMarket) {
 																						RoleTrader.setMarket(npc, name);
+
+																						NoppesUtilServer.sendRoleData(player, npc);
+
 																					} else {
 																						RoleTrader.save(
 																								(RoleTrader) npc.roleInterface,
-																								name);
+																								name
+																						);
+
+																						RoleTrader.refreshLinkedMarkets(
+																								player.world,
+																								name
+																						);
+
+																						NoppesUtilServer.sendRoleData(player, npc);
 																					}
 																				}
 																			} else if (type == EnumPacketServer.MovingPathGet) {
