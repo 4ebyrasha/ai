@@ -34,17 +34,6 @@ import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.fml.common.event.FMLServerStoppedEvent;
 import net.minecraftforge.fml.common.network.FMLEventChannel;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
-import nikedemos.markovnames.generators.MarkovAncientGreek;
-import nikedemos.markovnames.generators.MarkovAztec;
-import nikedemos.markovnames.generators.MarkovCustomNPCsClassic;
-import nikedemos.markovnames.generators.MarkovGenerator;
-import nikedemos.markovnames.generators.MarkovJapanese;
-import nikedemos.markovnames.generators.MarkovOldNorse;
-import nikedemos.markovnames.generators.MarkovRoman;
-import nikedemos.markovnames.generators.MarkovSaami;
-import nikedemos.markovnames.generators.MarkovSlavic;
-import nikedemos.markovnames.generators.MarkovSpanish;
-import nikedemos.markovnames.generators.MarkovWelsh;
 import noppes.npcs.api.NpcAPI;
 import noppes.npcs.api.wrapper.ItemStackWrapper;
 import noppes.npcs.api.wrapper.WrapperEntityData;
@@ -153,9 +142,6 @@ public class CustomNpcs {
 	public static boolean VerboseDebug = false;
 	public static MinecraftServer Server;
 
-	public static final MarkovGenerator[] MARKOV_GENERATOR =
-			new MarkovGenerator[10];
-
 	public CustomNpcs() {
 		instance = this;
 	}
@@ -261,18 +247,6 @@ public class CustomNpcs {
 		proxy.postload();
 		new CustomNpcsPermissions();
 
-		MARKOV_GENERATOR[0] = new MarkovRoman(3);
-		MARKOV_GENERATOR[1] = new MarkovJapanese(4);
-		MARKOV_GENERATOR[2] = new MarkovSlavic(3);
-		MARKOV_GENERATOR[3] = new MarkovWelsh(3);
-		MARKOV_GENERATOR[4] = new MarkovSaami(3);
-		MARKOV_GENERATOR[5] = new MarkovOldNorse(4);
-		MARKOV_GENERATOR[6] = new MarkovAncientGreek(3);
-		MARKOV_GENERATOR[7] = new MarkovAztec(3);
-		MARKOV_GENERATOR[8] = new MarkovCustomNPCsClassic(3);
-		MARKOV_GENERATOR[9] = new MarkovSpanish(3);
-
-		System.out.println("Markov dictionaries loaded!");
 	}
 
 	@EventHandler

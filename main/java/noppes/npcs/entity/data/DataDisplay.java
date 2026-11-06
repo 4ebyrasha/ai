@@ -4,7 +4,6 @@ import com.google.common.collect.Iterables;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import java.util.Iterator;
-import java.util.Random;
 import java.util.UUID;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
@@ -33,8 +32,6 @@ public class DataDisplay implements INPCDisplay {
 	EntityNPCInterface npc;
 	private String name;
 	private String title = "";
-	private int markovGeneratorId = 8;
-	private int markovGender = 0;
 	public byte skinType = 0;
 	private String url = "";
 	public GameProfile playerProfile;
@@ -55,18 +52,15 @@ public class DataDisplay implements INPCDisplay {
 	public DataDisplay(EntityNPCInterface npc) {
 		this.bossColor = Color.PINK;
 		this.npc = npc;
-		this.markovGeneratorId = (new Random()).nextInt(CustomNpcs.MARKOV_GENERATOR.length - 1);
-		this.name = this.getRandomName();
+		this.name = "NPC";
 	}
 
 	public String getRandomName() {
-		return CustomNpcs.MARKOV_GENERATOR[this.markovGeneratorId].fetch(this.markovGender);
+		return "NPC";
 	}
 
 	public NBTTagCompound writeToNBT(NBTTagCompound nbttagcompound) {
 		nbttagcompound.setString("Name", this.name);
-		nbttagcompound.setInteger("MarkovGeneratorId", this.markovGeneratorId);
-		nbttagcompound.setInteger("MarkovGender", this.markovGender);
 		nbttagcompound.setString("Title", this.title);
 		nbttagcompound.setString("SkinUrl", this.url);
 		nbttagcompound.setString("Texture", this.texture);
@@ -93,8 +87,6 @@ public class DataDisplay implements INPCDisplay {
 
 	public void readToNBT(NBTTagCompound nbttagcompound) {
 		this.setName(nbttagcompound.getString("Name"));
-		this.setMarkovGeneratorId(nbttagcompound.getInteger("MarkovGeneratorId"));
-		this.setMarkovGender(nbttagcompound.getInteger("MarkovGender"));
 		this.title = nbttagcompound.getString("Title");
 		int prevSkinType = this.skinType;
 		String prevTexture = this.texture;
@@ -201,26 +193,6 @@ public class DataDisplay implements INPCDisplay {
 		if (type != this.showName) {
 			this.showName = ValueUtil.CorrectInt(type, 0, 2);
 			this.npc.updateClient = true;
-		}
-	}
-
-	public int getMarkovGender() {
-		return this.markovGender;
-	}
-
-	public void setMarkovGender(int gender) {
-		if (this.markovGender != gender) {
-			this.markovGender = ValueUtil.CorrectInt(gender, 0, 2);
-		}
-	}
-
-	public int getMarkovGeneratorId() {
-		return this.markovGeneratorId;
-	}
-
-	public void setMarkovGeneratorId(int id) {
-		if (this.markovGeneratorId != id) {
-			this.markovGeneratorId = ValueUtil.CorrectInt(id, 0, CustomNpcs.MARKOV_GENERATOR.length - 1);
 		}
 	}
 
