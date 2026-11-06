@@ -6,10 +6,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
-import micdoodle8.mods.galacticraft.api.client.tabs.InventoryTabFactions;
-import micdoodle8.mods.galacticraft.api.client.tabs.InventoryTabQuests;
-import micdoodle8.mods.galacticraft.api.client.tabs.InventoryTabVanilla;
-import micdoodle8.mods.galacticraft.api.client.tabs.TabRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -204,17 +200,9 @@ public class ClientProxy extends CommonProxy {
 		}
 	}
 
+	@SuppressWarnings({"deprecation", "unchecked", "rawtypes"})
 	public void postload() {
 		MinecraftForge.EVENT_BUS.register(new ClientEventHandler());
-		if (CustomNpcs.InventoryGuiEnabled) {
-			MinecraftForge.EVENT_BUS.register(new TabRegistry());
-			if (TabRegistry.getTabList().isEmpty()) {
-				TabRegistry.registerTab(new InventoryTabVanilla());
-			}
-
-			TabRegistry.registerTab(new InventoryTabFactions());
-			TabRegistry.registerTab(new InventoryTabQuests());
-		}
 
 		RenderingRegistry.registerEntityRenderingHandler(EntityNpcPony.class, new RenderNPCPony());
 		RenderingRegistry.registerEntityRenderingHandler(EntityNpcCrystal.class,
@@ -234,10 +222,12 @@ public class ClientProxy extends CommonProxy {
 				new RenderCustomNpc(new ModelPlayerAlt(0.0F, true)));
 		RenderingRegistry.registerEntityRenderingHandler(EntityNpcClassicPlayer.class,
 				new RenderCustomNpc(new ModelClassicPlayer(0.0F)));
+
 		Minecraft.getMinecraft().getItemColors().registerItemColorHandler((stack, tintIndex) -> {
 			return 9127187;
 		}, new Item[] { CustomItems.mount, CustomItems.cloner, CustomItems.moving, CustomItems.scripter,
 				CustomItems.wand, CustomItems.teleporter });
+
 		Minecraft.getMinecraft().getItemColors().registerItemColorHandler((stack, tintIndex) -> {
 			IItemStack item = NpcAPI.Instance().getIItemStack(stack);
 			return stack.getItem() == CustomItems.scripted_item ? ((IItemScripted) item).getColor() : -1;
