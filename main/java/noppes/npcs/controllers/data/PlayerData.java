@@ -7,19 +7,18 @@ import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityInject;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import noppes.npcs.CustomNpcs;
 import noppes.npcs.LogWriter;
-import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.data.DataTimers;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.util.CustomNPCsScheduler;
 import noppes.npcs.util.NBTJsonUtil;
+
+import javax.annotation.Nonnull;
 
 public class PlayerData implements ICapabilityProvider {
 	@CapabilityInject(PlayerData.class)
@@ -39,8 +38,6 @@ public class PlayerData implements ICapabilityProvider {
 	public EntityPlayer player;
 	public String playername = "";
 	public String uuid = "";
-	private EntityNPCInterface activeCompanion = null;
-	public int companionID = 0;
 	public int playerLevel = 0;
 	public boolean updateClient = false;
 	public int dialogId = -1;
@@ -55,24 +52,13 @@ public class PlayerData implements ICapabilityProvider {
 		this.itemgiverData.loadNBTData(data);
 		this.mailData.loadNBTData(data);
 		this.timers.readFromNBT(data);
+
 		if (this.player != null) {
 			this.playername = this.player.getName();
 			this.uuid = this.player.getPersistentID().toString();
 		} else {
 			this.playername = data.getString("PlayerName");
 			this.uuid = data.getString("UUID");
-		}
-
-		this.companionID = data.getInteger("PlayerCompanionId");
-		if (data.hasKey("PlayerCompanion") && !this.hasCompanion()) {
-			EntityCustomNpc npc = new EntityCustomNpc(this.player.world);
-			npc.readEntityFromNBT(data.getCompoundTag("PlayerCompanion"));
-			npc.setPosition(this.player.posX, this.player.posY, this.player.posZ);
-			if (npc.advanced.role == 6) {
-				this.setCompanion(npc);
-				((RoleCompanion) npc.roleInterface).setSitting(false);
-				this.player.world.spawnEntity(npc);
-			}
 		}
 
 		this.scriptStoreddata = data.getCompoundTag("ScriptStoreddata");
@@ -103,57 +89,16 @@ public class PlayerData implements ICapabilityProvider {
 		this.timers.writeToNBT(compound);
 		compound.setString("PlayerName", this.playername);
 		compound.setString("UUID", this.uuid);
-		compound.setInteger("PlayerCompanionId", this.companionID);
 		compound.setTag("ScriptStoreddata", this.scriptStoreddata);
-		if (this.hasCompanion()) {
-			NBTTagCompound nbt = new NBTTagCompound();
-			if (this.activeCompanion.writeToNBTAtomically(nbt)) {
-				compound.setTag("PlayerCompanion", nbt);
-			}
-		}
 
 		return compound;
 	}
 
-	public boolean hasCompanion() {
-		return this.activeCompanion != null && !this.activeCompanion.isDead;
-	}
-
-	public void setCompanion(EntityNPCInterface npc) {
-		if (npc == null || npc.advanced.role == 6) {
-			++this.companionID;
-			this.activeCompanion = npc;
-			if (npc != null) {
-				((RoleCompanion) npc.roleInterface).companionID = this.companionID;
-			}
-
-			this.save(false);
-		}
-	}
-
-	public void updateCompanion(World world) {
-		if (this.hasCompanion() && world != this.activeCompanion.world) {
-			RoleCompanion role = (RoleCompanion) this.activeCompanion.roleInterface;
-			role.owner = this.player;
-			if (role.isFollowing()) {
-				NBTTagCompound nbt = new NBTTagCompound();
-				this.activeCompanion.writeToNBTAtomically(nbt);
-				this.activeCompanion.isDead = true;
-				EntityCustomNpc npc = new EntityCustomNpc(world);
-				npc.readEntityFromNBT(nbt);
-				npc.setPosition(this.player.posX, this.player.posY, this.player.posZ);
-				this.setCompanion(npc);
-				((RoleCompanion) npc.roleInterface).setSitting(false);
-				world.spawnEntity(npc);
-			}
-		}
-	}
-
-	public boolean hasCapability(Capability capability, EnumFacing facing) {
+	public boolean hasCapability(@Nonnull Capability capability, EnumFacing facing) {
 		return capability == PLAYERDATA_CAPABILITY;
 	}
 
-	public Object getCapability(Capability capability, EnumFacing facing) {
+	public Object getCapability(@Nonnull Capability capability, EnumFacing facing) {
 		return this.hasCapability(capability, facing) ? this : null;
 	}
 
