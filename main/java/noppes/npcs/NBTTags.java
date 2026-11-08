@@ -101,16 +101,24 @@ public class NBTTags {
 		return list;
 	}
 
-	public static HashMap getIntegerIntegerMap(NBTTagList tagList) {
-		HashMap list = new HashMap();
+
+	public static HashMap<Integer, Integer> getIntegerIntegerMap(
+			NBTTagList tagList) {
+
+		HashMap<Integer, Integer> list = new HashMap<>();
 
 		for (int i = 0; i < tagList.tagCount(); ++i) {
-			NBTTagCompound nbttagcompound = tagList.getCompoundTagAt(i);
-			list.put(nbttagcompound.getInteger("Slot"), nbttagcompound.getInteger("Integer"));
+			NBTTagCompound compound = tagList.getCompoundTagAt(i);
+
+			list.put(
+					compound.getInteger("Slot"),
+					compound.getInteger("Integer")
+			);
 		}
 
 		return list;
 	}
+
 
 	public static HashMap getIntegerLongMap(NBTTagList tagList) {
 		HashMap list = new HashMap();
@@ -339,24 +347,28 @@ public class NBTTags {
 		}
 	}
 
-	public static NBTTagList nbtIntegerIntegerMap(Map lines) {
-		NBTTagList nbttaglist = new NBTTagList();
+
+	public static NBTTagList nbtIntegerIntegerMap(
+			Map<Integer, Integer> lines) {
+
+		NBTTagList list = new NBTTagList();
+
 		if (lines == null) {
-			return nbttaglist;
-		} else {
-			Iterator var2 = lines.keySet().iterator();
-
-			while (var2.hasNext()) {
-				int slot = (Integer) var2.next();
-				NBTTagCompound nbttagcompound = new NBTTagCompound();
-				nbttagcompound.setInteger("Slot", slot);
-				nbttagcompound.setInteger("Integer", (Integer) lines.get(slot));
-				nbttaglist.appendTag(nbttagcompound);
-			}
-
-			return nbttaglist;
+			return list;
 		}
+
+		for (Map.Entry<Integer, Integer> entry : lines.entrySet()) {
+			NBTTagCompound compound = new NBTTagCompound();
+
+			compound.setInteger("Slot", entry.getKey());
+			compound.setInteger("Integer", entry.getValue());
+
+			list.appendTag(compound);
+		}
+
+		return list;
 	}
+
 
 	public static NBTTagList nbtIntegerLongMap(HashMap lines) {
 		NBTTagList nbttaglist = new NBTTagList();

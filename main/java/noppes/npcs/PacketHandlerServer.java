@@ -412,29 +412,32 @@ public class PacketHandlerServer {
 															quest11.readNBT(Server.readNBT(buffer));
 															QuestController.instance.saveQuest(category1, quest11);
 															Server.sendData(player, EnumPacketClient.GUI_UPDATE);
+
+
 														} else if (type == EnumPacketServer.QuestDialogGetTitle) {
-															quest1 = (Quest) DialogController.instance.dialogs
-																	.get(buffer.readInt());
-															quest2 = (Dialog) DialogController.instance.dialogs
-																	.get(buffer.readInt());
-															Dialog quest3 = (Dialog) DialogController.instance.dialogs
-																	.get(buffer.readInt());
+															int[] questDialogIds = new int[6];
+
+															for (int i = 0; i < questDialogIds.length; ++i) {
+																questDialogIds[i] = buffer.readInt();
+															}
+
 															compound = new NBTTagCompound();
-															if (quest1 != null) {
-																compound.setString("1", quest1.title);
+
+															for (int i = 0; i < questDialogIds.length; ++i) {
+																Dialog dialogEntry = (Dialog) DialogController.instance.dialogs.get(
+																		questDialogIds[i]);
+
+																if (dialogEntry != null) {
+																	compound.setString(
+																			String.valueOf(i + 1),
+																			dialogEntry.title
+																	);
+																}
 															}
 
-															if (quest2 != null) {
-																compound.setString("2", quest2.title);
-															}
-
-															if (quest3 != null) {
-																compound.setString("3", quest3.title);
-															}
-
-															Server.sendData(player, EnumPacketClient.GUI_DATA,
-																	compound);
-														} else if (type == EnumPacketServer.QuestRemove) {
+															Server.sendData(player, EnumPacketClient.GUI_DATA, compound);
+														}
+														else if (type == EnumPacketServer.QuestRemove) {
 															quest1 = (Quest) QuestController.instance.quests
 																	.get(buffer.readInt());
 															if (quest1 != null) {
