@@ -1,3 +1,4 @@
+
 package noppes.npcs.client.gui.util;
 
 import net.minecraft.client.Minecraft;
@@ -9,30 +10,41 @@ public class GuiNpcTextField extends GuiTextField {
 	public boolean enabled;
 	public boolean inMenu;
 	public boolean numbersOnly;
+	public boolean decimalNumbers;
+
 	private ITextfieldListener listener;
+
 	public int min;
 	public int max;
 	public int def;
+
 	private static GuiNpcTextField activeTextfield = null;
+
 	public boolean canEdit;
 	private final int[] allowedSpecialChars;
 
-	public GuiNpcTextField(int id, GuiScreen parent, FontRenderer fontRenderer, int i, int j, int k, int l, String s) {
+	public GuiNpcTextField(int id, GuiScreen parent, FontRenderer fontRenderer,
+						   int i, int j, int k, int l, String s) {
 		super(id, fontRenderer, i, j, k, l);
+
 		this.enabled = true;
 		this.inMenu = true;
 		this.numbersOnly = false;
+		this.decimalNumbers = false;
+
 		this.min = 0;
 		this.max = Integer.MAX_VALUE;
 		this.def = 0;
+
 		this.canEdit = true;
 		this.allowedSpecialChars = new int[] { 14, 211, 203, 205 };
+
 		this.setMaxStringLength(500);
 		this.setText(s == null ? "" : s);
+
 		if (parent instanceof ITextfieldListener) {
 			this.listener = (ITextfieldListener) parent;
 		}
-
 	}
 
 	public static boolean isActive() {
@@ -43,22 +55,30 @@ public class GuiNpcTextField extends GuiTextField {
 		this(id, parent, Minecraft.getMinecraft().fontRenderer, i, j, k, l, s);
 	}
 
-	private boolean charAllowed(char c, int i) {
-		if (!this.numbersOnly || Character.isDigit(c) || c == '-' && this.getText().length() == 0) {
-			return true;
-		} else {
-			int[] var3 = this.allowedSpecialChars;
-			int var4 = var3.length;
-
-			for (int var5 = 0; var5 < var4; ++var5) {
-				int j = var3[var5];
-				if (j == i) {
-					return true;
-				}
+	private boolean charAllowed(char c, int keyCode) {
+		if (this.decimalNumbers) {
+			if (Character.isDigit(c)) {
+				return true;
 			}
 
-			return false;
+			if ((c == '.' || c == ',')
+					&& this.getText().indexOf('.') < 0
+					&& this.getText().indexOf(',') < 0) {
+				return true;
+			}
+		} else if (!this.numbersOnly
+				|| Character.isDigit(c)
+				|| c == '-' && this.getText().length() == 0) {
+			return true;
 		}
+
+		for (int allowedKey : this.allowedSpecialChars) {
+			if (allowedKey == keyCode) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	public boolean textboxKeyTyped(char c, int i) {
@@ -77,7 +97,7 @@ public class GuiNpcTextField extends GuiTextField {
 		try {
 			Integer.parseInt(this.getText());
 			return true;
-		} catch (NumberFormatException var2) {
+		} catch (NumberFormatException exception) {
 			return false;
 		}
 	}
@@ -85,19 +105,20 @@ public class GuiNpcTextField extends GuiTextField {
 	public boolean mouseClicked(int i, int j, int k) {
 		if (!this.canEdit) {
 			return false;
-		} else {
-			boolean wasFocused = this.isFocused();
-			boolean clicked = super.mouseClicked(i, j, k);
-			if (wasFocused != this.isFocused() && wasFocused) {
-				this.unFocused();
-			}
-
-			if (this.isFocused()) {
-				activeTextfield = this;
-			}
-
-			return clicked;
 		}
+
+		boolean wasFocused = this.isFocused();
+		boolean clicked = super.mouseClicked(i, j, k);
+
+		if (wasFocused && !this.isFocused()) {
+			this.unFocused();
+		}
+
+		if (this.isFocused()) {
+			activeTextfield = this;
+		}
+
+		return clicked;
 	}
 
 	public void unFocused() {
@@ -120,14 +141,12 @@ public class GuiNpcTextField extends GuiTextField {
 		if (this == activeTextfield) {
 			activeTextfield = null;
 		}
-
 	}
 
 	public void drawTextBox() {
 		if (this.enabled) {
 			super.drawTextBox();
 		}
-
 	}
 
 	public void setMinMaxDefault(int i, int j, int k) {
@@ -137,15 +156,15 @@ public class GuiNpcTextField extends GuiTextField {
 	}
 
 	public static void unfocus() {
-		GuiNpcTextField prev = activeTextfield;
+		GuiNpcTextField previous = activeTextfield;
 		activeTextfield = null;
-		if (prev != null) {
-			prev.unFocused();
-		}
 
+		if (previous != null) {
+			previous.unFocused();
+		}
 	}
 
-	public void drawTextBox(int mousX, int mousY) {
+	public void drawTextBox(int mouseX, int mouseY) {
 		this.drawTextBox();
 	}
 

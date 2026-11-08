@@ -30,16 +30,53 @@ public interface INPCInventory {
 	public void setArmor(int slot, IItemStack item);
 
 	/**
-	 * @param slot 0-17
+	 * Gets the primary item in a drop group.
+	 *
+	 * @param slot Drop group index, 0-17
+	 */
+	public IItemStack getDropItem(int slot);
+
+	/**
+	 * Gets an item from a drop group.
+	 *
+	 * @param slot Drop group index, 0-17
+	 * @param itemSlot Item position in the group, 0-4
+	 */
+	public IItemStack getDropItem(int slot, int itemSlot);
+
+	/**
+	 * Sets the primary item and the group's chance.
+	 *
+	 * @param slot Drop group index, 0-17
 	 * @param item
-	 * @param chance 1-100
+	 * @param chance Chance in percent, 0-100
 	 */
 	public void setDropItem(int slot, IItemStack item, int chance);
 
 	/**
-	 * @param slot 0-17
+	 * Sets or clears an item in a drop group without changing its chance.
+	 *
+	 * @param slot Drop group index, 0-17
+	 * @param itemSlot Item position in the group, 0-4
+	 * @param item
 	 */
-	public IItemStack getDropItem(int slot);
+	public void setDropItem(int slot, int itemSlot, IItemStack item);
+
+	/**
+	 * Gets the chance of a drop group in percent.
+	 *
+	 * @param slot Drop group index, 0-17
+	 * @return Chance between 0 and 100, with precision of 0.001
+	 */
+	public double getDropChance(int slot);
+
+	/**
+	 * Sets the chance of a drop group in percent.
+	 *
+	 * @param slot Drop group index, 0-17
+	 * @param chance Chance between 0 and 100, with precision of 0.001
+	 */
+	public void setDropChance(int slot, double chance);
 
 	public int getExpMin();
 

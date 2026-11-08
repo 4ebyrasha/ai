@@ -1,29 +1,31 @@
 
 package noppes.npcs.client.gui.mainmenu;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
+
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.inventory.Slot;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.text.translation.I18n;
+
 import noppes.npcs.client.Client;
+import noppes.npcs.client.CustomNpcResourceListener;
 import noppes.npcs.client.gui.util.GuiContainerNPCInterface2;
 import noppes.npcs.client.gui.util.GuiNpcButton;
 import noppes.npcs.client.gui.util.GuiNpcLabel;
-import noppes.npcs.client.gui.util.GuiNpcSlider;
 import noppes.npcs.client.gui.util.GuiNpcTextField;
 import noppes.npcs.client.gui.util.IGuiData;
-import noppes.npcs.client.gui.util.ISliderListener;
+import noppes.npcs.client.gui.util.ITextfieldListener;
 import noppes.npcs.constants.EnumPacketServer;
 import noppes.npcs.containers.ContainerNPCInv;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.data.DataInventory;
 
-@SuppressWarnings("deprecation")
-public class GuiNPCInv extends GuiContainerNPCInterface2 implements ISliderListener, IGuiData {
-	private static final int SLIDER_ID_OFFSET = 100;
+public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, ITextfieldListener {
+	private static final int CHANCE_FIELD_ID_OFFSET = 100;
 
 	private final HashMap<Integer, Integer> chances = new HashMap<>();
 	private final ContainerNPCInv container;
@@ -31,11 +33,13 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements ISliderListe
 
 	public GuiNPCInv(EntityNPCInterface npc, ContainerNPCInv container) {
 		super(npc, container, 3);
+
 		this.setBackground("npcinv.png");
 		this.container = container;
 		this.xSize = 470;
 		this.ySize = 200;
 		this.slot = this.getResource("slot.png");
+
 		Client.sendData(EnumPacketServer.MainmenuInvGet);
 	}
 
@@ -43,14 +47,18 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements ISliderListe
 		super.initGui();
 
 		this.addLabel(new GuiNpcLabel(0, "inv.minExp", this.guiLeft + 118, this.guiTop + 18));
-		this.addTextField(new GuiNpcTextField(0, this, this.fontRenderer, this.guiLeft + 108, this.guiTop + 29, 60, 20,
+		this.addTextField(new GuiNpcTextField(0, this, this.fontRenderer,
+				this.guiLeft + 108, this.guiTop + 29, 60, 20,
 				this.npc.inventory.getExpMin() + ""));
+
 		this.getTextField(0).numbersOnly = true;
 		this.getTextField(0).setMinMaxDefault(0, 32767, 0);
 
 		this.addLabel(new GuiNpcLabel(1, "inv.maxExp", this.guiLeft + 118, this.guiTop + 52));
-		this.addTextField(new GuiNpcTextField(1, this, this.fontRenderer, this.guiLeft + 108, this.guiTop + 63, 60, 20,
+		this.addTextField(new GuiNpcTextField(1, this, this.fontRenderer,
+				this.guiLeft + 108, this.guiTop + 63, 60, 20,
 				this.npc.inventory.getExpMax() + ""));
+
 		this.getTextField(1).numbersOnly = true;
 		this.getTextField(1).setMinMaxDefault(0, 32767, 0);
 
@@ -64,28 +72,33 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements ISliderListe
 
 		int rowsPerColumn = DataInventory.DROP_SLOT_COUNT / 2;
 
-		for (int i = 0; i < DataInventory.DROP_SLOT_COUNT; ++i) {
-			int column = i / rowsPerColumn;
-			int row = i % rowsPerColumn;
+		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
+			int column = group / rowsPerColumn;
+			int row = group % rowsPerColumn;
 
-			int chance = 100;
+			int chance = (int) Math.round(
+					this.npc.inventory.getDropChance(group) * DataInventory.DROP_CHANCE_SCALE);
 
-			if (this.npc.inventory.dropchance.containsKey(i)) {
-				chance = (Integer) this.npc.inventory.dropchance.get(i);
-			}
+			chance = Math.max(0, Math.min(DataInventory.MAX_DROP_CHANCE, chance));
+			this.chances.put(group, chance);
 
-			if (chance <= 0 || chance > 100) {
-				chance = 100;
-			}
+			int fieldX = this.guiLeft + (column == 0 ? 282 : 422);
+			int fieldY = this.guiTop + 14 + row * 21;
 
-			this.chances.put(i, chance);
+			GuiNpcTextField chanceField = new GuiNpcTextField(
+					CHANCE_FIELD_ID_OFFSET + group,
+					this,
+					this.fontRenderer,
+					fieldX,
+					fieldY,
+					40,
+					20,
+					this.formatChance(chance));
 
-			int sliderX = this.guiLeft + (column == 0 ? 211 : 351);
+			chanceField.decimalNumbers = true;
+			chanceField.setMaxStringLength(7);
 
-			GuiNpcSlider slider = new GuiNpcSlider(this, SLIDER_ID_OFFSET + i, sliderX,
-					this.guiTop + 14 + row * 21, 110, 20, (float) chance / 100.0F);
-
-			this.addSlider(slider);
+			this.addTextField(chanceField);
 		}
 	}
 
@@ -105,22 +118,40 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements ISliderListe
 			Slot slot = this.container.getSlot(id);
 
 			if (slot.getHasStack()) {
-				this.drawTexturedModalRect(this.guiLeft + slot.xPos - 1, this.guiTop + slot.yPos - 1, 0, 0, 18, 18);
+				this.drawTexturedModalRect(
+						this.guiLeft + slot.xPos - 1,
+						this.guiTop + slot.yPos - 1,
+						0, 0, 18, 18);
 			}
+		}
+
+		for (int row = 0; row < DataInventory.DROP_SLOT_COUNT / 2; ++row) {
+			int y = this.guiTop + 19 + row * 21;
+
+			this.fontRenderer.drawString("%", this.guiLeft + 324, y,
+					CustomNpcResourceListener.DefaultTextColor);
+
+			this.fontRenderer.drawString("%", this.guiLeft + 464, y,
+					CustomNpcResourceListener.DefaultTextColor);
 		}
 	}
 
 	public void drawScreen(int i, int j, float f) {
 		int showname = this.npc.display.getShowName();
+
 		this.npc.display.setShowName(1);
 		this.drawNpc(50, 84);
 		this.npc.display.setShowName(showname);
+
 		super.drawScreen(i, j, f);
 	}
 
 	public void save() {
-		this.npc.inventory.dropchance = new HashMap<>(this.chances);
-		this.npc.inventory.setExp(this.getTextField(0).getInteger(), this.getTextField(1).getInteger());
+		this.saveChanceFields();
+
+		this.npc.inventory.setExp(
+				this.getTextField(0).getInteger(),
+				this.getTextField(1).getInteger());
 
 		Client.sendData(EnumPacketServer.MainmenuInvSave,
 				this.npc.inventory.writeEntityToNBT(new NBTTagCompound()));
@@ -131,19 +162,65 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements ISliderListe
 		this.initGui();
 	}
 
-	public void mouseDragged(GuiNpcSlider guiNpcSlider) {
-		guiNpcSlider.displayString = I18n.translateToLocal("inv.dropChance") + ": "
-				+ (int) (guiNpcSlider.sliderValue * 100.0F) + "%";
-	}
-
-	public void mousePressed(GuiNpcSlider guiNpcSlider) {
-	}
-
-	public void mouseReleased(GuiNpcSlider guiNpcSlider) {
-		int dropSlot = guiNpcSlider.id - SLIDER_ID_OFFSET;
-
-		if (dropSlot >= 0 && dropSlot < DataInventory.DROP_SLOT_COUNT) {
-			this.chances.put(dropSlot, (int) (guiNpcSlider.sliderValue * 100.0F));
+	public void unFocused(GuiNpcTextField textField) {
+		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
+			if (this.getTextField(CHANCE_FIELD_ID_OFFSET + group) == textField) {
+				this.updateChanceField(group, textField);
+				return;
+			}
 		}
+	}
+
+	private void saveChanceFields() {
+		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
+			GuiNpcTextField field = this.getTextField(CHANCE_FIELD_ID_OFFSET + group);
+
+			if (field != null) {
+				this.updateChanceField(group, field);
+			}
+		}
+
+		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
+			int chance = this.chances.getOrDefault(group, DataInventory.MAX_DROP_CHANCE);
+
+			this.npc.inventory.setDropChance(
+					group,
+					chance / (double) DataInventory.DROP_CHANCE_SCALE);
+		}
+	}
+
+	private void updateChanceField(int group, GuiNpcTextField field) {
+		int previousChance = this.chances.getOrDefault(
+				group, DataInventory.MAX_DROP_CHANCE);
+
+		String text = field.getText().trim().replace(',', '.');
+		int chance = previousChance;
+
+		try {
+			BigDecimal percentage = new BigDecimal(text);
+
+			if (percentage.compareTo(BigDecimal.ZERO) < 0
+					|| percentage.compareTo(BigDecimal.valueOf(100)) > 0) {
+				throw new NumberFormatException("Chance must be between 0 and 100");
+			}
+
+			chance = percentage
+					.setScale(3, RoundingMode.HALF_UP)
+					.movePointRight(3)
+					.intValueExact();
+		} catch (NumberFormatException | ArithmeticException exception) {
+			chance = previousChance;
+		}
+
+		chance = Math.max(0, Math.min(DataInventory.MAX_DROP_CHANCE, chance));
+
+		this.chances.put(group, chance);
+		field.setText(this.formatChance(chance));
+	}
+
+	private String formatChance(int chance) {
+		return BigDecimal.valueOf(chance, 3)
+				.stripTrailingZeros()
+				.toPlainString();
 	}
 }

@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nonnull;
+
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
@@ -30,15 +32,29 @@ import noppes.npcs.api.event.NpcEvent;
 import noppes.npcs.api.item.IItemStack;
 import noppes.npcs.api.wrapper.ItemStackWrapper;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.util.ValueUtil;
-
-import javax.annotation.Nonnull;
 
 public class DataInventory implements IInventory, INPCInventory {
 	public static final int DROP_SLOT_COUNT = 18;
+	public static final int DROP_ITEMS_PER_SLOT = 5;
+	public static final int DROP_ITEM_COUNT = DROP_SLOT_COUNT * DROP_ITEMS_PER_SLOT;
 
+	public static final int DROP_CHANCE_SCALE = 1000;
+	public static final int MAX_DROP_CHANCE = 100 * DROP_CHANCE_SCALE;
+
+	private static final int DROP_INVENTORY_OFFSET = 7;
+
+	// Primary drop items. Keys remain 0-17 for compatibility.
 	public Map<Integer, IItemStack> drops = new HashMap<>();
+
+	// Additional items. Keys: group * 4 + additional item index.
+	public Map<Integer, IItemStack> additionalDrops = new HashMap<>();
+
+	// Legacy chance values in whole percentages.
 	public Map<Integer, Integer> dropchance = new HashMap<>();
+
+	// Precise chance values in thousandths of a percent.
+	public Map<Integer, Integer> dropChanceMilli = new HashMap<>();
+
 	public Map<Integer, IItemStack> weapons = new HashMap<>();
 	public Map<Integer, IItemStack> armor = new HashMap<>();
 
@@ -79,14 +95,75 @@ public class DataInventory implements IInventory, INPCInventory {
 		return result;
 	}
 
+	private static int clampChance(int chance) {
+		return Math.max(0, Math.min(MAX_DROP_CHANCE, chance));
+	}
+
+	private static int toLegacyChance(int chanceMilli) {
+		return Math.max(1, Math.min(100, Math.round(chanceMilli / (float) DROP_CHANCE_SCALE)));
+	}
+
+	private void validateDropSlot(int slot) {
+		if (slot < 0 || slot >= DROP_SLOT_COUNT) {
+			throw new CustomNPCsException("Bad slot number: " + slot);
+		}
+	}
+
+	private void validateDropItemSlot(int itemSlot) {
+		if (itemSlot < 0 || itemSlot >= DROP_ITEMS_PER_SLOT) {
+			throw new CustomNPCsException("Bad drop item slot number: " + itemSlot);
+		}
+	}
+
+	private Map<Integer, IItemStack> getDropMap(int slot, int itemSlot) {
+		return itemSlot == 0 ? this.drops : this.additionalDrops;
+	}
+
+	private int getDropMapSlot(int slot, int itemSlot) {
+		return itemSlot == 0 ? slot : slot * 4 + itemSlot - 1;
+	}
+
+	private void clearDropGroup(int slot) {
+		this.drops.remove(slot);
+
+		int firstAdditionalSlot = slot * 4;
+
+		for (int i = 0; i < DROP_ITEMS_PER_SLOT - 1; ++i) {
+			this.additionalDrops.remove(firstAdditionalSlot + i);
+		}
+	}
+
+	private int getDropChanceMilli(int slot) {
+		Integer chance = this.dropChanceMilli.get(slot);
+
+		if (chance != null) {
+			return clampChance(chance);
+		}
+
+		Integer legacyChance = this.dropchance.get(slot);
+
+		if (legacyChance == null) {
+			return MAX_DROP_CHANCE;
+		}
+
+		return Math.max(0, Math.min(100, legacyChance)) * DROP_CHANCE_SCALE;
+	}
+
 	public NBTTagCompound writeEntityToNBT(NBTTagCompound compound) {
 		compound.setInteger("MinExp", this.minExp);
 		compound.setInteger("MaxExp", this.maxExp);
+
 		compound.setTag("NpcInv", NBTTags.nbtIItemStackMap(this.drops));
+		compound.setTag("NpcInvExtras", NBTTags.nbtIItemStackMap(this.additionalDrops));
+
 		compound.setTag("Armor", NBTTags.nbtIItemStackMap(this.armor));
 		compound.setTag("Weapons", NBTTags.nbtIItemStackMap(this.weapons));
+
 		compound.setTag("DropChance", NBTTags.nbtIntegerIntegerMap(this.dropchance));
+		compound.setTag("DropChanceMilli", NBTTags.nbtIntegerIntegerMap(this.dropChanceMilli));
+
 		compound.setInteger("LootMode", this.lootMode);
+
 		return compound;
 	}
 
@@ -95,10 +172,40 @@ public class DataInventory implements IInventory, INPCInventory {
 		this.maxExp = compound.getInteger("MaxExp");
 
 		this.drops = readItemStackMap(compound.getTagList("NpcInv", 10));
-		this.dropchance = readIntegerMap(compound.getTagList("DropChance", 10));
+		this.additionalDrops = readItemStackMap(compound.getTagList("NpcInvExtras", 10));
+
+		this.dropchance = new HashMap<>();
+		this.dropChanceMilli = new HashMap<>();
+
+		Map<Integer, Integer> loadedLegacyChances =
+				readIntegerMap(compound.getTagList("DropChance", 10));
+
+		if (compound.hasKey("DropChanceMilli", 9)) {
+			Map<Integer, Integer> loadedPreciseChances =
+					readIntegerMap(compound.getTagList("DropChanceMilli", 10));
+
+			for (Map.Entry<Integer, Integer> entry : loadedPreciseChances.entrySet()) {
+				int slot = entry.getKey();
+
+				if (slot >= 0 && slot < DROP_SLOT_COUNT) {
+					int chance = clampChance(entry.getValue());
+					this.dropChanceMilli.put(slot, chance);
+					this.dropchance.put(slot, toLegacyChance(chance));
+				}
+			}
+		} else {
+			for (Map.Entry<Integer, Integer> entry : loadedLegacyChances.entrySet()) {
+				int slot = entry.getKey();
+
+				if (slot >= 0 && slot < DROP_SLOT_COUNT) {
+					int legacyChance = Math.max(0, Math.min(100, entry.getValue()));
+					this.dropchance.put(slot, legacyChance);
+					this.dropChanceMilli.put(slot, legacyChance * DROP_CHANCE_SCALE);
+				}
+			}
+		}
 
 		this.readEquipmentFromNBT(compound);
-
 		this.lootMode = compound.getInteger("LootMode");
 	}
 
@@ -116,7 +223,8 @@ public class DataInventory implements IInventory, INPCInventory {
 			return this.weapons;
 		}
 
-		return this.drops;
+		int dropItemSlot = (inventorySlot - DROP_INVENTORY_OFFSET) % DROP_ITEMS_PER_SLOT;
+		return dropItemSlot == 0 ? this.drops : this.additionalDrops;
 	}
 
 	private int getInventoryMapSlot(int inventorySlot) {
@@ -128,7 +236,11 @@ public class DataInventory implements IInventory, INPCInventory {
 			return inventorySlot - 4;
 		}
 
-		return inventorySlot - 7;
+		int dropIndex = inventorySlot - DROP_INVENTORY_OFFSET;
+		int group = dropIndex / DROP_ITEMS_PER_SLOT;
+		int itemSlot = dropIndex % DROP_ITEMS_PER_SLOT;
+
+		return itemSlot == 0 ? group : group * 4 + itemSlot - 1;
 	}
 
 	private IItemStack wrapItemStack(ItemStack stack) {
@@ -178,47 +290,99 @@ public class DataInventory implements IInventory, INPCInventory {
 	}
 
 	public IItemStack getDropItem(int slot) {
-		if (slot >= 0 && slot < DROP_SLOT_COUNT) {
-			return this.drops.get(slot);
-		}
+		this.validateDropSlot(slot);
+		return this.drops.get(slot);
+	}
 
-		throw new CustomNPCsException("Bad slot number: " + slot);
+	public IItemStack getDropItem(int slot, int itemSlot) {
+		this.validateDropSlot(slot);
+		this.validateDropItemSlot(itemSlot);
+
+		return this.getDropMap(slot, itemSlot).get(this.getDropMapSlot(slot, itemSlot));
 	}
 
 	public void setDropItem(int slot, IItemStack item, int chance) {
-		if (slot < 0 || slot >= DROP_SLOT_COUNT) {
-			throw new CustomNPCsException("Bad slot number: " + slot);
-		}
+		this.validateDropSlot(slot);
 
-		chance = ValueUtil.CorrectInt(chance, 1, 100);
-
-		if (item != null && !item.isEmpty()) {
-			this.dropchance.put(slot, chance);
-			this.drops.put(slot, item);
-		} else {
+		if (item == null || item.isEmpty()) {
+			this.clearDropGroup(slot);
 			this.dropchance.remove(slot);
-			this.drops.remove(slot);
+			this.dropChanceMilli.remove(slot);
+			return;
 		}
+
+		this.drops.put(slot, item);
+		this.setDropChance(slot, chance);
+	}
+
+	public void setDropItem(int slot, int itemSlot, IItemStack item) {
+		this.validateDropSlot(slot);
+		this.validateDropItemSlot(itemSlot);
+
+		Map<Integer, IItemStack> itemMap = this.getDropMap(slot, itemSlot);
+		int mapSlot = this.getDropMapSlot(slot, itemSlot);
+
+		if (item == null || item.isEmpty()) {
+			itemMap.remove(mapSlot);
+		} else {
+			itemMap.put(mapSlot, item);
+		}
+	}
+
+	public double getDropChance(int slot) {
+		this.validateDropSlot(slot);
+		return this.getDropChanceMilli(slot) / (double) DROP_CHANCE_SCALE;
+	}
+
+	public void setDropChance(int slot, double chance) {
+		this.validateDropSlot(slot);
+
+		if (Double.isNaN(chance) || Double.isInfinite(chance)) {
+			throw new CustomNPCsException("Invalid drop chance: " + chance);
+		}
+
+		double clampedChance = Math.max(0.0D, Math.min(100.0D, chance));
+		int chanceMilli = (int) Math.round(clampedChance * DROP_CHANCE_SCALE);
+
+		this.dropChanceMilli.put(slot, chanceMilli);
+		this.dropchance.put(slot, toLegacyChance(chanceMilli));
 	}
 
 	public IItemStack[] getItemsRNG() {
 		List<IItemStack> items = new ArrayList<>();
 
-		for (Map.Entry<Integer, IItemStack> entry : this.drops.entrySet()) {
-			Integer slot = entry.getKey();
-			IItemStack item = entry.getValue();
+		for (int slot = 0; slot < DROP_SLOT_COUNT; ++slot) {
+			boolean hasItems = false;
 
-			if (slot == null || item == null || item.isEmpty()) {
+			for (int itemSlot = 0; itemSlot < DROP_ITEMS_PER_SLOT; ++itemSlot) {
+				IItemStack item = this.getDropItem(slot, itemSlot);
+
+				if (item != null && !item.isEmpty()) {
+					hasItems = true;
+					break;
+				}
+			}
+
+			if (!hasItems) {
 				continue;
 			}
 
-			Integer configuredChance = this.dropchance.get(slot);
-			int dropChance = configuredChance == null ? 100 : configuredChance;
+			int chance = this.getDropChanceMilli(slot);
 
-			int chance = this.npc.world.rand.nextInt(100) + dropChance;
+			if (chance <= 0) {
+				continue;
+			}
 
-			if (chance >= 100) {
-				items.add(item);
+			if (chance < MAX_DROP_CHANCE && this.npc.world.rand.nextInt(MAX_DROP_CHANCE) >= chance) {
+				continue;
+			}
+
+			for (int itemSlot = 0; itemSlot < DROP_ITEMS_PER_SLOT; ++itemSlot) {
+				IItemStack item = this.getDropItem(slot, itemSlot);
+
+				if (item != null && !item.isEmpty()) {
+					items.add(item);
+				}
 			}
 		}
 
@@ -319,7 +483,7 @@ public class DataInventory implements IInventory, INPCInventory {
 	}
 
 	public int getSizeInventory() {
-		return 7 + DROP_SLOT_COUNT;
+		return 7 + DROP_ITEM_COUNT;
 	}
 
 	@Nonnull
@@ -349,6 +513,11 @@ public class DataInventory implements IInventory, INPCInventory {
 
 		ItemStack stack = item.getMCItemStack();
 
+		if (stack == null || stack.isEmpty()) {
+			inventory.remove(mapSlot);
+			return ItemStack.EMPTY;
+		}
+
 		if (stack.getCount() <= count) {
 			inventory.remove(mapSlot);
 			return stack;
@@ -373,14 +542,19 @@ public class DataInventory implements IInventory, INPCInventory {
 		return ItemStackWrapper.MCItem(item);
 	}
 
-	public void setInventorySlotContents(int slot,@Nonnull ItemStack stack) {
+	public void setInventorySlotContents(int slot, @Nonnull ItemStack stack) {
 		if (slot < 0 || slot >= this.getSizeInventory()) {
 			return;
 		}
 
-		this.getInventoryMap(slot).put(
-				this.getInventoryMapSlot(slot),
-				this.wrapItemStack(stack));
+		Map<Integer, IItemStack> inventory = this.getInventoryMap(slot);
+		int mapSlot = this.getInventoryMapSlot(slot);
+
+		if (stack == null || stack.isEmpty()) {
+			inventory.remove(mapSlot);
+		} else {
+			inventory.put(mapSlot, this.wrapItemStack(stack));
+		}
 	}
 
 	public int getInventoryStackLimit() {
@@ -391,7 +565,7 @@ public class DataInventory implements IInventory, INPCInventory {
 		return true;
 	}
 
-	public boolean isItemValidForSlot(int slot,@Nonnull ItemStack itemstack) {
+	public boolean isItemValidForSlot(int slot, @Nonnull ItemStack itemstack) {
 		return true;
 	}
 
