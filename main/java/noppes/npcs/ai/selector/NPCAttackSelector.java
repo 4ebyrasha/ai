@@ -5,7 +5,6 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.MobEffects;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.JobGuard;
 
 public class NPCAttackSelector implements Predicate {
 	private EntityNPCInterface npc;
@@ -16,24 +15,36 @@ public class NPCAttackSelector implements Predicate {
 
 	public boolean isEntityApplicable(EntityLivingBase entity) {
 		if (entity.isEntityAlive() && entity != this.npc
-				&& this.npc.isInRange(entity, (double) this.npc.stats.aggroRange) && entity.getHealth() >= 1.0F) {
+				&& this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)
+				&& entity.getHealth() >= 1.0F) {
+
 			if (this.npc.ais.directLOS && !this.npc.getEntitySenses().canSee(entity)) {
 				return false;
-			} else if (!this.npc.ais.attackInvisible && entity.isPotionActive(MobEffects.INVISIBILITY)
+			} else if (!this.npc.ais.attackInvisible
+					&& entity.isPotionActive(MobEffects.INVISIBILITY)
 					&& !this.npc.isInRange(entity, 3.0D)) {
 				return false;
 			} else {
 				if (!this.npc.isFollower() && this.npc.ais.shouldReturnHome()) {
 					int allowedDistance = this.npc.stats.aggroRange * 2;
+
 					if (this.npc.ais.getMovingType() == 1) {
 						allowedDistance += this.npc.ais.walkingRange;
 					}
 
-					double distance = entity.getDistanceSq((double) this.npc.getStartXPos(), this.npc.getStartYPos(),
-							(double) this.npc.getStartZPos());
+					double distance = entity.getDistanceSq(
+							(double) this.npc.getStartXPos(),
+							this.npc.getStartYPos(),
+							(double) this.npc.getStartZPos()
+					);
+
 					if (this.npc.ais.getMovingType() == 2) {
 						int[] arr = this.npc.ais.getCurrentMovingPath();
-						distance = entity.getDistanceSq((double) arr[0], (double) arr[1], (double) arr[2]);
+						distance = entity.getDistanceSq(
+								(double) arr[0],
+								(double) arr[1],
+								(double) arr[2]
+						);
 					}
 
 					if (distance > (double) (allowedDistance * allowedDistance)) {
@@ -41,14 +52,10 @@ public class NPCAttackSelector implements Predicate {
 					}
 				}
 
-				if (this.npc.advanced.job == 3
-						&& ((JobGuard) this.npc.jobInterface).isEntityApplicable(entity)) {
-					return true;
-				}
-
 				if (entity instanceof EntityPlayerMP) {
 					EntityPlayerMP player = (EntityPlayerMP) entity;
-					return this.npc.faction.isAggressiveToPlayer(player) && !player.capabilities.disableDamage;
+					return this.npc.faction.isAggressiveToPlayer(player)
+							&& !player.capabilities.disableDamage;
 				}
 
 				if (entity instanceof EntityNPCInterface) {
@@ -57,7 +64,9 @@ public class NPCAttackSelector implements Predicate {
 					}
 
 					if (this.npc.advanced.attackOtherFactions) {
-						return this.npc.faction.isAggressiveToNpc((EntityNPCInterface) entity);
+						return this.npc.faction.isAggressiveToNpc(
+								(EntityNPCInterface) entity
+						);
 					}
 				}
 
