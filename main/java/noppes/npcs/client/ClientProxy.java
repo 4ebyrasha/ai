@@ -78,7 +78,6 @@ import noppes.npcs.client.gui.player.GuiMailmanWrite;
 import noppes.npcs.client.gui.player.GuiNPCTrader;
 import noppes.npcs.client.gui.player.GuiNpcCarpentryBench;
 import noppes.npcs.client.gui.questtypes.GuiNpcQuestTypeItem;
-import noppes.npcs.client.gui.roles.GuiNpcItemGiver;
 import noppes.npcs.client.gui.roles.GuiNpcTraderSetup;
 import noppes.npcs.client.gui.script.GuiScript;
 import noppes.npcs.client.gui.script.GuiScriptBlock;
@@ -110,7 +109,6 @@ import noppes.npcs.containers.ContainerManageRecipes;
 import noppes.npcs.containers.ContainerNPCInv;
 import noppes.npcs.containers.ContainerNPCTrader;
 import noppes.npcs.containers.ContainerNPCTraderSetup;
-import noppes.npcs.containers.ContainerNpcItemGiver;
 import noppes.npcs.containers.ContainerNpcQuestReward;
 import noppes.npcs.containers.ContainerNpcQuestTypeItem;
 import noppes.npcs.controllers.PixelmonHelper;
@@ -360,10 +358,6 @@ public class ClientProxy extends CommonProxy {
 
 				if (gui == EnumGuiType.ScriptPlayers) {
 					return new GuiScriptGlobal();
-				}
-
-				if (gui == EnumGuiType.SetupItemGiver) {
-					return new GuiNpcItemGiver(npc, (ContainerNpcItemGiver) container);
 				}
 
 				if (gui == EnumGuiType.SetupTrader) {

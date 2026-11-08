@@ -19,7 +19,6 @@ import noppes.npcs.containers.ContainerMerchantAdd;
 import noppes.npcs.containers.ContainerNPCInv;
 import noppes.npcs.containers.ContainerNPCTrader;
 import noppes.npcs.containers.ContainerNPCTraderSetup;
-import noppes.npcs.containers.ContainerNpcItemGiver;
 import noppes.npcs.containers.ContainerNpcQuestReward;
 import noppes.npcs.containers.ContainerNpcQuestTypeItem;
 import noppes.npcs.controllers.data.PlayerData;
@@ -58,8 +57,6 @@ public class CommonProxy implements IGuiHandler {
 			return new ContainerCarpentryBench(player.inventory, player.world, new BlockPos(x, y, z));
 		} else if (gui == EnumGuiType.PlayerTrader) {
 			return new ContainerNPCTrader(npc, player);
-		} else if (gui == EnumGuiType.SetupItemGiver) {
-			return new ContainerNpcItemGiver(npc, player);
 		} else if (gui == EnumGuiType.SetupTrader) {
 			return new ContainerNPCTraderSetup(npc, player);
 		} else if (gui == EnumGuiType.QuestReward) {

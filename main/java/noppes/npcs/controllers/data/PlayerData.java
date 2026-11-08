@@ -28,7 +28,6 @@ public class PlayerData implements ICapabilityProvider {
 	public PlayerQuestData questData = new PlayerQuestData();
 	public PlayerTransportData transportData = new PlayerTransportData();
 	public PlayerFactionData factionData = new PlayerFactionData();
-	public PlayerItemGiverData itemgiverData = new PlayerItemGiverData();
 	public PlayerMailData mailData = new PlayerMailData();
 	public PlayerScriptData scriptData;
 	public DataTimers timers = new DataTimers(this);
@@ -49,7 +48,6 @@ public class PlayerData implements ICapabilityProvider {
 		this.questData.loadNBTData(data);
 		this.transportData.loadNBTData(data);
 		this.factionData.loadNBTData(data);
-		this.itemgiverData.loadNBTData(data);
 		this.mailData.loadNBTData(data);
 		this.timers.readFromNBT(data);
 
@@ -84,7 +82,6 @@ public class PlayerData implements ICapabilityProvider {
 		this.questData.saveNBTData(compound);
 		this.transportData.saveNBTData(compound);
 		this.factionData.saveNBTData(compound);
-		this.itemgiverData.saveNBTData(compound);
 		this.mailData.saveNBTData(compound);
 		this.timers.writeToNBT(compound);
 		compound.setString("PlayerName", this.playername);

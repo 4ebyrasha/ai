@@ -258,7 +258,6 @@ public class CustomNpcs {
 
 		new PlayerDataController();
 		new TransportController();
-		new GlobalDataController();
 		new SpawnController();
 		new LinkedNpcController();
 		new MassBlockController();
