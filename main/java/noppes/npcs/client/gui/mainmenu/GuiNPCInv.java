@@ -108,19 +108,32 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 		}
 	}
 
+
 	protected void drawGuiContainerBackgroundLayer(float f, int i, int j) {
 		super.drawGuiContainerBackgroundLayer(f, i, j);
 
 		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 		this.mc.renderEngine.bindTexture(this.slot);
-
+		
 		for (int id = 4; id <= 6; ++id) {
-			Slot slot = this.container.getSlot(id);
+			Slot equipmentSlot = this.container.getSlot(id);
 
-			if (slot.getHasStack()) {
+			if (equipmentSlot.getHasStack()) {
 				this.drawTexturedModalRect(
-						this.guiLeft + slot.xPos - 1,
-						this.guiTop + slot.yPos - 1,
+						this.guiLeft + equipmentSlot.xPos - 1,
+						this.guiTop + equipmentSlot.yPos - 1,
+						0, 0, 18, 18);
+			}
+		}
+
+		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
+			for (int itemSlot = 0; itemSlot < DataInventory.DROP_ITEMS_PER_SLOT; ++itemSlot) {
+				int containerSlot = 7 + group * DataInventory.DROP_ITEMS_PER_SLOT + itemSlot;
+				Slot dropSlot = this.container.getSlot(containerSlot);
+
+				this.drawTexturedModalRect(
+						this.guiLeft + dropSlot.xPos - 1,
+						this.guiTop + dropSlot.yPos - 1,
 						0, 0, 18, 18);
 			}
 		}
@@ -135,6 +148,7 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 					CustomNpcResourceListener.DefaultTextColor);
 		}
 	}
+
 
 	public void drawScreen(int i, int j, float f) {
 		int showname = this.npc.display.getShowName();
