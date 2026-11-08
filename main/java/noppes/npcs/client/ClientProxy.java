@@ -81,9 +81,6 @@ import noppes.npcs.client.gui.player.GuiNpcCarpentryBench;
 import noppes.npcs.client.gui.player.GuiNpcFollower;
 import noppes.npcs.client.gui.player.GuiNpcFollowerHire;
 import noppes.npcs.client.gui.player.GuiTransportSelection;
-import noppes.npcs.client.gui.player.companion.GuiNpcCompanionInv;
-import noppes.npcs.client.gui.player.companion.GuiNpcCompanionStats;
-import noppes.npcs.client.gui.player.companion.GuiNpcCompanionTalents;
 import noppes.npcs.client.gui.questtypes.GuiNpcQuestTypeItem;
 import noppes.npcs.client.gui.roles.GuiNpcBankSetup;
 import noppes.npcs.client.gui.roles.GuiNpcFollowerSetup;
@@ -118,7 +115,6 @@ import noppes.npcs.containers.ContainerMail;
 import noppes.npcs.containers.ContainerManageBanks;
 import noppes.npcs.containers.ContainerManageRecipes;
 import noppes.npcs.containers.ContainerNPCBankInterface;
-import noppes.npcs.containers.ContainerNPCCompanion;
 import noppes.npcs.containers.ContainerNPCFollower;
 import noppes.npcs.containers.ContainerNPCFollowerHire;
 import noppes.npcs.containers.ContainerNPCFollowerSetup;
@@ -458,18 +454,6 @@ public class ClientProxy extends CommonProxy {
 					return new GuiNpcWaypoint(x, y, z);
 				}
 
-				if (gui == EnumGuiType.Companion) {
-					return new GuiNpcCompanionStats(npc);
-				}
-
-				if (gui == EnumGuiType.CompanionTalent) {
-					return new GuiNpcCompanionTalents(npc);
-				}
-
-				if (gui == EnumGuiType.CompanionInv) {
-					return new GuiNpcCompanionInv(npc, (ContainerNPCCompanion) container);
-				}
-
 				if (gui == EnumGuiType.NbtBook) {
 					return new GuiNbtBook(x, y, z);
 				}
@@ -477,6 +461,7 @@ public class ClientProxy extends CommonProxy {
 				if (gui == EnumGuiType.CustomGui) {
 					return new GuiCustom((ContainerCustomGui) container);
 				}
+
 				if (gui == EnumGuiType.DynamicTraderMenu) {
 					if (npc == null) {
 						return null;
