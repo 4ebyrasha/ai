@@ -1,7 +1,6 @@
 package noppes.npcs.blocks.tiles;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
 import net.minecraft.block.Block;
@@ -20,8 +19,6 @@ import noppes.npcs.NBTTags;
 import noppes.npcs.controllers.SchematicController;
 import noppes.npcs.controllers.data.Availability;
 import noppes.npcs.controllers.data.BlockData;
-import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.JobBuilder;
 import noppes.npcs.schematics.SchematicWrapper;
 
 public class TileBuilder extends TileEntity implements ITickable {
@@ -143,53 +140,46 @@ public class TileBuilder extends TileEntity implements ITickable {
 	}
 
 	public void update() {
-		if (!this.world.isRemote && this.hasSchematic() && !this.finished) {
-			--this.ticks;
-			if (this.ticks <= 0) {
-				this.ticks = 200;
-				if (this.positions.isEmpty() && this.positionsSecond.isEmpty()) {
-					this.finished = true;
-				} else {
-					if (!this.started) {
-						Iterator var1 = this.getPlayerList().iterator();
+		if (this.world.isRemote || !this.hasSchematic() || this.finished) {
+			return;
+		}
 
-						while (var1.hasNext()) {
-							EntityPlayer player = (EntityPlayer) var1.next();
-							if (this.availability.isAvailable(player)) {
-								this.started = true;
-								break;
-							}
-						}
+		--this.ticks;
+		if (this.ticks > 0) {
+			return;
+		}
 
-						if (!this.started) {
-							return;
-						}
-					}
+		this.ticks = 200;
 
-					List list = this.world.getEntitiesWithinAABB(EntityNPCInterface.class,
-							(new AxisAlignedBB(this.getPos(), this.getPos())).grow(32.0D, 32.0D, 32.0D));
-					Iterator var6 = list.iterator();
+		if (this.positions.isEmpty() && this.positionsSecond.isEmpty()) {
+			this.finished = true;
+			return;
+		}
 
-					while (var6.hasNext()) {
-						EntityNPCInterface npc = (EntityNPCInterface) var6.next();
-						if (npc.advanced.job == 10) {
-							JobBuilder job = (JobBuilder) npc.jobInterface;
-							if (job.build == null) {
-								job.build = this;
-							}
-						}
-					}
+		if (this.started) {
+			return;
+		}
 
-				}
+		for (EntityPlayer player : this.getPlayerList()) {
+			if (this.availability.isAvailable(player)) {
+				this.started = true;
+				break;
 			}
 		}
 	}
 
-	private List getPlayerList() {
-		return this.world.getEntitiesWithinAABB(EntityPlayer.class,
-				(new AxisAlignedBB((double) this.pos.getX(), (double) this.pos.getY(), (double) this.pos.getZ(),
-						(double) (this.pos.getX() + 1), (double) (this.pos.getY() + 1), (double) (this.pos.getZ() + 1)))
-								.grow(10.0D, 10.0D, 10.0D));
+	private List<EntityPlayer> getPlayerList() {
+		return this.world.getEntitiesWithinAABB(
+				EntityPlayer.class,
+				new AxisAlignedBB(
+						this.pos.getX(),
+						this.pos.getY(),
+						this.pos.getZ(),
+						this.pos.getX() + 1,
+						this.pos.getY() + 1,
+						this.pos.getZ() + 1
+				).grow(10.0D, 10.0D, 10.0D)
+		);
 	}
 
 	public Stack getBlock() {

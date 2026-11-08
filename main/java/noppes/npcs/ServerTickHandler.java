@@ -16,7 +16,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import noppes.npcs.client.AnalyticsTracking;
 import noppes.npcs.constants.EnumPacketClient;
-import noppes.npcs.controllers.MassBlockController;
 import noppes.npcs.controllers.SchematicController;
 import noppes.npcs.controllers.SyncController;
 import noppes.npcs.controllers.data.PlayerData;
@@ -56,8 +55,8 @@ public class ServerTickHandler {
 	public void onServerTick(ServerTickEvent event) {
 		if (event.side == Side.SERVER && event.phase == Phase.START && this.ticks++ >= 20) {
 			SchematicController.Instance.updateBuilding();
-			MassBlockController.Update();
 			this.ticks = 0;
+
 			Iterator var2 = DataScenes.StartedScenes.values().iterator();
 
 			while (var2.hasNext()) {
@@ -76,7 +75,6 @@ public class ServerTickHandler {
 
 			DataScenes.ScenesToRun = new ArrayList();
 		}
-
 	}
 
 	@SubscribeEvent

@@ -36,7 +36,6 @@ import noppes.npcs.blocks.tiles.TileBuilder;
 import noppes.npcs.blocks.tiles.TileCopy;
 import noppes.npcs.blocks.tiles.TileScripted;
 import noppes.npcs.blocks.tiles.TileScriptedDoor;
-import noppes.npcs.constants.EnumCompanionStage;
 import noppes.npcs.constants.EnumGuiType;
 import noppes.npcs.constants.EnumPacketClient;
 import noppes.npcs.constants.EnumPacketServer;
@@ -72,10 +71,7 @@ import noppes.npcs.controllers.data.TransportLocation;
 import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.data.DataScenes;
-import noppes.npcs.roles.JobSpawner;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleTrader;
-import noppes.npcs.roles.RoleTransporter;
 import noppes.npcs.schematics.SchematicWrapper;
 import noppes.npcs.util.IPermission;
 
@@ -467,32 +463,6 @@ public class PacketHandlerServer {
 															} else if (type == EnumPacketServer.TransportsGet) {
 																NoppesUtilServer.sendTransportData(player,
 																		buffer.readInt());
-															} else if (type == EnumPacketServer.TransportSave) {
-																entityId = buffer.readInt();
-																location = TransportController.getInstance()
-																		.saveLocation(entityId, Server.readNBT(buffer),
-																				player, npc);
-																if (location != null) {
-																	if (npc.advanced.role != 4) {
-																		return;
-																	}
-
-																	RoleTransporter role = (RoleTransporter) npc.roleInterface;
-																	role.setTransport(location);
-																}
-															} else if (type == EnumPacketServer.TransportGetLocation) {
-																if (npc.advanced.role != 4) {
-																	return;
-																}
-
-																RoleTransporter role = (RoleTransporter) npc.roleInterface;
-																if (role.hasTransport()) {
-																	Server.sendData(player, EnumPacketClient.GUI_DATA,
-																			role.getLocation().writeNBT());
-																	Server.sendData(player,
-																			EnumPacketClient.SCROLL_SELECTED,
-																			role.getLocation().category.title);
-																}
 															} else if (type == EnumPacketServer.FactionSet) {
 																npc.setFaction(buffer.readInt());
 															} else {
@@ -607,53 +577,8 @@ public class PacketHandlerServer {
 																		compound11 = new NBTTagCompound();
 																		compound11.setBoolean("JobData", true);
 																		npc.jobInterface.writeToNBT(compound11);
-																		if (npc.advanced.job == 6) {
-																			((JobSpawner) npc.jobInterface)
-																					.cleanCompound(compound11);
-																		}
 
-																		Server.sendData(player,
-																				EnumPacketClient.GUI_DATA, compound11);
-																		if (npc.advanced.job == 6) {
-																			Server.sendData(player,
-																					EnumPacketClient.GUI_DATA,
-																					((JobSpawner) npc.jobInterface)
-																							.getTitles());
-																		}
-																	} else if (type == EnumPacketServer.JobSpawnerAdd) {
-																		if (npc.advanced.job != 6) {
-																			return;
-																		}
-
-																		JobSpawner job = (JobSpawner) npc.jobInterface;
-																		if (buffer.readBoolean()) {
-																			compound11 = ServerCloneController.Instance
-																					.getCloneData((ICommandSender) null,
-																							Server.readString(buffer),
-																							buffer.readInt());
-																			job.setJobCompound(buffer.readInt(),
-																					compound11);
-																		} else {
-																			job.setJobCompound(buffer.readInt(),
-																					Server.readNBT(buffer));
-																		}
-
-																		Server.sendData(player,
-																				EnumPacketClient.GUI_DATA,
-																				job.getTitles());
-																	} else if (type == EnumPacketServer.RoleCompanionUpdate) {
-																		if (npc.advanced.role != 6) {
-																			return;
-																		}
-
-																		((RoleCompanion) npc.roleInterface)
-																				.matureTo(EnumCompanionStage
-																						.values()[buffer.readInt()]);
-																		npc.updateClient = true;
-																	} else if (type == EnumPacketServer.JobSpawnerRemove) {
-																		if (npc.advanced.job != 6) {
-																			return;
-																		}
+																		Server.sendData(player, EnumPacketClient.GUI_DATA, compound11);
 																	} else if (type == EnumPacketServer.RoleSave) {
 																		NBTTagCompound roleTag = Server.readNBT(buffer);
 

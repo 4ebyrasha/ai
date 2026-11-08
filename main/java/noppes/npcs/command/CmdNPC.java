@@ -7,9 +7,6 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.NumberInvalidException;
-import net.minecraft.command.PlayerNotFoundException;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
@@ -17,13 +14,14 @@ import net.minecraft.world.World;
 import noppes.npcs.api.CommandNoppesBase;
 import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleCompanion;
-import noppes.npcs.roles.RoleFollower;
 import org.apache.commons.lang3.ArrayUtils;
+
+import javax.annotation.Nonnull;
 
 public class CmdNPC extends CommandNoppesBase {
 	public EntityNPCInterface selectedNpc;
 
+	@Nonnull
 	public String getName() {
 		return "npc";
 	}
@@ -112,43 +110,6 @@ public class CmdNPC extends CommandNoppesBase {
 		this.selectedNpc.delete();
 	}
 
-	@CommandNoppesBase.SubCommand(desc = "Sets the owner of an follower/companion", usage = "[player]", permission = 2)
-	public void owner(MinecraftServer server, ICommandSender sender, String[] args) {
-		if (args.length < 1) {
-			EntityPlayer player = null;
-			if (this.selectedNpc.roleInterface instanceof RoleFollower) {
-				player = ((RoleFollower) this.selectedNpc.roleInterface).owner;
-			}
-
-			if (this.selectedNpc.roleInterface instanceof RoleCompanion) {
-				player = ((RoleCompanion) this.selectedNpc.roleInterface).owner;
-			}
-
-			if (player == null) {
-				this.sendMessage(sender, "No owner", new Object[0]);
-			} else {
-				this.sendMessage(sender, "Owner is: " + player.getName(), new Object[0]);
-			}
-		} else {
-			EntityPlayerMP player = null;
-
-			try {
-				player = CommandBase.getPlayer(server, sender, args[0]);
-			} catch (PlayerNotFoundException var6) {
-			} catch (CommandException var7) {
-			}
-
-			if (this.selectedNpc.roleInterface instanceof RoleFollower) {
-				((RoleFollower) this.selectedNpc.roleInterface).setOwner(player);
-			}
-
-			if (this.selectedNpc.roleInterface instanceof RoleCompanion) {
-				((RoleCompanion) this.selectedNpc.roleInterface).setOwner(player);
-			}
-		}
-
-	}
-
 	@CommandNoppesBase.SubCommand(desc = "Set NPC name", usage = "[name]", permission = 2)
 	public void name(MinecraftServer server, ICommandSender sender, String[] args) {
 		if (args.length >= 1) {
@@ -189,12 +150,10 @@ public class CmdNPC extends CommandNoppesBase {
 	public List getTabCompletions(MinecraftServer server, ICommandSender par1, String[] args, BlockPos pos) {
 		if (args.length == 2) {
 			return CommandBase.getListOfStringsMatchingLastWord(args,
-					new String[] { "create", "home", "visible", "delete", "owner", "name" });
-		} else {
-			return args.length == 3 && args[1].equalsIgnoreCase("owner")
-					? CommandBase.getListOfStringsMatchingLastWord(args, server.getOnlinePlayerNames())
-					: null;
+					new String[] { "create", "home", "visible", "delete", "name" });
 		}
+
+		return null;
 	}
 
 	public int getRequiredPermissionLevel() {

@@ -14,7 +14,6 @@ import noppes.npcs.api.event.ItemEvent;
 import noppes.npcs.api.event.PlayerEvent;
 import noppes.npcs.api.event.RoleEvent;
 import noppes.npcs.api.wrapper.ItemScriptedWrapper;
-import noppes.npcs.constants.EnumCompanionTalent;
 import noppes.npcs.constants.EnumGuiType;
 import noppes.npcs.constants.EnumPacketClient;
 import noppes.npcs.constants.EnumPlayerPacket;
@@ -22,7 +21,6 @@ import noppes.npcs.containers.ContainerMail;
 import noppes.npcs.controllers.PlayerDataController;
 import noppes.npcs.controllers.PlayerQuestController;
 import noppes.npcs.controllers.ScriptController;
-import noppes.npcs.controllers.data.BankData;
 import noppes.npcs.controllers.data.MarkData;
 import noppes.npcs.controllers.data.PlayerData;
 import noppes.npcs.controllers.data.PlayerFactionData;
@@ -32,8 +30,6 @@ import noppes.npcs.controllers.data.PlayerQuestData;
 import noppes.npcs.controllers.data.PlayerScriptData;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.items.ItemScripted;
-import noppes.npcs.roles.RoleCompanion;
-import noppes.npcs.roles.RoleTransporter;
 
 public class PacketHandlerPlayer {
 	@SubscribeEvent
@@ -55,6 +51,7 @@ public class PacketHandlerPlayer {
 
 		});
 	}
+
 
 	private void player(ByteBuf buffer, EntityPlayerMP player, EnumPlayerPacket type) throws Exception {
 		if (type == EnumPlayerPacket.MarkData) {
@@ -89,93 +86,22 @@ public class PacketHandlerPlayer {
 			player.closeContainer();
 		} else {
 			EntityNPCInterface npc;
-			int slot;
-			int bankId;
-			if (type == EnumPlayerPacket.CompanionTalentExp) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 6 || player != npc.getOwner()) {
-					return;
-				}
 
-				slot = buffer.readInt();
-				bankId = buffer.readInt();
-				RoleCompanion role = (RoleCompanion) npc.roleInterface;
-				if (bankId <= 0 || !role.canAddExp(-bankId) || slot < 0
-						|| slot >= EnumCompanionTalent.values().length) {
-					return;
-				}
-
-				EnumCompanionTalent talent = EnumCompanionTalent.values()[slot];
-				role.addExp(-bankId);
-				role.addTalentExp(talent, bankId);
-			} else if (type == EnumPlayerPacket.CompanionOpenInv) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 6 || player != npc.getOwner()) {
-					return;
-				}
-
-				NoppesUtilServer.sendOpenGui(player, EnumGuiType.CompanionInv, npc);
-			} else if (type == EnumPlayerPacket.FollowerHire) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 2) {
-					return;
-				}
-
-				NoppesUtilPlayer.hireFollower(player, npc);
-			} else if (type == EnumPlayerPacket.FollowerExtend) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 2) {
-					return;
-				}
-
-				NoppesUtilPlayer.extendFollower(player, npc);
-				Server.sendData(player, EnumPacketClient.GUI_DATA, npc.roleInterface.writeToNBT(new NBTTagCompound()));
-			} else if (type == EnumPlayerPacket.FollowerState) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 2) {
-					return;
-				}
-
-				NoppesUtilPlayer.changeFollowerState(player, npc);
-				Server.sendData(player, EnumPacketClient.GUI_DATA, npc.roleInterface.writeToNBT(new NBTTagCompound()));
-			} else if (type == EnumPlayerPacket.RoleGet) {
+			if (type == EnumPlayerPacket.RoleGet) {
 				npc = NoppesUtilServer.getEditingNpc(player);
 				if (npc == null || npc.advanced.role == 0) {
 					return;
 				}
 
 				Server.sendData(player, EnumPacketClient.GUI_DATA, npc.roleInterface.writeToNBT(new NBTTagCompound()));
-			} else if (type == EnumPlayerPacket.Transport) {
+			} else if (type == EnumPlayerPacket.Dialog) {
 				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 4) {
+				LogWriter.debug("Dialog npc: " + npc);
+				if (npc == null) {
 					return;
 				}
 
-				((RoleTransporter) npc.roleInterface).transport(player, Server.readString(buffer));
-			} else if (type == EnumPlayerPacket.BankUpgrade) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 3) {
-					return;
-				}
-
-				NoppesUtilPlayer.bankUpgrade(player, npc);
-			} else if (type == EnumPlayerPacket.BankUnlock) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 3) {
-					return;
-				}
-
-				NoppesUtilPlayer.bankUnlock(player, npc);
-			} else if (type == EnumPlayerPacket.BankSlotOpen) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 3) {
-					return;
-				}
-
-				slot = buffer.readInt();
-				bankId = buffer.readInt();
-				BankData data = PlayerDataController.instance.getBankData(player, bankId).getBankOrDefault(bankId);
-				data.openBankGui(player, npc, bankId, slot);
+				NoppesUtilPlayer.dialogSelected(buffer.readInt(), buffer.readInt(), player, npc);
 			} else if (type == EnumPlayerPacket.Dialog) {
 				npc = NoppesUtilServer.getEditingNpc(player);
 				LogWriter.debug("Dialog npc: " + npc);
@@ -281,6 +207,5 @@ public class PacketHandlerPlayer {
 				}
 			}
 		}
-
 	}
 }

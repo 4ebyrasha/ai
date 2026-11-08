@@ -74,8 +74,6 @@ import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import java.util.HashSet;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
 import net.minecraftforge.fml.common.network.internal.FMLMessage;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 import noppes.npcs.CustomItems;
 import noppes.npcs.CustomNpcs;
@@ -149,13 +147,13 @@ import noppes.npcs.entity.data.DataStats;
 import noppes.npcs.entity.data.DataTimers;
 import noppes.npcs.items.ItemSoulstoneFilled;
 import noppes.npcs.roles.JobBard;
-import noppes.npcs.roles.JobFollower;
 import noppes.npcs.roles.JobInterface;
-import noppes.npcs.roles.RoleCompanion;
-import noppes.npcs.roles.RoleFollower;
 import noppes.npcs.roles.RoleInterface;
 import noppes.npcs.util.GameProfileAlt;
 
+import javax.annotation.Nonnull;
+
+@SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class EntityNPCInterface extends EntityCreature implements IEntityAdditionalSpawnData, ICommandSender, IRangedAttackMob, IAnimals, IPerceptionFilter {
 	public static final DataParameter<Boolean> Attacking;
 	protected static final DataParameter<Integer> Animation;
@@ -326,7 +324,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	}
 
-	public boolean attackEntityAsMob(Entity par1Entity) {
+
+	public boolean attackEntityAsMob(@Nonnull Entity par1Entity) {
 		float f = (float) this.stats.melee.getStrength();
 		if (this.stats.melee.getDelay() < 10) {
 			par1Entity.hurtResistantTime = 0;
@@ -356,10 +355,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 								* (float) this.stats.melee.getKnockback() * 0.5F));
 				this.motionX *= 0.6D;
 				this.motionZ *= 0.6D;
-			}
-
-			if (this.advanced.role == 6) {
-				((RoleCompanion) this.roleInterface).attackedEntity(par1Entity);
 			}
 		}
 
@@ -503,7 +498,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.updateClient = false;
 	}
 
-	protected void damageEntity(DamageSource damageSrc, float damageAmount) {
+	protected void damageEntity(@Nonnull DamageSource damageSrc, float damageAmount) {
 		super.damageEntity(damageSrc, damageAmount);
 		this.combatHandler.damage(damageSrc, damageAmount);
 	}
@@ -794,7 +789,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void attackEntityWithRangedAttack(EntityLivingBase entity, float f) {
+	public void attackEntityWithRangedAttack(@Nonnull EntityLivingBase entity, float f) {
 
 		// ─── ФИЛЬТР ВОСПРИЯТИЯ ───
 		// NPC не стреляет по игроку, которого "не видит".
@@ -1039,7 +1034,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return (float) this.ais.getWalkingSpeed() / 20.0F;
 	}
 
-	public float getBlockPathWeight(BlockPos pos) {
+	public float getBlockPathWeight(@Nonnull BlockPos pos) {
 		if (this.ais.movementType == 2) {
 			return this.world.getBlockState(pos).getMaterial() == Material.WATER ? 10.0F : 0.0F;
 		} else {
@@ -1071,7 +1066,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	protected void playHurtSound(DamageSource source) {
+	protected void playHurtSound(@Nonnull DamageSource source) {
 		this.advanced.playSound(2, this.getSoundVolume(), this.getSoundPitch());
 	}
 
@@ -1083,7 +1078,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.advanced.disablePitch ? 1.0F : super.getSoundPitch();
 	}
 
-	protected void playStepSound(BlockPos pos, Block block) {
+	protected void playStepSound(@Nonnull BlockPos pos,@Nonnull Block block) {
 		if (this.advanced.getSound(4) != null) {
 			this.advanced.playSound(4, 0.15F, 1.0F);
 		} else {
@@ -1175,7 +1170,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	}
 
-	public void readEntityFromNBT(NBTTagCompound compound) {
+	public void readEntityFromNBT(@Nonnull NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
 		this.npcVersion = compound.getInteger("ModRev");
 		VersionCompatibility.CheckNpcCompatibility(this, compound);
@@ -1349,7 +1344,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void setPortal(BlockPos pos) {
+	public void setPortal(@Nonnull BlockPos pos) {
 	}
 
 	public void cloakUpdate() {
@@ -1393,12 +1388,11 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.stats.spawnCycle == 4;
 	}
 
+	@Nonnull
 	public ItemStack getHeldItemMainhand() {
 		IItemStack item = null;
 		if (this.isAttacking()) {
 			item = this.inventory.getRightHand();
-		} else if (this.advanced.role == 6) {
-			item = ((RoleCompanion) this.roleInterface).getHeldItem();
 		} else if (this.jobInterface != null && this.jobInterface.overrideMainHand) {
 			item = this.jobInterface.getMainhand();
 		} else {
@@ -1408,6 +1402,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return ItemStackWrapper.MCItem(item);
 	}
 
+	@Nonnull
 	public ItemStack getHeldItemOffhand() {
 		IItemStack item = null;
 		if (this.isAttacking()) {
@@ -1421,7 +1416,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return ItemStackWrapper.MCItem(item);
 	}
 
-	public ItemStack getItemStackFromSlot(EntityEquipmentSlot slot) {
+	@Nonnull
+	public ItemStack getItemStackFromSlot(@Nonnull EntityEquipmentSlot slot) {
 		if (slot == EntityEquipmentSlot.MAINHAND) {
 			return this.getHeldItemMainhand();
 		} else {
@@ -1430,7 +1426,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void setItemStackToSlot(EntityEquipmentSlot slot, ItemStack item) {
+	public void setItemStackToSlot(@Nonnull EntityEquipmentSlot slot,@Nonnull ItemStack item) {
 		if (slot == EntityEquipmentSlot.MAINHAND) {
 			this.inventory.weapons.put(0, NpcAPI.Instance().getIItemStack(item));
 		} else if (slot == EntityEquipmentSlot.OFFHAND) {
@@ -1441,6 +1437,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	}
 
+	@Nonnull
 	public Iterable getArmorInventoryList() {
 		ArrayList list = new ArrayList();
 
@@ -1451,6 +1448,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return list;
 	}
 
+	@Nonnull
 	public Iterable getHeldEquipment() {
 		ArrayList list = new ArrayList();
 		list.add(ItemStackWrapper.MCItem((IItemStack) this.inventory.weapons.get(0)));
@@ -1464,7 +1462,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	protected void dropFewItems(boolean wasRecentlyHit, int lootingModifier) {
 	}
 
-	public void onDeath(DamageSource damagesource) {
+	public void onDeath(@Nonnull DamageSource damagesource) {
 		this.setSprinting(false);
 		this.getNavigator().clearPath();
 		this.extinguish();
@@ -1488,12 +1486,12 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		super.onDeath(damagesource);
 	}
 
-	public void addTrackingPlayer(EntityPlayerMP player) {
+	public void addTrackingPlayer(@Nonnull EntityPlayerMP player) {
 		super.addTrackingPlayer(player);
 		this.bossInfo.addPlayer(player);
 	}
 
-	public void removeTrackingPlayer(EntityPlayerMP player) {
+	public void removeTrackingPlayer(@Nonnull EntityPlayerMP player) {
 		super.removeTrackingPlayer(player);
 		this.bossInfo.removePlayer(player);
 	}
@@ -1646,7 +1644,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.currentAnimation == 4;
 	}
 
-	public void knockBack(Entity par1Entity, float strength, double ratioX, double ratioZ) {
+	public void knockBack(@Nonnull Entity par1Entity, float strength, double ratioX, double ratioZ) {
 		super.knockBack(par1Entity, strength * (2.0F - this.stats.resistances.knockback), ratioX, ratioZ);
 	}
 
@@ -1666,7 +1664,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public boolean isPotionApplicable(PotionEffect effect) {
+	public boolean isPotionApplicable(@Nonnull PotionEffect effect) {
 		if (this.stats.potionImmune) {
 			return false;
 		} else {
@@ -1708,6 +1706,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		compound.setFloat("PositionZOffset", this.ais.bodyOffsetZ);
 		compound.setInteger("Role", this.advanced.role);
 		compound.setInteger("Job", this.advanced.job);
+
 		NBTTagCompound bard;
 		if (this.advanced.job == 1) {
 			bard = new NBTTagCompound();
@@ -1719,12 +1718,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			bard = new NBTTagCompound();
 			this.jobInterface.writeToNBT(bard);
 			compound.setTag("Puppet", bard);
-		}
-
-		if (this.advanced.role == 6) {
-			bard = new NBTTagCompound();
-			this.roleInterface.writeToNBT(bard);
-			compound.setTag("Companion", bard);
 		}
 
 		if (this instanceof EntityCustomNpc) {
@@ -1739,7 +1732,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			this.readSpawnData(Server.readNBT(buf));
 		} catch (IOException var3) {
 		}
-
 	}
 
 	public void readSpawnData(NBTTagCompound compound) {
@@ -1756,6 +1748,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.inventory.weapons = NBTTags.getIItemStackMap(compound.getTagList("Weapons", 10));
 		this.advanced.setRole(compound.getInteger("Role"));
 		this.advanced.setJob(compound.getInteger("Job"));
+
 		NBTTagCompound puppet;
 		if (this.advanced.job == 1) {
 			puppet = compound.getCompoundTag("Bard");
@@ -1765,11 +1758,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		if (this.advanced.job == 9) {
 			puppet = compound.getCompoundTag("Puppet");
 			this.jobInterface.readFromNBT(puppet);
-		}
-
-		if (this.advanced.role == 6) {
-			puppet = compound.getCompoundTag("Companion");
-			this.roleInterface.readFromNBT(puppet);
 		}
 
 		if (this instanceof EntityCustomNpc) {
@@ -1790,19 +1778,22 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
+	@Nonnull
 	public String getName() {
 		return this.display.getName();
 	}
 
+	@Nonnull
 	public BlockPos getPosition() {
 		return new BlockPos(this.posX, this.posY, this.posZ);
 	}
 
+	@Nonnull
 	public Vec3d getPositionVector() {
 		return new Vec3d(this.posX, this.posY, this.posZ);
 	}
 
-	public boolean canAttackClass(Class par1Class) {
+	public boolean canAttackClass(@Nonnull Class par1Class) {
 		return EntityBat.class != par1Class;
 	}
 
@@ -1833,6 +1824,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return super.canBePushed() && this.display.getHasHitbox();
 	}
 
+	@Nonnull
 	public EnumPushReaction getPushReaction() {
 		return this.display.getHasHitbox() ? super.getPushReaction() : EnumPushReaction.IGNORE;
 	}
@@ -1857,6 +1849,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.dataManager.set(RoleData, s);
 	}
 
+	@Nonnull
 	public World getEntityWorld() {
 		return this.world;
 	}
@@ -1870,7 +1863,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.display.getVisible() != 0;
 	}
 
-	public void sendMessage(ITextComponent var1) {
+	public void sendMessage(@Nonnull ITextComponent var1) {
 	}
 
 	public void setCurrentAnimation(int animation) {
@@ -1883,64 +1876,31 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public boolean isFollower() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return true;
-		} else {
-			return this.roleInterface != null && this.roleInterface.isFollowing()
-					|| this.jobInterface != null && this.jobInterface.isFollowing();
-		}
+		return this.advanced.scenes.getOwner() != null;
 	}
 
 	public EntityLivingBase getOwner() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return this.advanced.scenes.getOwner();
-		} else if (this.advanced.role == 2 && this.roleInterface instanceof RoleFollower) {
-			return ((RoleFollower) this.roleInterface).owner;
-		} else if (this.advanced.role == 6 && this.roleInterface instanceof RoleCompanion) {
-			return ((RoleCompanion) this.roleInterface).owner;
-		} else {
-			return this.advanced.job == 5 && this.jobInterface instanceof JobFollower
-					? ((JobFollower) this.jobInterface).following
-					: null;
-		}
+		return this.advanced.scenes.getOwner();
 	}
 
 	public boolean hasOwner() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return true;
-		} else {
-			return this.advanced.role == 2 && ((RoleFollower) this.roleInterface).hasOwner()
-					|| this.advanced.role == 6 && ((RoleCompanion) this.roleInterface).hasOwner()
-					|| this.advanced.job == 5 && ((JobFollower) this.jobInterface).hasOwner();
-		}
+		return this.advanced.scenes.getOwner() != null;
 	}
 
 	public int followRange() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return 4;
-		} else if (this.advanced.role == 2 && this.roleInterface.isFollowing()) {
-			return 6;
-		} else if (this.advanced.role == 6 && this.roleInterface.isFollowing()) {
-			return 4;
-		} else {
-			return this.advanced.job == 5 && this.jobInterface.isFollowing() ? 4 : 15;
-		}
+		return this.advanced.scenes.getOwner() != null ? 4 : 15;
 	}
 
-	public void setHomePosAndDistance(BlockPos pos, int range) {
+	public void setHomePosAndDistance(@Nonnull BlockPos pos, int range) {
 		super.setHomePosAndDistance(pos, range);
 		this.ais.setStartPos(pos);
 	}
 
-	protected float applyArmorCalculations(DamageSource source, float damage) {
-		if (this.advanced.role == 6) {
-			damage = ((RoleCompanion) this.roleInterface).applyArmorCalculations(source, damage);
-		}
-
+	protected float applyArmorCalculations(@Nonnull DamageSource source, float damage) {
 		return damage;
 	}
 
-	public boolean isOnSameTeam(Entity entity) {
+	public boolean isOnSameTeam(@Nonnull Entity entity) {
 		if (!this.isRemote()) {
 			if (entity instanceof EntityPlayer && this.getFaction().isFriendlyToPlayer((EntityPlayer) entity)) {
 				return true;
@@ -1963,17 +1923,10 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public void travel(float f1, float f2, float f3) {
-		double d0 = this.posX;
-		double d1 = this.posY;
-		double d2 = this.posZ;
 		super.travel(f1, f2, f3);
-		if (this.advanced.role == 6 && !this.isRemote()) {
-			((RoleCompanion) this.roleInterface).addMovementStat(this.posX - d0, this.posY - d1, this.posZ - d2);
-		}
-
 	}
 
-	public boolean canBeLeashedTo(EntityPlayer player) {
+	public boolean canBeLeashedTo(@Nonnull EntityPlayer player) {
 		return false;
 	}
 
@@ -2032,7 +1985,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 				&& this.world.getBlockState((new BlockPos(this)).down()).canEntitySpawn(this);
 	}
 
-	public boolean shouldDismountInWater(Entity rider) {
+	public boolean shouldDismountInWater(@Nonnull Entity rider) {
 		return false;
 	}
 

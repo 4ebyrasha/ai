@@ -78,7 +78,6 @@ import noppes.npcs.controllers.data.TransportCategory;
 import noppes.npcs.controllers.data.TransportLocation;
 import noppes.npcs.entity.EntityDialogNpc;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleTransporter;
 import noppes.npcs.util.CustomNPCsScheduler;
 
 public class NoppesUtilServer {
@@ -277,10 +276,6 @@ public class NoppesUtilServer {
 					player.openGui(CustomNpcs.instance, gui.ordinal(), player.world, i, j, k);
 				} else {
 					Server.sendDataChecked((EntityPlayerMP) player, EnumPacketClient.GUI, gui.ordinal(), i, j, k);
-					ArrayList list = getScrollData(player, gui, npc);
-					if (list != null && !list.isEmpty()) {
-						Server.sendData((EntityPlayerMP) player, EnumPacketClient.SCROLL_LIST, list);
-					}
 				}
 			}, 200);
 		}
@@ -294,47 +289,10 @@ public class NoppesUtilServer {
 			int j,
 			int k
 	) {
-		if (gui == EnumGuiType.PlayerFollower
-				|| gui == EnumGuiType.PlayerFollowerHire
-				|| gui == EnumGuiType.PlayerTrader
-				|| gui == EnumGuiType.PlayerTransporter
+		if (gui == EnumGuiType.PlayerTrader
 				|| gui == EnumGuiType.DynamicTraderMenu
 				|| gui == EnumGuiType.DynamicTraderSell) {
-
 			sendRoleData(player, npc);
-		}
-	}
-
-	private static ArrayList getScrollData(EntityPlayer player, EnumGuiType gui, EntityNPCInterface npc) {
-		if (gui == EnumGuiType.PlayerTransporter) {
-			RoleTransporter role = (RoleTransporter) npc.roleInterface;
-			ArrayList list = new ArrayList();
-			TransportLocation location = role.getLocation();
-			String name = role.getLocation().name;
-			Iterator var7 = location.category.getDefaultLocations().iterator();
-
-			while (var7.hasNext()) {
-				TransportLocation loc = (TransportLocation) var7.next();
-				if (!list.contains(loc.name)) {
-					list.add(loc.name);
-				}
-			}
-
-			PlayerTransportData playerdata = PlayerData.get(player).transportData;
-			Iterator var12 = playerdata.transports.iterator();
-
-			while (var12.hasNext()) {
-				int i = (Integer) var12.next();
-				TransportLocation loc = TransportController.getInstance().getTransport(i);
-				if (loc != null && location.category.locations.containsKey(loc.id) && !list.contains(loc.name)) {
-					list.add(loc.name);
-				}
-			}
-
-			list.remove(name);
-			return list;
-		} else {
-			return null;
 		}
 	}
 

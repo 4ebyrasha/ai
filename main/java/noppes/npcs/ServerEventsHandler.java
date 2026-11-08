@@ -22,12 +22,10 @@ import net.minecraft.village.MerchantRecipeList;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.CommandEvent;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent.SaveToFile;
-import net.minecraftforge.event.entity.player.PlayerEvent.StartTracking;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.EntityInteract;
 import net.minecraftforge.event.terraingen.PopulateChunkEvent.Post;
 import net.minecraftforge.event.world.ChunkDataEvent.Save;
@@ -272,14 +270,6 @@ public class ServerEventsHandler {
 			} catch (Throwable var3) {
 			}
 
-		}
-	}
-
-	@SubscribeEvent
-	public void world(EntityJoinWorldEvent event) {
-		if (!event.getWorld().isRemote && event.getEntity() instanceof EntityPlayer) {
-			PlayerData data = PlayerData.get((EntityPlayer) event.getEntity());
-			data.updateCompanion(event.getWorld());
 		}
 	}
 

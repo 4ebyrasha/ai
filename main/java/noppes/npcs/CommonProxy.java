@@ -16,24 +16,14 @@ import noppes.npcs.containers.ContainerMail;
 import noppes.npcs.containers.ContainerManageBanks;
 import noppes.npcs.containers.ContainerManageRecipes;
 import noppes.npcs.containers.ContainerMerchantAdd;
-import noppes.npcs.containers.ContainerNPCBankLarge;
-import noppes.npcs.containers.ContainerNPCBankSmall;
-import noppes.npcs.containers.ContainerNPCBankUnlock;
-import noppes.npcs.containers.ContainerNPCBankUpgrade;
-import noppes.npcs.containers.ContainerNPCCompanion;
-import noppes.npcs.containers.ContainerNPCFollower;
-import noppes.npcs.containers.ContainerNPCFollowerHire;
-import noppes.npcs.containers.ContainerNPCFollowerSetup;
 import noppes.npcs.containers.ContainerNPCInv;
 import noppes.npcs.containers.ContainerNPCTrader;
 import noppes.npcs.containers.ContainerNPCTraderSetup;
-import noppes.npcs.containers.ContainerNpcItemGiver;
 import noppes.npcs.containers.ContainerNpcQuestReward;
 import noppes.npcs.containers.ContainerNpcQuestTypeItem;
 import noppes.npcs.controllers.data.PlayerData;
 import noppes.npcs.entity.EntityNPCInterface;
 
-import com.cheba.container.TraderMenuContainer;
 import com.cheba.container.TraderSellContainer;
 
 public class CommonProxy implements IGuiHandler {
@@ -65,26 +55,10 @@ public class CommonProxy implements IGuiHandler {
 			return new ContainerNPCInv(npc, player);
 		} else if (gui == EnumGuiType.PlayerAnvil) {
 			return new ContainerCarpentryBench(player.inventory, player.world, new BlockPos(x, y, z));
-		} else if (gui == EnumGuiType.PlayerBankSmall) {
-			return new ContainerNPCBankSmall(player, x, y);
-		} else if (gui == EnumGuiType.PlayerBankUnlock) {
-			return new ContainerNPCBankUnlock(player, x, y);
-		} else if (gui == EnumGuiType.PlayerBankUprade) {
-			return new ContainerNPCBankUpgrade(player, x, y);
-		} else if (gui == EnumGuiType.PlayerBankLarge) {
-			return new ContainerNPCBankLarge(player, x, y);
-		} else if (gui == EnumGuiType.PlayerFollowerHire) {
-			return new ContainerNPCFollowerHire(npc, player);
-		} else if (gui == EnumGuiType.PlayerFollower) {
-			return new ContainerNPCFollower(npc, player);
 		} else if (gui == EnumGuiType.PlayerTrader) {
 			return new ContainerNPCTrader(npc, player);
-		} else if (gui == EnumGuiType.SetupItemGiver) {
-			return new ContainerNpcItemGiver(npc, player);
 		} else if (gui == EnumGuiType.SetupTrader) {
 			return new ContainerNPCTraderSetup(npc, player);
-		} else if (gui == EnumGuiType.SetupFollower) {
-			return new ContainerNPCFollowerSetup(npc, player);
 		} else if (gui == EnumGuiType.QuestReward) {
 			return new ContainerNpcQuestReward(player);
 		} else if (gui == EnumGuiType.QuestItem) {
@@ -97,13 +71,9 @@ public class CommonProxy implements IGuiHandler {
 			return new ContainerMerchantAdd(player, ServerEventsHandler.Merchant, player.world);
 		} else if (gui == EnumGuiType.PlayerMailman) {
 			return new ContainerMail(player, x == 1, y == 1);
-		} else if (gui == EnumGuiType.CompanionInv) {
-			return new ContainerNPCCompanion(npc, player);
-		}
-		else if (gui == EnumGuiType.DynamicTraderMenu) {
+		} else if (gui == EnumGuiType.DynamicTraderMenu) {
 			return null;
-		}
-		else if (gui == EnumGuiType.DynamicTraderSell) {
+		} else if (gui == EnumGuiType.DynamicTraderSell) {
 			return new TraderSellContainer(player, npc);
 		} else {
 			return gui == EnumGuiType.CustomGui ? new ContainerCustomGui(new InventoryBasic("", false, x)) : null;

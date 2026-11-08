@@ -54,10 +54,6 @@ public abstract class JobInterface implements INPCJob {
 		return null;
 	}
 
-	public boolean isFollowing() {
-		return false;
-	}
-
 	public int getMutexBits() {
 		return 0;
 	}

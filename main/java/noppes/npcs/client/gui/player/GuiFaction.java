@@ -2,8 +2,6 @@ package noppes.npcs.client.gui.player;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import micdoodle8.mods.galacticraft.api.client.tabs.InventoryTabFactions;
-import micdoodle8.mods.galacticraft.api.client.tabs.TabRegistry;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.nbt.NBTTagCompound;
@@ -42,8 +40,6 @@ public class GuiFaction extends GuiNPCInterface implements IGuiData {
 		super.initGui();
 		this.guiLeft = (this.width - this.xSize) / 2;
 		this.guiTop = (this.height - this.ySize) / 2 + 12;
-		TabRegistry.updateTabValues(this.guiLeft, this.guiTop + 8, InventoryTabFactions.class);
-		TabRegistry.addTabsToList(this.buttonList);
 		this.buttonList.add(this.buttonNextPage = new GuiButtonNextPage(1, this.guiLeft + this.xSize - 43,
 				this.guiTop + 180, true));
 		this.buttonList
