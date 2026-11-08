@@ -47,7 +47,7 @@ public enum EnumPacketServer {
 																																																			CustomNpcsPermissions.NPC_ADVANCED,
 																																																			true), JobSpawnerRemove(
 																																																					CustomNpcsPermissions.NPC_ADVANCED,
-																																																					true), RoleCompanionUpdate(
+																																																					true), Removed_RoleCompanionUpdate(
 																																																							CustomNpcsPermissions.NPC_ADVANCED,
 																																																							true), LinkedSet(
 																																																									CustomNpcsPermissions.NPC_ADVANCED,

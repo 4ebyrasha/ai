@@ -10,7 +10,6 @@ public class RoleType {
 	public static final int BANK = 3;
 	public static final int TRANSPORTER = 4;
 	public static final int MAILMAN = 5;
-	public static final int COMPANION = 6;
 	public static final int DIALOG = 7;
 
 	public static final int MAXSIZE = 8;
