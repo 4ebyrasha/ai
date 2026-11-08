@@ -114,7 +114,7 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 
 		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 		this.mc.renderEngine.bindTexture(this.slot);
-		
+
 		for (int id = 4; id <= 6; ++id) {
 			Slot equipmentSlot = this.container.getSlot(id);
 
@@ -131,21 +131,34 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 				int containerSlot = 7 + group * DataInventory.DROP_ITEMS_PER_SLOT + itemSlot;
 				Slot dropSlot = this.container.getSlot(containerSlot);
 
-				this.drawTexturedModalRect(
-						this.guiLeft + dropSlot.xPos - 1,
-						this.guiTop + dropSlot.yPos - 1,
-						0, 0, 18, 18);
+				int x = this.guiLeft + dropSlot.xPos - 1;
+				int y = this.guiTop + dropSlot.yPos - 1;
+
+				this.drawTexturedModalRect(x, y, 0, 0, 18, 18);
+
+				if (!this.npc.inventory.isItemValidForSlot(
+						dropSlot.getSlotIndex(), net.minecraft.item.ItemStack.EMPTY)) {
+					this.drawRect(x, y, x + 18, y + 18, 0x99000000);
+				}
 			}
 		}
 
 		for (int row = 0; row < DataInventory.DROP_SLOT_COUNT / 2; ++row) {
+			int firstColumnGroup = row;
+			int secondColumnGroup = DataInventory.DROP_SLOT_COUNT / 2 + row;
 			int y = this.guiTop + 19 + row * 21;
 
-			this.fontRenderer.drawString("%", this.guiLeft + 324, y,
-					CustomNpcResourceListener.DefaultTextColor);
+			if (firstColumnGroup * DataInventory.DROP_ITEMS_PER_SLOT
+					< DataInventory.MAX_CORPSE_DROP_SLOTS) {
+				this.fontRenderer.drawString("%", this.guiLeft + 324, y,
+						CustomNpcResourceListener.DefaultTextColor);
+			}
 
-			this.fontRenderer.drawString("%", this.guiLeft + 464, y,
-					CustomNpcResourceListener.DefaultTextColor);
+			if (secondColumnGroup * DataInventory.DROP_ITEMS_PER_SLOT
+					< DataInventory.MAX_CORPSE_DROP_SLOTS) {
+				this.fontRenderer.drawString("%", this.guiLeft + 464, y,
+						CustomNpcResourceListener.DefaultTextColor);
+			}
 		}
 	}
 

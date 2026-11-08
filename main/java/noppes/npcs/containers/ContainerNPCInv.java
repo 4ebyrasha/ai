@@ -50,10 +50,51 @@ public class ContainerNPCInv extends Container {
 		}
 	}
 
+
 	@Nonnull
 	public ItemStack transferStackInSlot(@Nonnull EntityPlayer player, int index) {
-		return ItemStack.EMPTY;
+		int playerInventoryStart = 7 + DataInventory.DROP_ITEM_COUNT;
+
+		if (index < 0 || index >= this.inventorySlots.size()) {
+			return ItemStack.EMPTY;
+		}
+		
+		if (index >= playerInventoryStart) {
+			return ItemStack.EMPTY;
+		}
+
+		Slot slot = this.inventorySlots.get(index);
+
+		if (slot == null || !slot.getHasStack() || !slot.canTakeStack(player)) {
+			return ItemStack.EMPTY;
+		}
+
+		ItemStack sourceStack = slot.getStack();
+		ItemStack originalStack = sourceStack.copy();
+
+		if (!this.mergeItemStack(
+				sourceStack,
+				playerInventoryStart,
+				this.inventorySlots.size(),
+				true)) {
+			return ItemStack.EMPTY;
+		}
+
+		if (sourceStack.isEmpty()) {
+			slot.putStack(ItemStack.EMPTY);
+		} else {
+			slot.onSlotChanged();
+		}
+
+		if (sourceStack.getCount() == originalStack.getCount()) {
+			return ItemStack.EMPTY;
+		}
+
+		slot.onTake(player, sourceStack);
+
+		return originalStack;
 	}
+
 
 	public boolean canInteractWith(@Nonnull EntityPlayer player) {
 		return true;

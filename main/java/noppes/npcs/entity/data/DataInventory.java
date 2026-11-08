@@ -37,6 +37,7 @@ public class DataInventory implements IInventory, INPCInventory {
 	public static final int DROP_SLOT_COUNT = 18;
 	public static final int DROP_ITEMS_PER_SLOT = 5;
 	public static final int DROP_ITEM_COUNT = DROP_SLOT_COUNT * DROP_ITEMS_PER_SLOT;
+	public static final int MAX_CORPSE_DROP_SLOTS = 54; // 5 * 18 if not using corpse mod
 
 	public static final int DROP_CHANCE_SCALE = 1000;
 	public static final int MAX_DROP_CHANCE = 100 * DROP_CHANCE_SCALE;
@@ -112,6 +113,21 @@ public class DataInventory implements IInventory, INPCInventory {
 	private void validateDropItemSlot(int itemSlot) {
 		if (itemSlot < 0 || itemSlot >= DROP_ITEMS_PER_SLOT) {
 			throw new CustomNPCsException("Bad drop item slot number: " + itemSlot);
+		}
+	}
+
+	private boolean isDropItemPositionAllowed(int slot, int itemSlot) {
+		return slot * DROP_ITEMS_PER_SLOT + itemSlot < MAX_CORPSE_DROP_SLOTS;
+	}
+
+	private void validateDropItemPosition(int slot, int itemSlot) {
+		this.validateDropSlot(slot);
+		this.validateDropItemSlot(itemSlot);
+
+		if (!this.isDropItemPositionAllowed(slot, itemSlot)) {
+			int position = slot * DROP_ITEMS_PER_SLOT + itemSlot + 1;
+			throw new CustomNPCsException(
+					"Drop item position exceeds the 54-slot corpse capacity: " + position);
 		}
 	}
 
@@ -311,6 +327,8 @@ public class DataInventory implements IInventory, INPCInventory {
 			return;
 		}
 
+		this.validateDropItemPosition(slot, 0);
+
 		this.drops.put(slot, item);
 		this.setDropChance(slot, chance);
 	}
@@ -319,14 +337,15 @@ public class DataInventory implements IInventory, INPCInventory {
 		this.validateDropSlot(slot);
 		this.validateDropItemSlot(itemSlot);
 
-		Map<Integer, IItemStack> itemMap = this.getDropMap(slot, itemSlot);
-		int mapSlot = this.getDropMapSlot(slot, itemSlot);
-
 		if (item == null || item.isEmpty()) {
-			itemMap.remove(mapSlot);
-		} else {
-			itemMap.put(mapSlot, item);
+			this.getDropMap(slot, itemSlot).remove(this.getDropMapSlot(slot, itemSlot));
+			return;
 		}
+
+		this.validateDropItemPosition(slot, itemSlot);
+
+		this.getDropMap(slot, itemSlot).put(
+				this.getDropMapSlot(slot, itemSlot), item);
 	}
 
 	public double getDropChance(int slot) {
@@ -355,6 +374,10 @@ public class DataInventory implements IInventory, INPCInventory {
 			boolean hasItems = false;
 
 			for (int itemSlot = 0; itemSlot < DROP_ITEMS_PER_SLOT; ++itemSlot) {
+				if (!this.isDropItemPositionAllowed(slot, itemSlot)) {
+					continue;
+				}
+
 				IItemStack item = this.getDropItem(slot, itemSlot);
 
 				if (item != null && !item.isEmpty()) {
@@ -373,11 +396,16 @@ public class DataInventory implements IInventory, INPCInventory {
 				continue;
 			}
 
-			if (chance < MAX_DROP_CHANCE && this.npc.world.rand.nextInt(MAX_DROP_CHANCE) >= chance) {
+			if (chance < MAX_DROP_CHANCE
+					&& this.npc.world.rand.nextInt(MAX_DROP_CHANCE) >= chance) {
 				continue;
 			}
 
 			for (int itemSlot = 0; itemSlot < DROP_ITEMS_PER_SLOT; ++itemSlot) {
+				if (!this.isDropItemPositionAllowed(slot, itemSlot)) {
+					continue;
+				}
+
 				IItemStack item = this.getDropItem(slot, itemSlot);
 
 				if (item != null && !item.isEmpty()) {
@@ -388,6 +416,8 @@ public class DataInventory implements IInventory, INPCInventory {
 
 		return items.toArray(new IItemStack[0]);
 	}
+
+
 
 	public void dropStuff(NpcEvent.DiedEvent event, Entity entity, DamageSource damageSource) {
 		ArrayList<EntityItem> items = new ArrayList<>();
@@ -552,9 +582,14 @@ public class DataInventory implements IInventory, INPCInventory {
 
 		if (stack == null || stack.isEmpty()) {
 			inventory.remove(mapSlot);
-		} else {
-			inventory.put(mapSlot, this.wrapItemStack(stack));
+			return;
 		}
+
+		if (!this.isItemValidForSlot(slot, stack)) {
+			return;
+		}
+
+		inventory.put(mapSlot, this.wrapItemStack(stack));
 	}
 
 	public int getInventoryStackLimit() {
@@ -565,8 +600,18 @@ public class DataInventory implements IInventory, INPCInventory {
 		return true;
 	}
 
-	public boolean isItemValidForSlot(int slot, @Nonnull ItemStack itemstack) {
-		return true;
+	public boolean isItemValidForSlot(int slot,@Nonnull ItemStack itemstack) {
+		if (slot < 0 || slot >= this.getSizeInventory()) {
+			return false;
+		}
+
+		if (slot < DROP_INVENTORY_OFFSET) {
+			return true;
+		}
+
+		int dropItemIndex = slot - DROP_INVENTORY_OFFSET;
+
+		return dropItemIndex < MAX_CORPSE_DROP_SLOTS;
 	}
 
 	@Nonnull
