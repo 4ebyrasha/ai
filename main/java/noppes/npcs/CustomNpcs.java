@@ -260,7 +260,6 @@ public class CustomNpcs {
 		new TransportController();
 		new SpawnController();
 		new LinkedNpcController();
-		new MassBlockController();
 
 		ScriptController.Instance.loadCategories();
 		ScriptController.Instance.loadStoredData();
