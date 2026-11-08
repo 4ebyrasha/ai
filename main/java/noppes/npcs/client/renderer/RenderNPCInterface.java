@@ -22,6 +22,8 @@ import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 import org.lwjgl.opengl.GL11;
 
+import javax.annotation.Nonnull;
+
 public class RenderNPCInterface<T extends EntityNPCInterface> extends RenderLiving<T> {
 	public static int LastTextureTick;
 
@@ -29,29 +31,42 @@ public class RenderNPCInterface<T extends EntityNPCInterface> extends RenderLivi
 		super(Minecraft.getMinecraft().getRenderManager(), model, f);
 	}
 
-	public void renderName(T npc, double d, double d1, double d2) {
-		super.renderName(npc, d, d1, d2);
+	public void renderName(@Nonnull T npc, double d, double d1, double d2) {
+		if (npc != null && this.canRenderName(npc)
+				&& this.renderManager.renderViewEntity != null) {
+			double distance = npc.getDistanceSq(this.renderManager.renderViewEntity);
 
-/*		if (npc != null && this.canRenderName(npc) && this.renderManager.renderViewEntity != null) {
-			double d0 = npc.getDistanceSq(this.renderManager.renderViewEntity);
-			if (d0 <= 512.0D) {
-				float scale;
+			if (distance <= 512.0D) {
 				if (npc.messages != null) {
-					scale = npc.baseHeight / 5.0F * (float) npc.display.getSize();
+					float scale = npc.baseHeight / 5.0F * npc.display.getSize();
 					float offset = npc.height * (1.2F
-							+ (!npc.display.showName() ? 0.0F : (npc.display.getTitle().isEmpty() ? 0.15F : 0.25F)));
-					npc.messages.renderMessages(d, d1 + (double) offset, d2, 0.666667F * scale,
-							npc.isInRange(this.renderManager.renderViewEntity, 4.0D));
+							+ (!npc.display.showName() ? 0.0F
+							: (npc.display.getTitle().isEmpty() ? 0.15F : 0.25F)));
+
+					npc.messages.renderMessages(
+							d,
+							d1 + offset,
+							d2,
+							0.666667F * scale,
+							npc.isInRange(this.renderManager.renderViewEntity, 4.0D)
+					);
 				}
 
-				scale = npc.baseHeight / 5.0F * (float) npc.display.getSize();
 				if (npc.display.showName()) {
-					this.renderLivingLabel(npc, (float) d, (float) d1 + npc.height - 0.06F * scale, (float) d2, 64,
-							npc.getName(), npc.display.getTitle());
-				}
+					float scale = npc.baseHeight / 5.0F * npc.display.getSize();
 
+					this.renderLivingLabel(
+							npc,
+							(float) d,
+							(float) d1 + npc.height - 0.06F * scale,
+							(float) d2,
+							64,
+							npc.getName(),
+							npc.display.getTitle()
+					);
+				}
 			}
-		}*/
+		}
 	}
 
 	public void doRenderShadowAndFire(Entity par1Entity, double par2, double par4, double par6, float par8,
