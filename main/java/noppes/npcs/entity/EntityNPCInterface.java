@@ -1876,12 +1876,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public boolean isFollower() {
-		if (this.advanced.scenes.getOwner() != null) {
-			return true;
-		} else {
-			return this.roleInterface != null && this.roleInterface.isFollowing()
-					|| this.jobInterface != null && this.jobInterface.isFollowing();
-		}
+		return this.advanced.scenes.getOwner() != null;
 	}
 
 	public EntityLivingBase getOwner() {

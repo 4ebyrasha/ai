@@ -9,7 +9,7 @@ public class JobType {
 	public static final int REMOVED_HEALER = 2;
 	public static final int REMOVED_GUARD = 3;
 	public static final int REMOVED_ITEMGIVER = 4;
-	public static final int FOLLOWER = 5;
+	public static final int REMOVED_FOLLOWER = 5;
 	public static final int REMOVED_SPAWNER = 6;
 	public static final int CONVERSATION = 7;
 	public static final int CHUNKLOADER = 8;

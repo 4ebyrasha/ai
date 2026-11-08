@@ -44,10 +44,6 @@ public abstract class RoleInterface implements INPCRole {
 		return false;
 	}
 
-	public boolean isFollowing() {
-		return false;
-	}
-
 	public void clientUpdate() {
 	}
 
