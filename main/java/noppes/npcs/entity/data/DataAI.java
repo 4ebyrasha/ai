@@ -13,7 +13,6 @@ import noppes.npcs.api.IPos;
 import noppes.npcs.api.entity.data.INPCAi;
 import noppes.npcs.api.wrapper.BlockPosWrapper;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.JobBuilder;
 
 public class DataAI implements INPCAi {
 	private EntityNPCInterface npc;
@@ -298,11 +297,6 @@ public class DataAI implements INPCAi {
 	}
 
 	public boolean shouldReturnHome() {
-		if (this.npc.advanced.job == 10
-				&& ((JobBuilder) this.npc.jobInterface).isBuilding()) {
-			return false;
-		}
-
 		return this.returnToStart;
 	}
 
