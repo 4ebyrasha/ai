@@ -20,7 +20,6 @@ import noppes.npcs.containers.ContainerNPCBankLarge;
 import noppes.npcs.containers.ContainerNPCBankSmall;
 import noppes.npcs.containers.ContainerNPCBankUnlock;
 import noppes.npcs.containers.ContainerNPCBankUpgrade;
-import noppes.npcs.containers.ContainerNPCCompanion;
 import noppes.npcs.containers.ContainerNPCFollower;
 import noppes.npcs.containers.ContainerNPCFollowerHire;
 import noppes.npcs.containers.ContainerNPCFollowerSetup;
@@ -33,7 +32,6 @@ import noppes.npcs.containers.ContainerNpcQuestTypeItem;
 import noppes.npcs.controllers.data.PlayerData;
 import noppes.npcs.entity.EntityNPCInterface;
 
-import com.cheba.container.TraderMenuContainer;
 import com.cheba.container.TraderSellContainer;
 
 public class CommonProxy implements IGuiHandler {
@@ -97,13 +95,9 @@ public class CommonProxy implements IGuiHandler {
 			return new ContainerMerchantAdd(player, ServerEventsHandler.Merchant, player.world);
 		} else if (gui == EnumGuiType.PlayerMailman) {
 			return new ContainerMail(player, x == 1, y == 1);
-		} else if (gui == EnumGuiType.CompanionInv) {
-			return new ContainerNPCCompanion(npc, player);
-		}
-		else if (gui == EnumGuiType.DynamicTraderMenu) {
+		} else if (gui == EnumGuiType.DynamicTraderMenu) {
 			return null;
-		}
-		else if (gui == EnumGuiType.DynamicTraderSell) {
+		} else if (gui == EnumGuiType.DynamicTraderSell) {
 			return new TraderSellContainer(player, npc);
 		} else {
 			return gui == EnumGuiType.CustomGui ? new ContainerCustomGui(new InventoryBasic("", false, x)) : null;

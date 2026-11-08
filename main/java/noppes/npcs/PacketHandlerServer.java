@@ -641,15 +641,6 @@ public class PacketHandlerServer {
 																		Server.sendData(player,
 																				EnumPacketClient.GUI_DATA,
 																				job.getTitles());
-																	} else if (type == EnumPacketServer.RoleCompanionUpdate) {
-																		if (npc.advanced.role != 6) {
-																			return;
-																		}
-
-																		((RoleCompanion) npc.roleInterface)
-																				.matureTo(EnumCompanionStage
-																						.values()[buffer.readInt()]);
-																		npc.updateClient = true;
 																	} else if (type == EnumPacketServer.JobSpawnerRemove) {
 																		if (npc.advanced.job != 6) {
 																			return;
