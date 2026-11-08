@@ -23,6 +23,7 @@ import noppes.npcs.constants.EnumPacketServer;
 import noppes.npcs.containers.ContainerNPCInv;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.data.DataInventory;
+import net.minecraft.client.gui.Gui;
 
 public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, ITextfieldListener {
 	private static final int CHANCE_FIELD_ID_OFFSET = 100;
@@ -109,6 +110,7 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 	}
 
 
+
 	protected void drawGuiContainerBackgroundLayer(float f, int i, int j) {
 		super.drawGuiContainerBackgroundLayer(f, i, j);
 
@@ -127,41 +129,54 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 		}
 
 		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
-			for (int itemSlot = 0; itemSlot < DataInventory.DROP_ITEMS_PER_SLOT; ++itemSlot) {
-				int containerSlot = 7 + group * DataInventory.DROP_ITEMS_PER_SLOT + itemSlot;
+			for (int itemSlot = 0;
+				 itemSlot < DataInventory.DROP_ITEMS_PER_SLOT;
+				 ++itemSlot) {
+
+				int containerSlot = 7
+						+ group * DataInventory.DROP_ITEMS_PER_SLOT
+						+ itemSlot;
+
 				Slot dropSlot = this.container.getSlot(containerSlot);
 
 				int x = this.guiLeft + dropSlot.xPos - 1;
 				int y = this.guiTop + dropSlot.yPos - 1;
 
+				GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 				this.drawTexturedModalRect(x, y, 0, 0, 18, 18);
 
 				if (!this.npc.inventory.isItemValidForSlot(
-						dropSlot.getSlotIndex(), net.minecraft.item.ItemStack.EMPTY)) {
-					this.drawRect(x, y, x + 18, y + 18, 0x99000000);
+						dropSlot.getSlotIndex(),
+						net.minecraft.item.ItemStack.EMPTY)) {
+
+					Gui.drawRect(x, y, x + 18, y + 18, 0x99000000);
+
+					GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 				}
 			}
 		}
 
 		for (int row = 0; row < DataInventory.DROP_SLOT_COUNT / 2; ++row) {
-			int firstColumnGroup = row;
-			int secondColumnGroup = DataInventory.DROP_SLOT_COUNT / 2 + row;
 			int y = this.guiTop + 19 + row * 21;
 
-			if (firstColumnGroup * DataInventory.DROP_ITEMS_PER_SLOT
-					< DataInventory.MAX_CORPSE_DROP_SLOTS) {
-				this.fontRenderer.drawString("%", this.guiLeft + 324, y,
-						CustomNpcResourceListener.DefaultTextColor);
-			}
+			this.fontRenderer.drawString(
+					"%",
+					this.guiLeft + 324,
+					y,
+					CustomNpcResourceListener.DefaultTextColor);
 
-			if (secondColumnGroup * DataInventory.DROP_ITEMS_PER_SLOT
+			if ((DataInventory.DROP_SLOT_COUNT / 2 + row)
+					* DataInventory.DROP_ITEMS_PER_SLOT
 					< DataInventory.MAX_CORPSE_DROP_SLOTS) {
-				this.fontRenderer.drawString("%", this.guiLeft + 464, y,
+
+				this.fontRenderer.drawString(
+						"%",
+						this.guiLeft + 464,
+						y,
 						CustomNpcResourceListener.DefaultTextColor);
 			}
 		}
 	}
-
 
 	public void drawScreen(int i, int j, float f) {
 		int showname = this.npc.display.getShowName();
@@ -221,7 +236,7 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 				group, DataInventory.MAX_DROP_CHANCE);
 
 		String text = field.getText().trim().replace(',', '.');
-		int chance = previousChance;
+		int chance;
 
 		try {
 			BigDecimal percentage = new BigDecimal(text);
@@ -235,6 +250,7 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 					.setScale(3, RoundingMode.HALF_UP)
 					.movePointRight(3)
 					.intValueExact();
+
 		} catch (NumberFormatException | ArithmeticException exception) {
 			chance = previousChance;
 		}

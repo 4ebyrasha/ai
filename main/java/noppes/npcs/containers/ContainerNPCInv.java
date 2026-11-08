@@ -1,4 +1,3 @@
-
 package noppes.npcs.containers;
 
 import javax.annotation.Nonnull;
@@ -13,11 +12,30 @@ import noppes.npcs.entity.data.DataInventory;
 
 public class ContainerNPCInv extends Container {
 
+	private static class SlotNPCDrop extends Slot {
+		private final DataInventory npcInventory;
+
+		private SlotNPCDrop(DataInventory inventory, int slot, int x, int y) {
+			super(inventory, slot, x, y);
+			this.npcInventory = inventory;
+		}
+
+		@Override
+		public boolean isItemValid(@Nonnull ItemStack stack) {
+			return this.npcInventory.isItemValidForSlot(
+					this.getSlotIndex(), stack);
+		}
+	}
+
 	public ContainerNPCInv(EntityNPCInterface npc, EntityPlayer player) {
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 0, 9, 22, EntityEquipmentSlot.HEAD));
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 1, 9, 40, EntityEquipmentSlot.CHEST));
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 2, 9, 58, EntityEquipmentSlot.LEGS));
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 3, 9, 76, EntityEquipmentSlot.FEET));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 0, 9, 22, EntityEquipmentSlot.HEAD));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 1, 9, 40, EntityEquipmentSlot.CHEST));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 2, 9, 58, EntityEquipmentSlot.LEGS));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 3, 9, 76, EntityEquipmentSlot.FEET));
 
 		this.addSlotToContainer(new Slot(npc.inventory, 4, 81, 22));
 		this.addSlotToContainer(new Slot(npc.inventory, 5, 81, 40));
@@ -31,41 +49,58 @@ public class ContainerNPCInv extends Container {
 			int baseX = column == 0 ? 191 : 331;
 			int y = 16 + row * 21;
 
-			for (int itemSlot = 0; itemSlot < DataInventory.DROP_ITEMS_PER_SLOT; ++itemSlot) {
-				int inventorySlot = 7 + group * DataInventory.DROP_ITEMS_PER_SLOT + itemSlot;
+			for (int itemSlot = 0;
+				 itemSlot < DataInventory.DROP_ITEMS_PER_SLOT;
+				 ++itemSlot) {
+
+				int inventorySlot = 7
+						+ group * DataInventory.DROP_ITEMS_PER_SLOT
+						+ itemSlot;
+
 				int x = baseX + itemSlot * 18;
 
-				this.addSlotToContainer(new Slot(npc.inventory, inventorySlot, x, y));
+				this.addSlotToContainer(new SlotNPCDrop(
+						npc.inventory, inventorySlot, x, y));
 			}
 		}
 
 		for (int j = 0; j < 3; ++j) {
 			for (int i = 0; i < 9; ++i) {
-				this.addSlotToContainer(new Slot(player.inventory, i + j * 9 + 9, i * 18 + 8, 113 + j * 18));
+				this.addSlotToContainer(new Slot(
+						player.inventory,
+						i + j * 9 + 9,
+						i * 18 + 8,
+						113 + j * 18));
 			}
 		}
 
 		for (int i = 0; i < 9; ++i) {
-			this.addSlotToContainer(new Slot(player.inventory, i, i * 18 + 8, 171));
+			this.addSlotToContainer(new Slot(
+					player.inventory, i, i * 18 + 8, 171));
 		}
 	}
 
-
 	@Nonnull
-	public ItemStack transferStackInSlot(@Nonnull EntityPlayer player, int index) {
-		int playerInventoryStart = 7 + DataInventory.DROP_ITEM_COUNT;
+	@Override
+	public ItemStack transferStackInSlot(
+			@Nonnull EntityPlayer player, int index) {
+
+		int playerInventoryStart =
+				7 + DataInventory.DROP_ITEM_COUNT;
 
 		if (index < 0 || index >= this.inventorySlots.size()) {
 			return ItemStack.EMPTY;
 		}
-		
+
 		if (index >= playerInventoryStart) {
 			return ItemStack.EMPTY;
 		}
 
 		Slot slot = this.inventorySlots.get(index);
 
-		if (slot == null || !slot.getHasStack() || !slot.canTakeStack(player)) {
+		if (slot == null
+				|| !slot.getHasStack()
+				|| !slot.canTakeStack(player)) {
 			return ItemStack.EMPTY;
 		}
 
@@ -95,7 +130,7 @@ public class ContainerNPCInv extends Container {
 		return originalStack;
 	}
 
-
+	@Override
 	public boolean canInteractWith(@Nonnull EntityPlayer player) {
 		return true;
 	}
