@@ -33,11 +33,11 @@ public class SubGuiNpcFactionOptions extends SubGuiInterface
 		this.options = options == null ? new FactionOptions() : options;
 
 		this.scrollFactions = new GuiCustomScroll(this, 0);
-		this.scrollFactions.setSize(158, 228);
+		this.scrollFactions.setSize(158, 200);
 
 		this.setBackground("menubg.png");
 		this.xSize = 420;
-		this.ySize = 236;
+		this.ySize = 252;
 		this.closeOnEsc = true;
 	}
 
@@ -51,7 +51,7 @@ public class SubGuiNpcFactionOptions extends SubGuiInterface
 
 		this.scrollFactions.guiLeft = this.guiLeft + 258;
 		this.scrollFactions.guiTop = this.guiTop + 4;
-		this.scrollFactions.setSize(158, 228);
+		this.scrollFactions.setSize(158, 200);
 		this.addScroll(this.scrollFactions);
 
 		int row = 0;
@@ -142,9 +142,9 @@ public class SubGuiNpcFactionOptions extends SubGuiInterface
 		this.addButton(new GuiNpcButton(
 				66,
 				this.guiLeft + 82,
-				this.guiTop + 208,
+				this.guiTop + 192,
 				92,
-				20,
+				16,
 				"gui.done"
 		));
 	}
@@ -194,7 +194,6 @@ public class SubGuiNpcFactionOptions extends SubGuiInterface
 				points
 		);
 
-		// Keep edit mode only when an existing assignment was selected.
 		if (editing) {
 			this.selectedAssignment = targetSlot;
 		}

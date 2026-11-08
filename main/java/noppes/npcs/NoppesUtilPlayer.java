@@ -35,6 +35,7 @@ import noppes.npcs.controllers.data.Quest;
 import noppes.npcs.controllers.data.QuestData;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleDialog;
+import noppes.npcs.controllers.data.PlayerMail;
 
 public class NoppesUtilPlayer {
 	public static void teleportPlayer(EntityPlayerMP player, double x, double y, double z, int dimension) {
@@ -212,9 +213,16 @@ public class NoppesUtilPlayer {
 
 		quest.factionOptions.addPoints(player);
 
-		if (quest.mail.isValid()) {
-			PlayerDataController.instance.addPlayerMessage(
-					player.getServer(), player.getName(), quest.mail);
+		for (int slot = 0; slot < 3; ++slot) {
+			PlayerMail mail = quest.getMail(slot);
+
+			if (mail != null && mail.isValid()) {
+				PlayerDataController.instance.addPlayerMessage(
+						player.getServer(),
+						player.getName(),
+						mail
+				);
+			}
 		}
 
 		if (quest.command != null && !quest.command.trim().isEmpty()) {
@@ -240,9 +248,29 @@ public class NoppesUtilPlayer {
 
 		PlayerQuestController.setQuestFinished(quest, player);
 
-		if (quest.hasNewQuest()) {
-			PlayerQuestController.addActiveQuest(
-					quest.getNextQuest(), player);
+		for (int slot = 0; slot < 3; ++slot) {
+			int nextQuestId = quest.getNextQuestId(slot);
+
+			if (nextQuestId < 0) {
+				continue;
+			}
+
+			boolean duplicate = false;
+
+			for (int previousSlot = 0; previousSlot < slot; ++previousSlot) {
+				if (quest.getNextQuestId(previousSlot) == nextQuestId) {
+					duplicate = true;
+					break;
+				}
+			}
+
+			if (!duplicate) {
+				Quest nextQuest = quest.getNextQuest(slot);
+
+				if (nextQuest != null) {
+					PlayerQuestController.addActiveQuest(nextQuest, player);
+				}
+			}
 		}
 	}
 
