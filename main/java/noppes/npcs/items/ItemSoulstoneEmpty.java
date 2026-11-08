@@ -16,7 +16,6 @@ import noppes.npcs.CustomNpcsPermissions;
 import noppes.npcs.NoppesUtilServer;
 import noppes.npcs.controllers.ServerCloneController;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleFollower;
 
 public class ItemSoulstoneEmpty extends Item {
 	public ItemSoulstoneEmpty() {
@@ -72,14 +71,6 @@ public class ItemSoulstoneEmpty extends Item {
 		} else if (CustomNpcsPermissions.hasPermission(player, CustomNpcsPermissions.SOULSTONE_ALL)) {
 			return true;
 		} else if (entity instanceof EntityNPCInterface) {
-			EntityNPCInterface npc = (EntityNPCInterface) entity;
-			if (npc.advanced.role == 2) {
-				RoleFollower role = (RoleFollower) npc.roleInterface;
-				if (role.getOwner() == player) {
-					return !role.refuseSoulStone;
-				}
-			}
-
 			return CustomNpcs.SoulStoneNPCs;
 		} else {
 			return entity instanceof EntityAnimal ? CustomNpcs.SoulStoneAnimals : false;

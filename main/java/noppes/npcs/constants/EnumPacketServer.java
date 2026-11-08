@@ -28,7 +28,7 @@ public enum EnumPacketServer {
 																													CustomNpcsPermissions.NPC_ADVANCED,
 																													true), FactionSet(
 																															CustomNpcsPermissions.NPC_ADVANCED,
-																															true), TransportSave(
+																															true), Removed_TransportSave(
 																																	CustomNpcsPermissions.NPC_ADVANCED,
 																																	true), TransformSave(
 																																			CustomNpcsPermissions.NPC_ADVANCED,
@@ -64,7 +64,7 @@ public enum EnumPacketServer {
 																																																																													CustomNpcsPermissions.GLOBAL_DIALOG), DialogSave(
 																																																																															CustomNpcsPermissions.GLOBAL_DIALOG), DialogRemove(
 																																																																																	CustomNpcsPermissions.GLOBAL_DIALOG), TransportCategoryRemove(
-																																																																																			CustomNpcsPermissions.GLOBAL_TRANSPORT), TransportGetLocation(
+																																																																																			CustomNpcsPermissions.GLOBAL_TRANSPORT), Removed_TransportGetLocation(
 																																																																																					true), TransportRemove(
 																																																																																							CustomNpcsPermissions.GLOBAL_TRANSPORT), TransportsGet, TransportCategorySave(
 																																																																																									CustomNpcsPermissions.GLOBAL_TRANSPORT), TransportCategoriesGet, FactionRemove(

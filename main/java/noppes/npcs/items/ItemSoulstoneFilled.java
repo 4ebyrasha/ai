@@ -19,23 +19,25 @@ import net.minecraft.util.text.translation.I18n;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
-import noppes.npcs.controllers.data.PlayerData;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleFollower;
 
+import javax.annotation.Nonnull;
+
+@SuppressWarnings("deprecation, unchecked")
 public class ItemSoulstoneFilled extends Item {
 	public ItemSoulstoneFilled() {
 		this.setMaxStackSize(1);
 	}
 
-	public Item setUnlocalizedName(String name) {
+	@Nonnull
+	public Item setUnlocalizedName(@Nonnull String name) {
 		super.setUnlocalizedName(name);
 		this.setRegistryName(new ResourceLocation("customnpcs", name));
 		return this;
 	}
 
 	@SideOnly(Side.CLIENT)
-	public void addInformation(ItemStack stack, World world, List list, ITooltipFlag flag) {
+	public void addInformation(ItemStack stack, World world,@Nonnull List list,@Nonnull ITooltipFlag flag) {
 		NBTTagCompound compound = stack.getTagCompound();
 		if (compound != null && compound.hasKey("Entity", 10)) {
 			String name = I18n.translateToLocal(compound.getString("Name"));
@@ -63,7 +65,8 @@ public class ItemSoulstoneFilled extends Item {
 		}
 	}
 
-	public EnumActionResult onItemUse(EntityPlayer player, World world, BlockPos pos, EnumHand hand, EnumFacing side,
+	@Nonnull
+	public EnumActionResult onItemUse(@Nonnull EntityPlayer player, World world,@Nonnull BlockPos pos,@Nonnull EnumHand hand,@Nonnull EnumFacing side,
 			float hitX, float hitY, float hitZ) {
 		if (world.isRemote) {
 			return EnumActionResult.SUCCESS;
@@ -92,24 +95,21 @@ public class ItemSoulstoneFilled extends Item {
 			} else {
 				entity.setPosition((double) pos.getX() + 0.5D, (double) ((float) (pos.getY() + 1) + 0.2F),
 						(double) pos.getZ() + 0.5D);
+
 				if (entity instanceof EntityNPCInterface) {
 					EntityNPCInterface npc = (EntityNPCInterface) entity;
 					npc.ais.setStartPos(pos);
 					npc.setHealth(npc.getMaxHealth());
 					npc.setPosition((double) ((float) pos.getX() + 0.5F), npc.getStartYPos(),
 							(double) ((float) pos.getZ() + 0.5F));
-
-					if (npc.advanced.role == 2 && player != null) {
-						((RoleFollower) npc.roleInterface).setOwner(player);
-					}
 				}
 
 				if (!world.spawnEntity(entity)) {
 					player.sendMessage(new TextComponentTranslation("error.failedToSpawn", new Object[0]));
 					return null;
-				} else {
-					return entity;
 				}
+
+				return entity;
 			}
 		} else {
 			return null;

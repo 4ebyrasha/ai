@@ -73,7 +73,6 @@ import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.data.DataScenes;
 import noppes.npcs.roles.JobSpawner;
 import noppes.npcs.roles.RoleTrader;
-import noppes.npcs.roles.RoleTransporter;
 import noppes.npcs.schematics.SchematicWrapper;
 import noppes.npcs.util.IPermission;
 
@@ -465,32 +464,6 @@ public class PacketHandlerServer {
 															} else if (type == EnumPacketServer.TransportsGet) {
 																NoppesUtilServer.sendTransportData(player,
 																		buffer.readInt());
-															} else if (type == EnumPacketServer.TransportSave) {
-																entityId = buffer.readInt();
-																location = TransportController.getInstance()
-																		.saveLocation(entityId, Server.readNBT(buffer),
-																				player, npc);
-																if (location != null) {
-																	if (npc.advanced.role != 4) {
-																		return;
-																	}
-
-																	RoleTransporter role = (RoleTransporter) npc.roleInterface;
-																	role.setTransport(location);
-																}
-															} else if (type == EnumPacketServer.TransportGetLocation) {
-																if (npc.advanced.role != 4) {
-																	return;
-																}
-
-																RoleTransporter role = (RoleTransporter) npc.roleInterface;
-																if (role.hasTransport()) {
-																	Server.sendData(player, EnumPacketClient.GUI_DATA,
-																			role.getLocation().writeNBT());
-																	Server.sendData(player,
-																			EnumPacketClient.SCROLL_SELECTED,
-																			role.getLocation().category.title);
-																}
 															} else if (type == EnumPacketServer.FactionSet) {
 																npc.setFaction(buffer.readInt());
 															} else {
