@@ -71,7 +71,6 @@ import noppes.npcs.controllers.data.TransportLocation;
 import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.data.DataScenes;
-import noppes.npcs.roles.JobSpawner;
 import noppes.npcs.roles.RoleTrader;
 import noppes.npcs.schematics.SchematicWrapper;
 import noppes.npcs.util.IPermission;
@@ -578,44 +577,8 @@ public class PacketHandlerServer {
 																		compound11 = new NBTTagCompound();
 																		compound11.setBoolean("JobData", true);
 																		npc.jobInterface.writeToNBT(compound11);
-																		if (npc.advanced.job == 6) {
-																			((JobSpawner) npc.jobInterface)
-																					.cleanCompound(compound11);
-																		}
 
-																		Server.sendData(player,
-																				EnumPacketClient.GUI_DATA, compound11);
-																		if (npc.advanced.job == 6) {
-																			Server.sendData(player,
-																					EnumPacketClient.GUI_DATA,
-																					((JobSpawner) npc.jobInterface)
-																							.getTitles());
-																		}
-																	} else if (type == EnumPacketServer.JobSpawnerAdd) {
-																		if (npc.advanced.job != 6) {
-																			return;
-																		}
-
-																		JobSpawner job = (JobSpawner) npc.jobInterface;
-																		if (buffer.readBoolean()) {
-																			compound11 = ServerCloneController.Instance
-																					.getCloneData((ICommandSender) null,
-																							Server.readString(buffer),
-																							buffer.readInt());
-																			job.setJobCompound(buffer.readInt(),
-																					compound11);
-																		} else {
-																			job.setJobCompound(buffer.readInt(),
-																					Server.readNBT(buffer));
-																		}
-
-																		Server.sendData(player,
-																				EnumPacketClient.GUI_DATA,
-																				job.getTitles());
-																	} else if (type == EnumPacketServer.JobSpawnerRemove) {
-																		if (npc.advanced.job != 6) {
-																			return;
-																		}
+																		Server.sendData(player, EnumPacketClient.GUI_DATA, compound11);
 																	} else if (type == EnumPacketServer.RoleSave) {
 																		NBTTagCompound roleTag = Server.readNBT(buffer);
 

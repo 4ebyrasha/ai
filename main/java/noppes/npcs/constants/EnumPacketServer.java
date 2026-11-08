@@ -43,9 +43,9 @@ public enum EnumPacketServer {
 																																													true), RoleSave(
 																																															CustomNpcsPermissions.NPC_ADVANCED,
 																																															true), RoleGet(
-																																																	true), JobSpawnerAdd(
+																																																	true), Removed_JobSpawnerAdd(
 																																																			CustomNpcsPermissions.NPC_ADVANCED,
-																																																			true), JobSpawnerRemove(
+																																																			true), Removed_JobSpawnerRemove(
 																																																					CustomNpcsPermissions.NPC_ADVANCED,
 																																																					true), Removed_RoleCompanionUpdate(
 																																																							CustomNpcsPermissions.NPC_ADVANCED,
