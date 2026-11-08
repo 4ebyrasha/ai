@@ -6,7 +6,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.CompressedStreamTools;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -14,8 +13,6 @@ import noppes.npcs.CustomNpcs;
 import noppes.npcs.LogWriter;
 import noppes.npcs.controllers.data.TransportCategory;
 import noppes.npcs.controllers.data.TransportLocation;
-import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleTransporter;
 
 public class TransportController {
 	private HashMap locations = new HashMap();
@@ -287,34 +284,4 @@ public class TransportController {
 		return instance;
 	}
 
-	public TransportLocation saveLocation(int categoryId, NBTTagCompound compound, EntityPlayerMP player,
-			EntityNPCInterface npc) {
-		TransportCategory category = (TransportCategory) this.categories.get(categoryId);
-		if (category != null && npc.advanced.role == 4) {
-			RoleTransporter role = (RoleTransporter) npc.roleInterface;
-			TransportLocation location = new TransportLocation();
-			location.readNBT(compound);
-			location.category = category;
-			if (role.hasTransport()) {
-				location.id = role.transportId;
-			}
-
-			if (location.id < 0 || !((TransportLocation) this.locations.get(location.id)).name.equals(location.name)) {
-				while (this.containsLocationName(location.name)) {
-					location.name = location.name + "_";
-				}
-			}
-
-			if (location.id < 0) {
-				location.id = this.getUniqueIdLocation();
-			}
-
-			category.locations.put(location.id, location);
-			this.locations.put(location.id, location);
-			this.saveCategories();
-			return location;
-		} else {
-			return null;
-		}
-	}
 }

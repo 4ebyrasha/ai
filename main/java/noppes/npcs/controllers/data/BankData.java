@@ -2,22 +2,14 @@ package noppes.npcs.controllers.data;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.inventory.Container;
+
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+
 import noppes.npcs.NBTTags;
-import noppes.npcs.NoppesUtilServer;
 import noppes.npcs.NpcMiscInventory;
-import noppes.npcs.Server;
-import noppes.npcs.constants.EnumGuiType;
-import noppes.npcs.constants.EnumPacketClient;
-import noppes.npcs.containers.ContainerNPCBankInterface;
 import noppes.npcs.controllers.BankController;
-import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.util.CustomNPCsScheduler;
 
 public class BankData {
 	public HashMap itemSlots = new HashMap();
@@ -30,7 +22,6 @@ public class BankData {
 			this.itemSlots.put(i, new NpcMiscInventory(54));
 			this.upgradedSlots.put(i, false);
 		}
-
 	}
 
 	public void readNBT(NBTTagCompound nbttagcompound) {
@@ -63,14 +54,14 @@ public class BankData {
 
 	private NBTTagList nbtItemSlots(HashMap items) {
 		NBTTagList list = new NBTTagList();
-		Iterator var3 = items.keySet().iterator();
+		Iterator iterator = items.keySet().iterator();
 
-		while (var3.hasNext()) {
-			int slot = (Integer) var3.next();
-			NBTTagCompound nbttagcompound = new NBTTagCompound();
-			nbttagcompound.setInteger("Slot", slot);
-			nbttagcompound.setTag("BankItems", ((NpcMiscInventory) items.get(slot)).getToNBT());
-			list.appendTag(nbttagcompound);
+		while (iterator.hasNext()) {
+			int slot = (Integer) iterator.next();
+			NBTTagCompound compound = new NBTTagCompound();
+			compound.setInteger("Slot", slot);
+			compound.setTag("BankItems", ((NpcMiscInventory) items.get(slot)).getToNBT());
+			list.appendTag(compound);
 		}
 
 		return list;
@@ -79,53 +70,8 @@ public class BankData {
 	public boolean isUpgraded(Bank bank, int slot) {
 		if (bank.isUpgraded(slot)) {
 			return true;
-		} else {
-			return bank.canBeUpgraded(slot) && (Boolean) this.upgradedSlots.get(slot);
 		}
-	}
 
-	public void openBankGui(EntityPlayer player, EntityNPCInterface npc, int bankId, int slot) {
-		Bank bank = BankController.getInstance().getBank(bankId);
-		if (bank.getMaxSlots() > slot) {
-			if (bank.startSlots > this.unlockedSlots) {
-				this.unlockedSlots = bank.startSlots;
-			}
-
-			ItemStack currency = ItemStack.EMPTY;
-			if (this.unlockedSlots <= slot) {
-				currency = bank.currencyInventory.getStackInSlot(slot);
-				NoppesUtilServer.sendOpenGui(player, EnumGuiType.PlayerBankUnlock, npc, slot, bank.id, 0);
-			} else if (this.isUpgraded(bank, slot)) {
-				NoppesUtilServer.sendOpenGui(player, EnumGuiType.PlayerBankLarge, npc, slot, bank.id, 0);
-			} else if (bank.canBeUpgraded(slot)) {
-				currency = bank.upgradeInventory.getStackInSlot(slot);
-				NoppesUtilServer.sendOpenGui(player, EnumGuiType.PlayerBankUprade, npc, slot, bank.id, 0);
-			} else {
-				NoppesUtilServer.sendOpenGui(player, EnumGuiType.PlayerBankSmall, npc, slot, bank.id, 0);
-			}
-
-			final ItemStack currency2 = currency.copy();
-
-			CustomNPCsScheduler.runTack(() -> {
-
-				NBTTagCompound compound = new NBTTagCompound();
-				compound.setInteger("MaxSlots", bank.getMaxSlots());
-				compound.setInteger("UnlockedSlots", this.unlockedSlots);
-				if (currency2 != null && !currency2.isEmpty()) {
-					compound.setTag("Currency", currency2.writeToNBT(new NBTTagCompound()));
-					ContainerNPCBankInterface container = this.getContainer(player);
-					if (container != null) {
-						container.setCurrency(currency2);
-					}
-				}
-
-				Server.sendDataChecked((EntityPlayerMP) player, EnumPacketClient.GUI_DATA, compound);
-			}, 300);
-		}
-	}
-
-	private ContainerNPCBankInterface getContainer(EntityPlayer player) {
-		Container con = player.openContainer;
-		return con != null && con instanceof ContainerNPCBankInterface ? (ContainerNPCBankInterface) con : null;
+		return bank.canBeUpgraded(slot) && (Boolean) this.upgradedSlots.get(slot);
 	}
 }
