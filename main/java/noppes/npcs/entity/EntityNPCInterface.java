@@ -74,8 +74,6 @@ import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import java.util.HashSet;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
 import net.minecraftforge.fml.common.network.internal.FMLMessage;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 import noppes.npcs.CustomItems;
 import noppes.npcs.CustomNpcs;
@@ -155,6 +153,7 @@ import noppes.npcs.util.GameProfileAlt;
 
 import javax.annotation.Nonnull;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public abstract class EntityNPCInterface extends EntityCreature implements IEntityAdditionalSpawnData, ICommandSender, IRangedAttackMob, IAnimals, IPerceptionFilter {
 	public static final DataParameter<Boolean> Attacking;
 	protected static final DataParameter<Integer> Animation;
@@ -499,7 +498,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.updateClient = false;
 	}
 
-	protected void damageEntity(DamageSource damageSrc, float damageAmount) {
+	protected void damageEntity(@Nonnull DamageSource damageSrc, float damageAmount) {
 		super.damageEntity(damageSrc, damageAmount);
 		this.combatHandler.damage(damageSrc, damageAmount);
 	}
@@ -790,7 +789,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void attackEntityWithRangedAttack(EntityLivingBase entity, float f) {
+	public void attackEntityWithRangedAttack(@Nonnull EntityLivingBase entity, float f) {
 
 		// ─── ФИЛЬТР ВОСПРИЯТИЯ ───
 		// NPC не стреляет по игроку, которого "не видит".
@@ -1035,7 +1034,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return (float) this.ais.getWalkingSpeed() / 20.0F;
 	}
 
-	public float getBlockPathWeight(BlockPos pos) {
+	public float getBlockPathWeight(@Nonnull BlockPos pos) {
 		if (this.ais.movementType == 2) {
 			return this.world.getBlockState(pos).getMaterial() == Material.WATER ? 10.0F : 0.0F;
 		} else {
@@ -1067,7 +1066,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	protected void playHurtSound(DamageSource source) {
+	protected void playHurtSound(@Nonnull DamageSource source) {
 		this.advanced.playSound(2, this.getSoundVolume(), this.getSoundPitch());
 	}
 
@@ -1079,7 +1078,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.advanced.disablePitch ? 1.0F : super.getSoundPitch();
 	}
 
-	protected void playStepSound(BlockPos pos, Block block) {
+	protected void playStepSound(@Nonnull BlockPos pos,@Nonnull Block block) {
 		if (this.advanced.getSound(4) != null) {
 			this.advanced.playSound(4, 0.15F, 1.0F);
 		} else {
@@ -1171,7 +1170,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	}
 
-	public void readEntityFromNBT(NBTTagCompound compound) {
+	public void readEntityFromNBT(@Nonnull NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
 		this.npcVersion = compound.getInteger("ModRev");
 		VersionCompatibility.CheckNpcCompatibility(this, compound);
@@ -1345,7 +1344,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void setPortal(BlockPos pos) {
+	public void setPortal(@Nonnull BlockPos pos) {
 	}
 
 	public void cloakUpdate() {
@@ -1438,6 +1437,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	}
 
+	@Nonnull
 	public Iterable getArmorInventoryList() {
 		ArrayList list = new ArrayList();
 
@@ -1448,6 +1448,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return list;
 	}
 
+	@Nonnull
 	public Iterable getHeldEquipment() {
 		ArrayList list = new ArrayList();
 		list.add(ItemStackWrapper.MCItem((IItemStack) this.inventory.weapons.get(0)));
@@ -1461,7 +1462,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	protected void dropFewItems(boolean wasRecentlyHit, int lootingModifier) {
 	}
 
-	public void onDeath(DamageSource damagesource) {
+	public void onDeath(@Nonnull DamageSource damagesource) {
 		this.setSprinting(false);
 		this.getNavigator().clearPath();
 		this.extinguish();
@@ -1485,12 +1486,12 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		super.onDeath(damagesource);
 	}
 
-	public void addTrackingPlayer(EntityPlayerMP player) {
+	public void addTrackingPlayer(@Nonnull EntityPlayerMP player) {
 		super.addTrackingPlayer(player);
 		this.bossInfo.addPlayer(player);
 	}
 
-	public void removeTrackingPlayer(EntityPlayerMP player) {
+	public void removeTrackingPlayer(@Nonnull EntityPlayerMP player) {
 		super.removeTrackingPlayer(player);
 		this.bossInfo.removePlayer(player);
 	}
@@ -1643,7 +1644,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.currentAnimation == 4;
 	}
 
-	public void knockBack(Entity par1Entity, float strength, double ratioX, double ratioZ) {
+	public void knockBack(@Nonnull Entity par1Entity, float strength, double ratioX, double ratioZ) {
 		super.knockBack(par1Entity, strength * (2.0F - this.stats.resistances.knockback), ratioX, ratioZ);
 	}
 
@@ -1663,7 +1664,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public boolean isPotionApplicable(PotionEffect effect) {
+	public boolean isPotionApplicable(@Nonnull PotionEffect effect) {
 		if (this.stats.potionImmune) {
 			return false;
 		} else {
@@ -1705,6 +1706,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		compound.setFloat("PositionZOffset", this.ais.bodyOffsetZ);
 		compound.setInteger("Role", this.advanced.role);
 		compound.setInteger("Job", this.advanced.job);
+
 		NBTTagCompound bard;
 		if (this.advanced.job == 1) {
 			bard = new NBTTagCompound();
@@ -1716,12 +1718,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			bard = new NBTTagCompound();
 			this.jobInterface.writeToNBT(bard);
 			compound.setTag("Puppet", bard);
-		}
-
-		if (this.advanced.role == 6) {
-			bard = new NBTTagCompound();
-			this.roleInterface.writeToNBT(bard);
-			compound.setTag("Companion", bard);
 		}
 
 		if (this instanceof EntityCustomNpc) {
@@ -1736,7 +1732,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			this.readSpawnData(Server.readNBT(buf));
 		} catch (IOException var3) {
 		}
-
 	}
 
 	public void readSpawnData(NBTTagCompound compound) {
@@ -1787,19 +1782,22 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
+	@Nonnull
 	public String getName() {
 		return this.display.getName();
 	}
 
+	@Nonnull
 	public BlockPos getPosition() {
 		return new BlockPos(this.posX, this.posY, this.posZ);
 	}
 
+	@Nonnull
 	public Vec3d getPositionVector() {
 		return new Vec3d(this.posX, this.posY, this.posZ);
 	}
 
-	public boolean canAttackClass(Class par1Class) {
+	public boolean canAttackClass(@Nonnull Class par1Class) {
 		return EntityBat.class != par1Class;
 	}
 
@@ -1830,6 +1828,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return super.canBePushed() && this.display.getHasHitbox();
 	}
 
+	@Nonnull
 	public EnumPushReaction getPushReaction() {
 		return this.display.getHasHitbox() ? super.getPushReaction() : EnumPushReaction.IGNORE;
 	}
@@ -1854,6 +1853,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.dataManager.set(RoleData, s);
 	}
 
+	@Nonnull
 	public World getEntityWorld() {
 		return this.world;
 	}
@@ -1867,7 +1867,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		return this.display.getVisible() != 0;
 	}
 
-	public void sendMessage(ITextComponent var1) {
+	public void sendMessage(@Nonnull ITextComponent var1) {
 	}
 
 	public void setCurrentAnimation(int animation) {
@@ -1935,7 +1935,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		super.travel(f1, f2, f3);
 	}
 
-	public boolean canBeLeashedTo(EntityPlayer player) {
+	public boolean canBeLeashedTo(@Nonnull EntityPlayer player) {
 		return false;
 	}
 
@@ -1994,7 +1994,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 				&& this.world.getBlockState((new BlockPos(this)).down()).canEntitySpawn(this);
 	}
 
-	public boolean shouldDismountInWater(Entity rider) {
+	public boolean shouldDismountInWater(@Nonnull Entity rider) {
 		return false;
 	}
 
