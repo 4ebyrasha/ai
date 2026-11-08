@@ -207,7 +207,7 @@ public class Quest implements ICompatibilty, IQuest {
 
 		compound.setInteger("NextQuestId", this.nextQuestid);
 		compound.setString("NextQuestTitle", this.nextQuestTitle);
-		
+
 		compound.setInteger("NextQuestId2", this.nextQuestid2);
 		compound.setString("NextQuestTitle2", this.nextQuestTitle2);
 		compound.setInteger("NextQuestId3", this.nextQuestid3);

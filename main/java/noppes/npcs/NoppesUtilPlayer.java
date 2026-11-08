@@ -359,27 +359,33 @@ public class NoppesUtilPlayer {
 		}
 	}
 
-	public static List countStacks(IInventory inv, boolean ignoreDamage, boolean ignoreNBT) {
-		List list = new ArrayList();
+
+	public static List<ItemStack> countStacks(
+			IInventory inv,
+			boolean ignoreDamage,
+			boolean ignoreNBT) {
+
+		List<ItemStack> list = new ArrayList<>();
 
 		for (int i = 0; i < inv.getSizeInventory(); ++i) {
 			ItemStack item = inv.getStackInSlot(i);
-			if (!NoppesUtilServer.IsItemStackNull(item)) {
-				boolean found = false;
-				Iterator var7 = list.iterator();
 
-				while (var7.hasNext()) {
-					ItemStack is = (ItemStack) var7.next();
-					if (compareItems(item, is, ignoreDamage, ignoreNBT)) {
-						is.setCount(is.getCount() + item.getCount());
-						found = true;
-						break;
-					}
-				}
+			if (NoppesUtilServer.IsItemStackNull(item)) {
+				continue;
+			}
 
-				if (!found) {
-					list.add(item.copy());
+			boolean found = false;
+
+			for (ItemStack existing : list) {
+				if (compareItems(item, existing, ignoreDamage, ignoreNBT)) {
+					existing.setCount(existing.getCount() + item.getCount());
+					found = true;
+					break;
 				}
+			}
+
+			if (!found) {
+				list.add(item.copy());
 			}
 		}
 
