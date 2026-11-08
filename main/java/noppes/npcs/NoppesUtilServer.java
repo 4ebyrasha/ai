@@ -271,7 +271,7 @@ public class NoppesUtilServer {
 		if (player instanceof EntityPlayerMP) {
 			setEditingNpc(player, npc);
 			sendExtraData(player, npc, gui, i, j, k);
-			CustomNpcsScheduler.runTack(() -> {
+			CustomNPCsScheduler.runTack(() -> {
 				if (CustomNpcs.proxy.getServerGuiElement(gui.ordinal(), player, player.world, i, j, k) != null) {
 					player.openGui(CustomNpcs.instance, gui.ordinal(), player.world, i, j, k);
 				} else {
