@@ -14,7 +14,6 @@ import noppes.npcs.api.event.ItemEvent;
 import noppes.npcs.api.event.PlayerEvent;
 import noppes.npcs.api.event.RoleEvent;
 import noppes.npcs.api.wrapper.ItemScriptedWrapper;
-import noppes.npcs.constants.EnumCompanionTalent;
 import noppes.npcs.constants.EnumGuiType;
 import noppes.npcs.constants.EnumPacketClient;
 import noppes.npcs.constants.EnumPlayerPacket;
@@ -32,7 +31,6 @@ import noppes.npcs.controllers.data.PlayerQuestData;
 import noppes.npcs.controllers.data.PlayerScriptData;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.items.ItemScripted;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleTransporter;
 
 public class PacketHandlerPlayer {
@@ -55,6 +53,7 @@ public class PacketHandlerPlayer {
 
 		});
 	}
+
 
 	private void player(ByteBuf buffer, EntityPlayerMP player, EnumPlayerPacket type) throws Exception {
 		if (type == EnumPlayerPacket.MarkData) {
@@ -91,31 +90,8 @@ public class PacketHandlerPlayer {
 			EntityNPCInterface npc;
 			int slot;
 			int bankId;
-			if (type == EnumPlayerPacket.CompanionTalentExp) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 6 || player != npc.getOwner()) {
-					return;
-				}
 
-				slot = buffer.readInt();
-				bankId = buffer.readInt();
-				RoleCompanion role = (RoleCompanion) npc.roleInterface;
-				if (bankId <= 0 || !role.canAddExp(-bankId) || slot < 0
-						|| slot >= EnumCompanionTalent.values().length) {
-					return;
-				}
-
-				EnumCompanionTalent talent = EnumCompanionTalent.values()[slot];
-				role.addExp(-bankId);
-				role.addTalentExp(talent, bankId);
-			} else if (type == EnumPlayerPacket.CompanionOpenInv) {
-				npc = NoppesUtilServer.getEditingNpc(player);
-				if (npc == null || npc.advanced.role != 6 || player != npc.getOwner()) {
-					return;
-				}
-
-				NoppesUtilServer.sendOpenGui(player, EnumGuiType.CompanionInv, npc);
-			} else if (type == EnumPlayerPacket.FollowerHire) {
+			if (type == EnumPlayerPacket.FollowerHire) {
 				npc = NoppesUtilServer.getEditingNpc(player);
 				if (npc == null || npc.advanced.role != 2) {
 					return;
@@ -281,6 +257,5 @@ public class PacketHandlerPlayer {
 				}
 			}
 		}
-
 	}
 }
