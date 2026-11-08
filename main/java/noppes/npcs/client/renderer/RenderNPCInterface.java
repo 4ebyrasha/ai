@@ -22,6 +22,9 @@ import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 import org.lwjgl.opengl.GL11;
 
+import net.minecraft.entity.player.EntityPlayer;
+import noppes.npcs.CustomItems;
+
 import javax.annotation.Nonnull;
 
 public class RenderNPCInterface<T extends EntityNPCInterface> extends RenderLiving<T> {
@@ -32,44 +35,53 @@ public class RenderNPCInterface<T extends EntityNPCInterface> extends RenderLivi
 	}
 
 	public void renderName(@Nonnull T npc, double d, double d1, double d2) {
-		if (npc != null && this.canRenderName(npc)
-				&& this.renderManager.renderViewEntity != null) {
-			double distance = npc.getDistanceSq(this.renderManager.renderViewEntity);
+		EntityPlayer player = Minecraft.getMinecraft().player;
 
-			if (distance <= 512.0D) {
-				if (npc.messages != null) {
-					float scale = npc.baseHeight / 5.0F * npc.display.getSize();
-					float offset = npc.height * (1.2F
-							+ (!npc.display.showName() ? 0.0F
-							: (npc.display.getTitle().isEmpty() ? 0.15F : 0.25F)));
+		if (npc == null || player == null || !this.canRenderName(npc)) {
+			return;
+		}
 
-					npc.messages.renderMessages(
-							d,
-							d1 + offset,
-							d2,
-							0.666667F * scale,
-							npc.isInRange(this.renderManager.renderViewEntity, 4.0D)
-					);
-				}
+		double distance = npc.getDistanceSq(player);
+		if (distance > 512.0D) {
+			return;
+		}
 
-				if (npc.display.showName()) {
-					float scale = npc.baseHeight / 5.0F * npc.display.getSize();
+		boolean holdingWand = player.getHeldItemMainhand().getItem() == CustomItems.wand;
 
-					this.renderLivingLabel(
-							npc,
-							(float) d,
-							(float) d1 + npc.height - 0.06F * scale,
-							(float) d2,
-							64,
-							npc.getName(),
-							npc.display.getTitle()
-					);
-				}
-			}
+		boolean showName = npc.display.showName()
+				|| (!npc.isKilled() && npc.display.getShowName() == 1 && holdingWand);
+
+		if (npc.messages != null) {
+			float scale = npc.baseHeight / 5.0F * npc.display.getSize();
+			float offset = npc.height * (1.2F
+					+ (!showName ? 0.0F
+					: (npc.display.getTitle().isEmpty() ? 0.15F : 0.25F)));
+
+			npc.messages.renderMessages(
+					d,
+					d1 + offset,
+					d2,
+					0.666667F * scale,
+					npc.isInRange(player, 4.0D)
+			);
+		}
+
+		if (showName) {
+			float scale = npc.baseHeight / 5.0F * npc.display.getSize();
+
+			this.renderLivingLabel(
+					npc,
+					(float) d,
+					(float) d1 + npc.height - 0.06F * scale,
+					(float) d2,
+					64,
+					npc.getName(),
+					npc.display.getTitle()
+			);
 		}
 	}
 
-	public void doRenderShadowAndFire(Entity par1Entity, double par2, double par4, double par6, float par8,
+	public void doRenderShadowAndFire(@Nonnull Entity par1Entity, double par2, double par4, double par6, float par8,
 			float par9) {
 		EntityNPCInterface npc = (EntityNPCInterface) par1Entity;
 		this.shadowSize = npc.width;
@@ -261,7 +273,7 @@ public class RenderNPCInterface<T extends EntityNPCInterface> extends RenderLivi
 	}
 
 	// @Override
-	protected ResourceLocation getEntityTexture(T npc) {
+	protected ResourceLocation getEntityTexture(@Nonnull T npc) {
 		if (((EntityNPCInterface) npc).textureLocation == null) {
 			if (((EntityNPCInterface) npc).display.skinType == 0) {
 				((EntityNPCInterface) npc).textureLocation = new ResourceLocation(((EntityNPCInterface) npc).display.getSkinTexture());
