@@ -17,7 +17,6 @@ import net.minecraft.world.World;
 import noppes.npcs.api.CommandNoppesBase;
 import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleFollower;
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -112,16 +111,12 @@ public class CmdNPC extends CommandNoppesBase {
 		this.selectedNpc.delete();
 	}
 
-	@CommandNoppesBase.SubCommand(desc = "Sets the owner of an follower/companion", usage = "[player]", permission = 2)
+	@CommandNoppesBase.SubCommand(desc = "Sets the owner of a follower", usage = "[player]", permission = 2)
 	public void owner(MinecraftServer server, ICommandSender sender, String[] args) {
 		if (args.length < 1) {
 			EntityPlayer player = null;
 			if (this.selectedNpc.roleInterface instanceof RoleFollower) {
 				player = ((RoleFollower) this.selectedNpc.roleInterface).owner;
-			}
-
-			if (this.selectedNpc.roleInterface instanceof RoleCompanion) {
-				player = ((RoleCompanion) this.selectedNpc.roleInterface).owner;
 			}
 
 			if (player == null) {
@@ -141,12 +136,7 @@ public class CmdNPC extends CommandNoppesBase {
 			if (this.selectedNpc.roleInterface instanceof RoleFollower) {
 				((RoleFollower) this.selectedNpc.roleInterface).setOwner(player);
 			}
-
-			if (this.selectedNpc.roleInterface instanceof RoleCompanion) {
-				((RoleCompanion) this.selectedNpc.roleInterface).setOwner(player);
-			}
 		}
-
 	}
 
 	@CommandNoppesBase.SubCommand(desc = "Set NPC name", usage = "[name]", permission = 2)

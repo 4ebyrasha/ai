@@ -21,7 +21,6 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import noppes.npcs.controllers.data.PlayerData;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleFollower;
 
 public class ItemSoulstoneFilled extends Item {
@@ -99,15 +98,6 @@ public class ItemSoulstoneFilled extends Item {
 					npc.setHealth(npc.getMaxHealth());
 					npc.setPosition((double) ((float) pos.getX() + 0.5F), npc.getStartYPos(),
 							(double) ((float) pos.getZ() + 0.5F));
-					if (npc.advanced.role == 6 && player != null) {
-						PlayerData data = PlayerData.get(player);
-						if (data.hasCompanion()) {
-							return null;
-						}
-
-						((RoleCompanion) npc.roleInterface).setOwner(player);
-						data.setCompanion(npc);
-					}
 
 					if (npc.advanced.role == 2 && player != null) {
 						((RoleFollower) npc.roleInterface).setOwner(player);

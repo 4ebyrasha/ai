@@ -16,7 +16,6 @@ import noppes.npcs.CustomNpcsPermissions;
 import noppes.npcs.NoppesUtilServer;
 import noppes.npcs.controllers.ServerCloneController;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleFollower;
 
 public class ItemSoulstoneEmpty extends Item {
@@ -46,12 +45,7 @@ public class ItemSoulstoneEmpty extends Item {
 
 				stone.setTagInfo("Name", new NBTTagString("entity." + name + ".name"));
 				if (entity instanceof EntityNPCInterface) {
-					EntityNPCInterface npc = (EntityNPCInterface) entity;
 					stone.setTagInfo("DisplayName", new NBTTagString(entity.getName()));
-					if (npc.advanced.role == 6) {
-						RoleCompanion role = (RoleCompanion) npc.roleInterface;
-						stone.setTagInfo("ExtraText", new NBTTagString("companion.stage,: ," + role.stage.name));
-					}
 				} else if (entity instanceof EntityLiving && ((EntityLiving) entity).hasCustomName()) {
 					stone.setTagInfo("DisplayName", new NBTTagString(((EntityLiving) entity).getCustomNameTag()));
 				}
@@ -79,13 +73,6 @@ public class ItemSoulstoneEmpty extends Item {
 			return true;
 		} else if (entity instanceof EntityNPCInterface) {
 			EntityNPCInterface npc = (EntityNPCInterface) entity;
-			if (npc.advanced.role == 6) {
-				RoleCompanion role = (RoleCompanion) npc.roleInterface;
-				if (role.getOwner() == player) {
-					return true;
-				}
-			}
-
 			if (npc.advanced.role == 2) {
 				RoleFollower role = (RoleFollower) npc.roleInterface;
 				if (role.getOwner() == player) {

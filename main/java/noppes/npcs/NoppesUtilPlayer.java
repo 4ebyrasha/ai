@@ -45,7 +45,6 @@ import noppes.npcs.controllers.data.PlayerQuestData;
 import noppes.npcs.controllers.data.Quest;
 import noppes.npcs.controllers.data.QuestData;
 import noppes.npcs.entity.EntityNPCInterface;
-import noppes.npcs.roles.RoleCompanion;
 import noppes.npcs.roles.RoleDialog;
 import noppes.npcs.roles.RoleFollower;
 
@@ -287,11 +286,7 @@ public class NoppesUtilPlayer {
 							if (option.optionType == 3) {
 								closeDialog(player, npc, true);
 								if (npc.roleInterface != null) {
-									if (npc.advanced.role == 6) {
-										((RoleCompanion) npc.roleInterface).interact(player, true);
-									} else {
-										npc.roleInterface.interact(player);
-									}
+									npc.roleInterface.interact(player);
 								}
 							} else if (option.optionType == 1) {
 								closeDialog(player, npc, false);

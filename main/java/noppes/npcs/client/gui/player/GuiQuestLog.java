@@ -5,8 +5,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import micdoodle8.mods.galacticraft.api.client.tabs.InventoryTabQuests;
-import micdoodle8.mods.galacticraft.api.client.tabs.TabRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -70,8 +68,6 @@ public class GuiQuestLog extends GuiNPCInterface implements ITopButtonListener, 
 
 		this.sideButtons.clear();
 		this.guiTop += 10;
-		TabRegistry.updateTabValues(this.guiLeft, this.guiTop, InventoryTabQuests.class);
-		TabRegistry.addTabsToList(this.buttonList);
 		this.noQuests = false;
 		if (this.activeQuests.isEmpty()) {
 			this.noQuests = true;

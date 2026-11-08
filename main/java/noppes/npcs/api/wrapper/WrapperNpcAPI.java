@@ -266,7 +266,9 @@ public class WrapperNpcAPI extends NpcAPI {
 		return new CustomGuiWrapper(id, width, height, pauseGame);
 	}
 
+	@Override
+	@Deprecated
 	public String getRandomName(int dictionary, int gender) {
-		return CustomNpcs.MARKOV_GENERATOR[dictionary].fetch(gender);
+		return "NPC";
 	}
 }
