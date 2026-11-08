@@ -1748,6 +1748,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.inventory.weapons = NBTTags.getIItemStackMap(compound.getTagList("Weapons", 10));
 		this.advanced.setRole(compound.getInteger("Role"));
 		this.advanced.setJob(compound.getInteger("Job"));
+
 		NBTTagCompound puppet;
 		if (this.advanced.job == 1) {
 			puppet = compound.getCompoundTag("Bard");
@@ -1757,11 +1758,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		if (this.advanced.job == 9) {
 			puppet = compound.getCompoundTag("Puppet");
 			this.jobInterface.readFromNBT(puppet);
-		}
-
-		if (this.advanced.role == 6) {
-			puppet = compound.getCompoundTag("Companion");
-			this.roleInterface.readFromNBT(puppet);
 		}
 
 		if (this instanceof EntityCustomNpc) {
