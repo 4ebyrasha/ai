@@ -187,66 +187,76 @@ public class ServerEventsHandler {
 		npc.advanced.factions.addPoints(player);
 	}
 
-	private void doQuest(EntityPlayer player, EntityLivingBase entity, boolean all) {
+
+	private void doQuest(
+			EntityPlayer player,
+			EntityLivingBase entity,
+			boolean all) {
+
 		PlayerData pdata = PlayerData.get(player);
-		PlayerQuestData playerdata = pdata.questData;
+		PlayerQuestData playerData = pdata.questData;
+
 		String entityName = EntityList.getEntityString(entity);
+
 		if (entity instanceof EntityPlayer) {
 			entityName = "Player";
 		}
 
-		Iterator var7 = playerdata.activeQuests.values().iterator();
+		for (Object questObject : playerData.activeQuests.values()) {
+			QuestData data = (QuestData) questObject;
 
-		while (true) {
-			QuestData data;
-			String name;
-			QuestKill quest;
-			HashMap killed;
-			do {
-				do {
-					do {
-						if (!var7.hasNext()) {
-							playerdata.checkQuestCompletion(player, 2);
-							playerdata.checkQuestCompletion(player, 4);
-							return;
-						}
-
-						data = (QuestData) var7.next();
-					} while (data.quest.type != 2 && data.quest.type != 4);
-
-					if (data.quest.type == 4 && all) {
-						List list = player.world.getEntitiesWithinAABB(EntityPlayer.class,
-								entity.getEntityBoundingBox().grow(10.0D, 10.0D, 10.0D));
-						Iterator var10 = list.iterator();
-
-						while (var10.hasNext()) {
-							EntityPlayer pl = (EntityPlayer) var10.next();
-							if (pl != player) {
-								this.doQuest(pl, entity, false);
-							}
-						}
-					}
-
-					name = entityName;
-					quest = (QuestKill) data.quest.questInterface;
-					if (quest.targets.containsKey(entity.getName())) {
-						name = entity.getName();
-						break;
-					}
-				} while (!quest.targets.containsKey(entityName));
-
-				killed = quest.getKilled(data);
-			} while (killed.containsKey(name) && (Integer) killed.get(name) >= (Integer) quest.targets.get(name));
-
-			int amount = 0;
-			if (killed.containsKey(name)) {
-				amount = (Integer) killed.get(name);
+			if (data.quest.type != 2 && data.quest.type != 4) {
+				continue;
 			}
 
-			killed.put(name, amount + 1);
+			if (data.quest.type == 4 && all) {
+				List<EntityPlayer> nearbyPlayers =
+						player.world.getEntitiesWithinAABB(
+								EntityPlayer.class,
+								entity.getEntityBoundingBox().grow(
+										10.0D,
+										10.0D,
+										10.0D
+								)
+						);
+
+				for (EntityPlayer nearbyPlayer : nearbyPlayers) {
+					if (nearbyPlayer != player) {
+						this.doQuest(nearbyPlayer, entity, false);
+					}
+				}
+			}
+
+			QuestKill quest = (QuestKill) data.quest.questInterface;
+
+			String targetName = entityName;
+			String actualName = entity.getName();
+
+			if (quest.targets.containsKey(actualName)) {
+				targetName = actualName;
+			} else if (!quest.targets.containsKey(entityName)) {
+				continue;
+			}
+
+			HashMap<String, Integer> killed = quest.getKilled(data);
+
+			Integer currentAmount = killed.get(targetName);
+			int requiredAmount = quest.targets.get(targetName);
+
+			if (currentAmount != null && currentAmount >= requiredAmount) {
+				continue;
+			}
+
+			int amount = currentAmount == null ? 0 : currentAmount;
+
+			killed.put(targetName, amount + 1);
+
 			quest.setKilled(data, killed);
 			pdata.updateClient = true;
 		}
+
+		playerData.checkQuestCompletion(player, 2);
+		playerData.checkQuestCompletion(player, 4);
 	}
 
 	@SubscribeEvent
