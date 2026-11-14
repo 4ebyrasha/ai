@@ -225,7 +225,7 @@ public class EntityLivingBaseWrapper extends EntityWrapper implements IEntityLiv
 
 	@Override
 	public EntityLivingBase getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+		return (EntityLivingBase)
+		this.entity;
 	}
 }
