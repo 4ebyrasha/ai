@@ -10,10 +10,9 @@ import noppes.npcs.entity.EntityNPCInterface;
 public class EntityAIRangedAttack extends EntityAIBase {
 	private final EntityNPCInterface npc;
 	private EntityLivingBase attackTarget;
-	private int rangedAttackTime = 0;
+	private double rangedAttackTime = 0.0D;
 	private int moveTries = 0;
 	private int burstCount = 0;
-	private int attackTick = 0;
 	private boolean hasFired = false;
 	private boolean navOverride = false;
 
@@ -22,9 +21,15 @@ public class EntityAIRangedAttack extends EntityAIBase {
 			throw new IllegalArgumentException("ArrowAttackGoal requires Mob implements RangedAttackMob");
 		} else {
 			this.npc = (EntityNPCInterface) par1IRangedAttackMob;
-			this.rangedAttackTime = this.npc.stats.ranged.getFireIntervalTicks() / 2;
+			this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
 			this.setMutexBits(this.navOverride ? AiMutex.PATHING : AiMutex.LOOK + AiMutex.PASSIVE);
 		}
+	}
+
+	private double getFireIntervalTicks() {
+		int rpm = this.npc.stats.ranged.getFireRateRPM();
+		rpm = Math.max(1, Math.min(1200, rpm));
+		return 1200.0D / (double) rpm;
 	}
 
 	public boolean shouldExecute() {
@@ -46,7 +51,8 @@ public class EntityAIRangedAttack extends EntityAIBase {
 		this.npc.getNavigator().clearPath();
 		this.moveTries = 0;
 		this.hasFired = false;
-		this.rangedAttackTime = this.npc.stats.ranged.getFireIntervalTicks() / 2;
+		this.burstCount = 0;
+		this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
 	}
 
 	public void updateTask() {
@@ -81,17 +87,29 @@ public class EntityAIRangedAttack extends EntityAIBase {
 		}
 
 		if (this.npc.stats.ranged.isReloading()) {
-			this.rangedAttackTime = 1;
+			this.rangedAttackTime = 1.0D;
 			return;
 		}
 
-		if (this.rangedAttackTime-- > 0 || distanceSq > range) {
+		// Дробный таймер сохраняет точный средний RPM.
+		// Остаток отрицательного значения не теряется между выстрелами.
+		this.rangedAttackTime -= 1.0D;
+
+		if (distanceSq > range) {
+			if (this.rangedAttackTime < 0.0D) {
+				this.rangedAttackTime = 0.0D;
+			}
+			return;
+		}
+
+		if (this.rangedAttackTime >= 0.0D) {
 			return;
 		}
 
 		boolean canSee = this.npc.getEntitySenses().canSee(this.attackTarget);
 
 		if (!canSee && this.npc.stats.ranged.getFireType() != 2) {
+			this.rangedAttackTime = 0.0D;
 			return;
 		}
 
@@ -100,7 +118,7 @@ public class EntityAIRangedAttack extends EntityAIBase {
 		} else {
 			this.burstCount = 0;
 			this.hasFired = true;
-			this.rangedAttackTime = this.npc.stats.ranged.getFireIntervalTicks();
+			this.rangedAttackTime += this.getFireIntervalTicks();
 		}
 
 		if (this.burstCount > 1) {
