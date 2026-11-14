@@ -2,7 +2,7 @@ package noppes.npcs.ai.selector;
 
 import com.google.common.base.Predicate;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.MobEffects;
 import noppes.npcs.LogWriter;
 import noppes.npcs.entity.EntityNPCInterface;
@@ -11,7 +11,7 @@ public class NPCAttackSelector implements Predicate {
 
 	private final EntityNPCInterface npc;
 
-	private int lastLogTick = Integer.MIN_VALUE;
+	private long lastLogTick = Long.MIN_VALUE;
 	private int lastLoggedPlayerId = -1;
 
 	public NPCAttackSelector(EntityNPCInterface npc) {
@@ -19,21 +19,22 @@ public class NPCAttackSelector implements Predicate {
 	}
 
 	public boolean isEntityApplicable(EntityLivingBase entity) {
-		if (!(entity instanceof EntityPlayerMP)) {
+		if (!(entity instanceof EntityPlayer)) {
 			return isOtherEntityApplicable(entity);
 		}
 
-		EntityPlayerMP player = (EntityPlayerMP) entity;
+		EntityPlayer player = (EntityPlayer) entity;
 
 		String reason = null;
 		boolean result = false;
+		boolean perceived = this.npc.canBePerceivedBy(player);
 
 		if (!entity.isEntityAlive()) {
 			reason = "player is not alive";
 		} else if (entity == this.npc) {
 			reason = "player is NPC itself";
-		} else if (entity.getHealth() < 1.0F) {
-			reason = "player health below 1";
+		} else if (!perceived) {
+			reason = "NPC is not perceivable by player";
 		} else if (!this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)) {
 			reason = "outside aggro range";
 		} else if (this.npc.ais.directLOS
@@ -54,7 +55,7 @@ public class NPCAttackSelector implements Predicate {
 			reason = "TARGET ACCEPTED";
 		}
 
-		this.logPlayerCheck(player, result, reason);
+		this.logPlayerCheck(player, result, perceived, reason);
 
 		return result;
 	}
@@ -64,6 +65,11 @@ public class NPCAttackSelector implements Predicate {
 				&& entity != this.npc
 				&& this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)
 				&& entity.getHealth() >= 1.0F) {
+
+			if (entity instanceof EntityPlayer
+					&& !this.npc.canBePerceivedBy((EntityPlayer) entity)) {
+				return false;
+			}
 
 			if (this.npc.ais.directLOS
 					&& !this.npc.getEntitySenses().canSee(entity)) {
@@ -130,19 +136,21 @@ public class NPCAttackSelector implements Predicate {
 	}
 
 	private void logPlayerCheck(
-			EntityPlayerMP player,
+			EntityPlayer player,
 			boolean accepted,
+			boolean perceived,
 			String reason
 	) {
 		long worldTick = this.npc.world.getTotalWorldTime();
 
 		if (player.getEntityId() == this.lastLoggedPlayerId
+				&& this.lastLogTick != Long.MIN_VALUE
 				&& worldTick - this.lastLogTick < 20L) {
 			return;
 		}
 
 		this.lastLoggedPlayerId = player.getEntityId();
-		this.lastLogTick = (int) worldTick;
+		this.lastLogTick = worldTick;
 
 		double distance = this.npc.getDistance(player);
 
@@ -160,6 +168,9 @@ public class NPCAttackSelector implements Predicate {
 						.get(player).factionData
 						.getFactionPoints(player, this.npc.faction.id)
 						+ " directLOS=" + this.npc.ais.directLOS
+						+ " perceived=" + perceived
+						+ " tracking=" + this.npc.tracking.contains(player.getEntityId())
+						+ " trackingSize=" + this.npc.tracking.size()
 						+ " accepted=" + accepted
 						+ " reason=" + reason
 		);
