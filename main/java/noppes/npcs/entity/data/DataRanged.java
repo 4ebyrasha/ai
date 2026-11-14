@@ -38,6 +38,12 @@ public class DataRanged implements INPCRanged {
 	private String hitSound = "minecraft:entity.arrow.hit";
 	private String groundSound = "minecraft:block.stone.break";
 	private boolean ignorePlayerIFrames = false;
+	private int magazineSize = 30;
+	private int ammoInMagazine = -1;
+	private int reloadDurationTicks = 60;
+	private int reloadAfterDeAggroTicks = 40;
+	private int reloadTicksRemaining = 0;
+	private int ticksWithoutTarget = 0;
 
 	public DataRanged(EntityNPCInterface npc) {
 		this.npc = npc;
@@ -65,6 +71,27 @@ public class DataRanged implements INPCRanged {
 		this.pGlows = compound.getBoolean("pGlows");
 		this.aimWhileShooting = compound.getBoolean("AimWhileShooting");
 		this.ignorePlayerIFrames = compound.getBoolean("IgnorePlayerIFrames");
+		this.magazineSize = ValueUtil.CorrectInt(
+				compound.hasKey("MagazineSize") ? compound.getInteger("MagazineSize") : 30,
+				1, 999);
+
+		this.ammoInMagazine = compound.hasKey("AmmoInMagazine")
+				? ValueUtil.CorrectInt(compound.getInteger("AmmoInMagazine"), 0, this.magazineSize)
+				: this.magazineSize;
+
+		this.reloadDurationTicks = ValueUtil.CorrectInt(
+				compound.hasKey("ReloadDurationTicks") ? compound.getInteger("ReloadDurationTicks") : 60,
+				1, 6000);
+
+		this.reloadAfterDeAggroTicks = ValueUtil.CorrectInt(
+				compound.hasKey("ReloadAfterDeAggroTicks") ? compound.getInteger("ReloadAfterDeAggroTicks") : 40,
+				0, 6000);
+
+		this.reloadTicksRemaining = ValueUtil.CorrectInt(
+				compound.getInteger("ReloadTicksRemaining"), 0, this.reloadDurationTicks);
+
+		this.ticksWithoutTarget = ValueUtil.CorrectInt(
+				compound.getInteger("TicksWithoutTarget"), 0, 6000);
 		this.pEffect = compound.getInteger("pEffect");
 		this.pDur = compound.getInteger("pDur");
 		this.pEffAmp = compound.getInteger("pEffAmp");
@@ -97,6 +124,13 @@ public class DataRanged implements INPCRanged {
 		compound.setBoolean("pGlows", this.pGlows);
 		compound.setBoolean("AimWhileShooting", this.aimWhileShooting);
 		compound.setBoolean("IgnorePlayerIFrames", this.ignorePlayerIFrames);
+		compound.setInteger("MagazineSize", this.magazineSize);
+		compound.setInteger("AmmoInMagazine", this.ammoInMagazine < 0
+				? this.magazineSize : this.ammoInMagazine);
+		compound.setInteger("ReloadDurationTicks", this.reloadDurationTicks);
+		compound.setInteger("ReloadAfterDeAggroTicks", this.reloadAfterDeAggroTicks);
+		compound.setInteger("ReloadTicksRemaining", this.reloadTicksRemaining);
+		compound.setInteger("TicksWithoutTarget", this.ticksWithoutTarget);
 		compound.setInteger("pEffect", this.pEffect);
 		compound.setInteger("pDur", this.pDur);
 		compound.setInteger("pEffAmp", this.pEffAmp);
@@ -365,5 +399,128 @@ public class DataRanged implements INPCRanged {
 	public void setIgnorePlayerIFrames(boolean value) {
 		this.ignorePlayerIFrames = value;
 		this.npc.updateClient = true;
+	}
+
+	public int getMagazineSize() {
+		return this.magazineSize;
+	}
+
+	public void setMagazineSize(int size) {
+		this.magazineSize = ValueUtil.CorrectInt(size, 1, 999);
+
+		if (this.ammoInMagazine < 0) {
+			this.ammoInMagazine = this.magazineSize;
+		} else {
+			this.ammoInMagazine = Math.min(this.ammoInMagazine, this.magazineSize);
+		}
+
+		this.npc.updateClient = true;
+	}
+
+	public int getAmmoInMagazine() {
+		return this.ammoInMagazine < 0 ? this.magazineSize : this.ammoInMagazine;
+	}
+
+	public boolean isReloading() {
+		return this.reloadTicksRemaining > 0;
+	}
+
+	public int getReloadDurationSeconds() {
+		return Math.max(1, (this.reloadDurationTicks + 19) / 20);
+	}
+
+	public void setReloadDurationSeconds(int seconds) {
+		seconds = ValueUtil.CorrectInt(seconds, 1, 300);
+		this.reloadDurationTicks = seconds * 20;
+
+		if (this.reloadTicksRemaining > this.reloadDurationTicks) {
+			this.reloadTicksRemaining = this.reloadDurationTicks;
+		}
+
+		this.npc.updateClient = true;
+	}
+
+	public int getReloadAfterDeAggroSeconds() {
+		return (this.reloadAfterDeAggroTicks + 19) / 20;
+	}
+
+	public void setReloadAfterDeAggroSeconds(int seconds) {
+		seconds = ValueUtil.CorrectInt(seconds, 0, 300);
+		this.reloadAfterDeAggroTicks = seconds * 20;
+		this.ticksWithoutTarget = 0;
+		this.npc.updateClient = true;
+	}
+
+	private void startReload() {
+		if (this.reloadTicksRemaining > 0 || this.getAmmoInMagazine() >= this.magazineSize) {
+			return;
+		}
+
+		this.reloadTicksRemaining = this.reloadDurationTicks;
+		this.ticksWithoutTarget = 0;
+	}
+
+	public boolean tryConsumeRound() {
+		if (this.ammoInMagazine < 0) {
+			this.ammoInMagazine = this.magazineSize;
+		}
+
+		if (this.reloadTicksRemaining > 0 || this.ammoInMagazine <= 0) {
+			return false;
+		}
+
+		--this.ammoInMagazine;
+		this.npc.updateClient = true;
+
+		if (this.ammoInMagazine == 0) {
+			this.startReload();
+		}
+
+		return true;
+	}
+
+	/**
+	 * Updates magazine and reload state. Must be called once per server tick.
+	 */
+	public void updateMagazine(boolean hasTarget) {
+		if (this.ammoInMagazine < 0) {
+			this.ammoInMagazine = this.magazineSize;
+		}
+
+		if (this.reloadTicksRemaining > 0) {
+			--this.reloadTicksRemaining;
+
+			if (this.reloadTicksRemaining == 0) {
+				this.ammoInMagazine = this.magazineSize;
+				this.ticksWithoutTarget = 0;
+				this.npc.updateClient = true;
+			}
+
+			return;
+		}
+
+		if (this.ammoInMagazine >= this.magazineSize) {
+			this.ammoInMagazine = this.magazineSize;
+			this.ticksWithoutTarget = 0;
+			return;
+		}
+
+		if (this.ammoInMagazine <= 0) {
+			this.startReload();
+			return;
+		}
+
+		if (hasTarget) {
+			this.ticksWithoutTarget = 0;
+			return;
+		}
+
+		if (this.ticksWithoutTarget < this.reloadAfterDeAggroTicks) {
+			++this.ticksWithoutTarget;
+		}
+
+		if (this.ticksWithoutTarget >= this.reloadAfterDeAggroTicks) {
+			this.startReload();
+		}
 	}
 }

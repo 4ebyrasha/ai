@@ -23,7 +23,7 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.stats = stats;
 		this.setBackground("menubg.png");
 		this.xSize = 256;
-		this.ySize = 244;
+		this.ySize = 300;
 		this.closeOnEsc = true;
 	}
 
@@ -103,13 +103,41 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.addButton(new GuiNpcButton(13, var10004, y, 80, 20,
 				new String[] { "gui.no", "gui.whendistant", "gui.whenhidden" }, this.ranged.getFireType()));
 		this.addLabel(new GuiNpcLabel(13, "stats.indirect", this.guiLeft + 5, y + 5));
-		this.addLabel(new GuiNpcLabel(14, "npc.ignorePlayerIFrames.ranged",
+		// Magazine size
+		this.addTextField(new GuiNpcTextField(12, this, this.fontRenderer,
+				this.guiLeft + 80, this.guiTop + 202, 50, 18,
+				this.ranged.getMagazineSize() + ""));
+		this.addLabel(new GuiNpcLabel(12, "npc.magazineSize",
 				this.guiLeft + 5, this.guiTop + 207));
+		this.getTextField(12).numbersOnly = true;
+		this.getTextField(12).setMinMaxDefault(1, 999, 30);
 
-		this.addButton(new GuiNpcButtonYesNo(14, this.guiLeft + 100, this.guiTop + 202,
+// Reload duration
+		this.addTextField(new GuiNpcTextField(13, this, this.fontRenderer,
+				this.guiLeft + 200, this.guiTop + 202, 50, 18,
+				this.ranged.getReloadDurationSeconds() + ""));
+		this.addLabel(new GuiNpcLabel(13, "npc.reloadDuration",
+				this.guiLeft + 135, this.guiTop + 207));
+		this.getTextField(13).numbersOnly = true;
+		this.getTextField(13).setMinMaxDefault(1, 300, 3);
+
+// Reload after de-aggro
+		this.addTextField(new GuiNpcTextField(15, this, this.fontRenderer,
+				this.guiLeft + 80, this.guiTop + 224, 50, 18,
+				this.ranged.getReloadAfterDeAggroSeconds() + ""));
+		this.addLabel(new GuiNpcLabel(15, "npc.reloadAfterDeAggro",
+				this.guiLeft + 5, this.guiTop + 229));
+		this.getTextField(15).numbersOnly = true;
+		this.getTextField(15).setMinMaxDefault(0, 300, 2);
+
+// Ignore player i-frames
+		this.addLabel(new GuiNpcLabel(14, "npc.ignorePlayerIFrames.ranged",
+				this.guiLeft + 5, this.guiTop + 251));
+
+		this.addButton(new GuiNpcButtonYesNo(14, this.guiLeft + 150, this.guiTop + 246,
 				this.ranged.getIgnorePlayerIFrames()));
 
-		this.addButton(new GuiNpcButton(66, this.guiLeft + 190, this.guiTop + 218, 60, 20, "gui.done"));
+		this.addButton(new GuiNpcButton(66, this.guiLeft + 190, this.guiTop + 272, 60, 20, "gui.done"));
 	}
 
 	public void unFocused(GuiNpcTextField textfield) {
@@ -137,6 +165,12 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 			this.ranged.setSound(2, textfield.getText());
 		} else if (textfield.getId() == 11) {
 			this.ranged.setSound(1, textfield.getText());
+		} else if (textfield.getId() == 12) {
+			this.ranged.setMagazineSize(textfield.getInteger());
+		} else if (textfield.getId() == 13) {
+			this.ranged.setReloadDurationSeconds(textfield.getInteger());
+		} else if (textfield.getId() == 15) {
+			this.ranged.setReloadAfterDeAggroSeconds(textfield.getInteger());
 		}
 
 	}

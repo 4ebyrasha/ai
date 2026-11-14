@@ -380,6 +380,13 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 				}
 
 				if (!this.world.isRemote) {
+					EntityLivingBase rangedTarget = this.getAttackTarget();
+
+					boolean hasRangedTarget = rangedTarget != null
+							&& rangedTarget.isEntityAlive()
+							&& this.isInRange(rangedTarget, (double) this.stats.aggroRange);
+
+					this.stats.ranged.updateMagazine(hasRangedTarget);
 					if (!this.isKilled() && this.ticksExisted % 20 == 0) {
 						this.advanced.scenes.update();
 						// ─── ФИЛЬТР ВОСПРИЯТИЯ ───
@@ -809,9 +816,14 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		// ─────────────────────────
 
 		ItemStack proj = ItemStackWrapper.MCItem(this.inventory.getProjectile());
+
 		if (proj == null) {
 			this.updateAI = true;
 		} else {
+			if (!this.stats.ranged.tryConsumeRound()) {
+				return;
+			}
+
 			NpcEvent.RangedLaunchedEvent event = new NpcEvent.RangedLaunchedEvent(this.wrappedNPC, entity,
 					(float) this.stats.ranged.getStrength());
 

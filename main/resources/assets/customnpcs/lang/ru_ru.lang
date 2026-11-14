@@ -760,3 +760,7 @@ cheba.trader.shared_limits=Общие лимиты магазина:
 
 npc.ignorePlayerIFrames.melee=Игнор. i-frames ударов
 npc.ignorePlayerIFrames.ranged=Игнор. i-frames пуль
+
+npc.magazineSize=Емкость магазина
+npc.reloadDuration=Перезарядка(сек.)
+npc.reloadAfterDeAggro=Без цели(сек.)
