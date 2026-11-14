@@ -30,7 +30,7 @@ import org.lwjgl.Sys;
 
 public class NoppesUtil {
 	private static EntityNPCInterface lastNpc;
-	private static HashMap data = new HashMap();
+	private static HashMap<String, Integer> data = new HashMap<>();
 
 	public static void requestOpenGUI(EnumGuiType gui) {
 		requestOpenGUI(gui, 0, 0, 0);
@@ -110,23 +110,24 @@ public class NoppesUtil {
 
 	public static void setScrollList(ByteBuf buffer) {
 		GuiScreen gui = Minecraft.getMinecraft().currentScreen;
+
 		if (gui instanceof GuiNPCInterface && ((GuiNPCInterface) gui).hasSubGui()) {
 			gui = ((GuiNPCInterface) gui).getSubGui();
 		}
 
-		if (gui != null && gui instanceof IScrollData) {
-			Vector data = new Vector();
+		if (gui instanceof IScrollData) {
+			Vector<String> list = new Vector<>();
 
 			try {
 				int size = buffer.readInt();
 
 				for (int i = 0; i < size; ++i) {
-					data.add(Server.readString(buffer));
+					list.add(Server.readString(buffer));
 				}
-			} catch (Exception var6) {
+			} catch (Exception exception) {
 			}
 
-			((IScrollData) gui).setData(data, (HashMap) null);
+			((IScrollData) gui).setData(list, null);
 		}
 	}
 
@@ -139,13 +140,13 @@ public class NoppesUtil {
 				String name = Server.readString(buffer);
 				data.put(name, id);
 			}
-		} catch (Exception var5) {
+		} catch (Exception exception) {
 		}
-
 	}
 
 	public static void setScrollData(ByteBuf buffer) {
 		GuiScreen gui = Minecraft.getMinecraft().currentScreen;
+
 		if (gui != null) {
 			try {
 				int size = buffer.readInt();
@@ -155,7 +156,7 @@ public class NoppesUtil {
 					String name = Server.readString(buffer);
 					data.put(name, id);
 				}
-			} catch (Exception var6) {
+			} catch (Exception exception) {
 			}
 
 			if (gui instanceof GuiNPCInterface && ((GuiNPCInterface) gui).hasSubGui()) {
@@ -167,10 +168,10 @@ public class NoppesUtil {
 			}
 
 			if (gui instanceof IScrollData) {
-				((IScrollData) gui).setData(new Vector(data.keySet()), data);
+				((IScrollData) gui).setData(new Vector<>(data.keySet()), data);
 			}
 
-			data = new HashMap();
+			data = new HashMap<>();
 		}
 	}
 

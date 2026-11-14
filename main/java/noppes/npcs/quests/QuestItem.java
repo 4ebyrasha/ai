@@ -1,11 +1,11 @@
+
 package noppes.npcs.quests;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -17,7 +17,8 @@ import noppes.npcs.api.handler.data.IQuestObjective;
 import noppes.npcs.util.ValueUtil;
 
 public class QuestItem extends QuestInterface {
-	public NpcMiscInventory items = new NpcMiscInventory(3);
+
+	public NpcMiscInventory items = new NpcMiscInventory(9);
 	public boolean leaveItems = false;
 	public boolean ignoreDamage = false;
 	public boolean ignoreNBT = false;
@@ -37,45 +38,49 @@ public class QuestItem extends QuestInterface {
 	}
 
 	public boolean isCompleted(EntityPlayer player) {
-		List questItems = NoppesUtilPlayer.countStacks(this.items, this.ignoreDamage, this.ignoreNBT);
-		Iterator var3 = questItems.iterator();
+		List<ItemStack> questItems = NoppesUtilPlayer.countStacks(
+				this.items, this.ignoreDamage, this.ignoreNBT);
 
-		ItemStack reqItem;
-		do {
-			if (!var3.hasNext()) {
-				return true;
+		for (ItemStack requiredItem : questItems) {
+			if (!NoppesUtilPlayer.compareItems(
+					player,
+					requiredItem,
+					this.ignoreDamage,
+					this.ignoreNBT)) {
+				return false;
 			}
+		}
 
-			reqItem = (ItemStack) var3.next();
-		} while (NoppesUtilPlayer.compareItems(player, reqItem, this.ignoreDamage, this.ignoreNBT));
-
-		return false;
+		return true;
 	}
 
-	public Map getProgressSet(EntityPlayer player) {
-		HashMap map = new HashMap();
-		List questItems = NoppesUtilPlayer.countStacks(this.items, this.ignoreDamage, this.ignoreNBT);
-		Iterator var4 = questItems.iterator();
+	public Map<ItemStack, Integer> getProgressSet(EntityPlayer player) {
+		Map<ItemStack, Integer> map = new HashMap<>();
 
-		ItemStack item;
-		while (var4.hasNext()) {
-			item = (ItemStack) var4.next();
-			if (!NoppesUtilServer.IsItemStackNull(item)) {
-				map.put(item, 0);
+		List<ItemStack> questItems = NoppesUtilPlayer.countStacks(
+				this.items, this.ignoreDamage, this.ignoreNBT);
+
+		for (ItemStack questItem : questItems) {
+			if (!NoppesUtilServer.IsItemStackNull(questItem)) {
+				map.put(questItem, 0);
 			}
 		}
 
 		for (int i = 0; i < player.inventory.getSizeInventory(); ++i) {
-			item = player.inventory.getStackInSlot(i);
-			if (!NoppesUtilServer.IsItemStackNull(item)) {
-				Iterator var6 = map.entrySet().iterator();
+			ItemStack item = player.inventory.getStackInSlot(i);
 
-				while (var6.hasNext()) {
-					Entry questItem = (Entry) var6.next();
-					if (NoppesUtilPlayer.compareItems((ItemStack) questItem.getKey(), item, this.ignoreDamage,
-							this.ignoreNBT)) {
-						map.put(questItem.getKey(), (Integer) questItem.getValue() + item.getCount());
-					}
+			if (NoppesUtilServer.IsItemStackNull(item)) {
+				continue;
+			}
+
+			for (Map.Entry<ItemStack, Integer> questItem : map.entrySet()) {
+				if (NoppesUtilPlayer.compareItems(
+						questItem.getKey(),
+						item,
+						this.ignoreDamage,
+						this.ignoreNBT)) {
+					questItem.setValue(
+							questItem.getValue() + item.getCount());
 				}
 			}
 		}
@@ -84,59 +89,70 @@ public class QuestItem extends QuestInterface {
 	}
 
 	public void handleComplete(EntityPlayer player) {
-		if (!this.leaveItems) {
-			Iterator var2 = this.items.items.iterator();
+		if (this.leaveItems) {
+			return;
+		}
 
-			while (true) {
-				ItemStack questitem;
-				do {
-					if (!var2.hasNext()) {
-						return;
-					}
+		for (int questSlot = 0;
+			 questSlot < this.items.getSizeInventory();
+			 ++questSlot) {
 
-					questitem = (ItemStack) var2.next();
-				} while (questitem.isEmpty());
+			ItemStack requiredItem = this.items.getStackInSlot(questSlot);
 
-				int stacksize = questitem.getCount();
+			if (NoppesUtilServer.IsItemStackNull(requiredItem)
+					|| requiredItem.isEmpty()) {
+				continue;
+			}
 
-				for (int i = 0; i < player.inventory.getSizeInventory(); ++i) {
-					ItemStack item = player.inventory.getStackInSlot(i);
-					if (!NoppesUtilServer.IsItemStackNull(item)
-							&& NoppesUtilPlayer.compareItems(item, questitem, this.ignoreDamage, this.ignoreNBT)) {
-						int size = item.getCount();
-						if (stacksize - size >= 0) {
-							player.inventory.setInventorySlotContents(i, ItemStack.EMPTY);
-							item.splitStack(size);
-						} else {
-							item.splitStack(stacksize);
-						}
+			int remaining = requiredItem.getCount();
 
-						stacksize -= size;
-						if (stacksize <= 0) {
-							break;
-						}
-					}
+			for (int i = 0; i < player.inventory.getSizeInventory(); ++i) {
+				ItemStack item = player.inventory.getStackInSlot(i);
+
+				if (NoppesUtilServer.IsItemStackNull(item)
+						|| !NoppesUtilPlayer.compareItems(
+						item,
+						requiredItem,
+						this.ignoreDamage,
+						this.ignoreNBT)) {
+					continue;
+				}
+
+				int stackSize = item.getCount();
+
+				if (stackSize <= remaining) {
+					player.inventory.setInventorySlotContents(
+							i, ItemStack.EMPTY);
+					remaining -= stackSize;
+				} else {
+					item.splitStack(remaining);
+					remaining = 0;
+				}
+
+				if (remaining <= 0) {
+					break;
 				}
 			}
 		}
 	}
 
 	public IQuestObjective[] getObjectives(EntityPlayer player) {
-		List list = new ArrayList();
-		List questItems = NoppesUtilPlayer.countStacks(this.items, this.ignoreDamage, this.ignoreNBT);
-		Iterator var4 = questItems.iterator();
+		List<IQuestObjective> objectives = new ArrayList<>();
 
-		while (var4.hasNext()) {
-			ItemStack stack = (ItemStack) var4.next();
+		List<ItemStack> questItems = NoppesUtilPlayer.countStacks(
+				this.items, this.ignoreDamage, this.ignoreNBT);
+
+		for (ItemStack stack : questItems) {
 			if (!stack.isEmpty()) {
-				list.add(new QuestItem.QuestItemObjective(player, stack));
+				objectives.add(new QuestItemObjective(player, stack));
 			}
 		}
 
-		return (IQuestObjective[]) list.toArray(new IQuestObjective[list.size()]);
+		return objectives.toArray(new IQuestObjective[0]);
 	}
 
-	class QuestItemObjective implements IQuestObjective {
+	private class QuestItemObjective implements IQuestObjective {
+
 		private final EntityPlayer player;
 		private final ItemStack questItem;
 
@@ -148,19 +164,29 @@ public class QuestItem extends QuestInterface {
 		public int getProgress() {
 			int count = 0;
 
-			for (int i = 0; i < this.player.inventory.getSizeInventory(); ++i) {
+			for (int i = 0;
+				 i < this.player.inventory.getSizeInventory();
+				 ++i) {
+
 				ItemStack item = this.player.inventory.getStackInSlot(i);
-				if (!NoppesUtilServer.IsItemStackNull(item) && NoppesUtilPlayer.compareItems(this.questItem, item,
-						QuestItem.this.ignoreDamage, QuestItem.this.ignoreNBT)) {
+
+				if (!NoppesUtilServer.IsItemStackNull(item)
+						&& NoppesUtilPlayer.compareItems(
+						this.questItem,
+						item,
+						QuestItem.this.ignoreDamage,
+						QuestItem.this.ignoreNBT)) {
 					count += item.getCount();
 				}
 			}
 
-			return ValueUtil.CorrectInt(count, 0, this.questItem.getCount());
+			return ValueUtil.CorrectInt(
+					count, 0, this.questItem.getCount());
 		}
 
 		public void setProgress(int progress) {
-			throw new CustomNPCsException("Cant set the progress of ItemQuests", new Object[0]);
+			throw new CustomNPCsException(
+					"Cant set the progress of ItemQuests");
 		}
 
 		public int getMaxProgress() {
@@ -168,12 +194,17 @@ public class QuestItem extends QuestInterface {
 		}
 
 		public boolean isCompleted() {
-			return NoppesUtilPlayer.compareItems(this.player, this.questItem, QuestItem.this.ignoreDamage,
+			return NoppesUtilPlayer.compareItems(
+					this.player,
+					this.questItem,
+					QuestItem.this.ignoreDamage,
 					QuestItem.this.ignoreNBT);
 		}
 
 		public String getText() {
-			return this.questItem.getDisplayName() + ": " + this.getProgress() + "/" + this.getMaxProgress();
+			return this.questItem.getDisplayName()
+					+ ": " + this.getProgress()
+					+ "/" + this.getMaxProgress();
 		}
 	}
 }

@@ -1,44 +1,137 @@
 package noppes.npcs.containers;
 
+import javax.annotation.Nonnull;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import noppes.npcs.entity.EntityNPCInterface;
+import noppes.npcs.entity.data.DataInventory;
 
 public class ContainerNPCInv extends Container {
+
+	private static class SlotNPCDrop extends Slot {
+		private final DataInventory npcInventory;
+
+		private SlotNPCDrop(DataInventory inventory, int slot, int x, int y) {
+			super(inventory, slot, x, y);
+			this.npcInventory = inventory;
+		}
+
+		@Override
+		public boolean isItemValid(@Nonnull ItemStack stack) {
+			return this.npcInventory.isItemValidForSlot(
+					this.getSlotIndex(), stack);
+		}
+	}
+
 	public ContainerNPCInv(EntityNPCInterface npc, EntityPlayer player) {
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 0, 9, 22, EntityEquipmentSlot.HEAD));
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 1, 9, 40, EntityEquipmentSlot.CHEST));
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 2, 9, 58, EntityEquipmentSlot.LEGS));
-		this.addSlotToContainer(new SlotNPCArmor(npc.inventory, 3, 9, 76, EntityEquipmentSlot.FEET));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 0, 9, 22, EntityEquipmentSlot.HEAD));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 1, 9, 40, EntityEquipmentSlot.CHEST));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 2, 9, 58, EntityEquipmentSlot.LEGS));
+		this.addSlotToContainer(new SlotNPCArmor(
+				npc.inventory, 3, 9, 76, EntityEquipmentSlot.FEET));
+
 		this.addSlotToContainer(new Slot(npc.inventory, 4, 81, 22));
 		this.addSlotToContainer(new Slot(npc.inventory, 5, 81, 40));
 		this.addSlotToContainer(new Slot(npc.inventory, 6, 81, 58));
 
-		int j1;
-		for (j1 = 0; j1 < 9; ++j1) {
-			this.addSlotToContainer(new Slot(npc.inventory, j1 + 7, 191, 16 + j1 * 21));
-		}
+		int rowsPerColumn = DataInventory.DROP_SLOT_COUNT / 2;
 
-		for (j1 = 0; j1 < 3; ++j1) {
-			for (int l1 = 0; l1 < 9; ++l1) {
-				this.addSlotToContainer(new Slot(player.inventory, l1 + j1 * 9 + 9, l1 * 18 + 8, 113 + j1 * 18));
+		for (int group = 0; group < DataInventory.DROP_SLOT_COUNT; ++group) {
+			int column = group / rowsPerColumn;
+			int row = group % rowsPerColumn;
+			int baseX = column == 0 ? 191 : 331;
+			int y = 16 + row * 21;
+
+			for (int itemSlot = 0;
+				 itemSlot < DataInventory.DROP_ITEMS_PER_SLOT;
+				 ++itemSlot) {
+
+				int inventorySlot = 7
+						+ group * DataInventory.DROP_ITEMS_PER_SLOT
+						+ itemSlot;
+
+				int x = baseX + itemSlot * 18;
+
+				this.addSlotToContainer(new SlotNPCDrop(
+						npc.inventory, inventorySlot, x, y));
 			}
 		}
 
-		for (j1 = 0; j1 < 9; ++j1) {
-			this.addSlotToContainer(new Slot(player.inventory, j1, j1 * 18 + 8, 171));
+		for (int j = 0; j < 3; ++j) {
+			for (int i = 0; i < 9; ++i) {
+				this.addSlotToContainer(new Slot(
+						player.inventory,
+						i + j * 9 + 9,
+						i * 18 + 8,
+						113 + j * 18));
+			}
 		}
 
+		for (int i = 0; i < 9; ++i) {
+			this.addSlotToContainer(new Slot(
+					player.inventory, i, i * 18 + 8, 171));
+		}
 	}
 
-	public ItemStack transferStackInSlot(EntityPlayer par1EntityPlayer, int i) {
-		return ItemStack.EMPTY;
+	@Nonnull
+	@Override
+	public ItemStack transferStackInSlot(
+			@Nonnull EntityPlayer player, int index) {
+
+		int playerInventoryStart =
+				7 + DataInventory.DROP_ITEM_COUNT;
+
+		if (index < 0 || index >= this.inventorySlots.size()) {
+			return ItemStack.EMPTY;
+		}
+
+		if (index >= playerInventoryStart) {
+			return ItemStack.EMPTY;
+		}
+
+		Slot slot = this.inventorySlots.get(index);
+
+		if (slot == null
+				|| !slot.getHasStack()
+				|| !slot.canTakeStack(player)) {
+			return ItemStack.EMPTY;
+		}
+
+		ItemStack sourceStack = slot.getStack();
+		ItemStack originalStack = sourceStack.copy();
+
+		if (!this.mergeItemStack(
+				sourceStack,
+				playerInventoryStart,
+				this.inventorySlots.size(),
+				true)) {
+			return ItemStack.EMPTY;
+		}
+
+		if (sourceStack.isEmpty()) {
+			slot.putStack(ItemStack.EMPTY);
+		} else {
+			slot.onSlotChanged();
+		}
+
+		if (sourceStack.getCount() == originalStack.getCount()) {
+			return ItemStack.EMPTY;
+		}
+
+		slot.onTake(player, sourceStack);
+
+		return originalStack;
 	}
 
-	public boolean canInteractWith(EntityPlayer entityplayer) {
+	@Override
+	public boolean canInteractWith(@Nonnull EntityPlayer player) {
 		return true;
 	}
 }

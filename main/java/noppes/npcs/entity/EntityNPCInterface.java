@@ -1744,12 +1744,14 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.ais.bodyOffsetX = compound.getFloat("PositionXOffset");
 		this.ais.bodyOffsetY = compound.getFloat("PositionYOffset");
 		this.ais.bodyOffsetZ = compound.getFloat("PositionZOffset");
-		this.inventory.armor = NBTTags.getIItemStackMap(compound.getTagList("Armor", 10));
-		this.inventory.weapons = NBTTags.getIItemStackMap(compound.getTagList("Weapons", 10));
+
+		this.inventory.readEquipmentFromNBT(compound);
+
 		this.advanced.setRole(compound.getInteger("Role"));
 		this.advanced.setJob(compound.getInteger("Job"));
 
 		NBTTagCompound puppet;
+
 		if (this.advanced.job == 1) {
 			puppet = compound.getCompoundTag("Bard");
 			this.jobInterface.readFromNBT(puppet);

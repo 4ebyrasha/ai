@@ -8,32 +8,53 @@ import noppes.npcs.NoppesUtilServer;
 import noppes.npcs.controllers.data.Quest;
 import noppes.npcs.quests.QuestItem;
 
+import javax.annotation.Nonnull;
+
 public class ContainerNpcQuestTypeItem extends Container {
+
 	public ContainerNpcQuestTypeItem(EntityPlayer player) {
 		Quest quest = NoppesUtilServer.getEditingQuest(player);
+		QuestItem questItem = (QuestItem) quest.questInterface;
 
-		int j1;
-		for (j1 = 0; j1 < 3; ++j1) {
-			this.addSlotToContainer(new Slot(((QuestItem) quest.questInterface).items, j1, 44, 39 + j1 * 25));
-		}
+		for (int row = 0; row < 3; ++row) {
+			for (int column = 0; column < 3; ++column) {
+				int slot = column + row * 3;
 
-		for (j1 = 0; j1 < 3; ++j1) {
-			for (int l1 = 0; l1 < 9; ++l1) {
-				this.addSlotToContainer(new Slot(player.inventory, l1 + j1 * 9 + 9, 8 + l1 * 18, 113 + j1 * 18));
+				this.addSlotToContainer(new Slot(
+						questItem.items,
+						slot,
+						105 + column * 18,
+						17 + row * 18
+				));
 			}
 		}
 
-		for (j1 = 0; j1 < 9; ++j1) {
-			this.addSlotToContainer(new Slot(player.inventory, j1, 8 + j1 * 18, 171));
+		for (int row = 0; row < 3; ++row) {
+			for (int column = 0; column < 9; ++column) {
+				this.addSlotToContainer(new Slot(
+						player.inventory,
+						column + row * 9 + 9,
+						8 + column * 18,
+						84 + row * 18
+				));
+			}
 		}
 
+		for (int column = 0; column < 9; ++column) {
+			this.addSlotToContainer(new Slot(
+					player.inventory,
+					column,
+					8 + column * 18,
+					142
+			));
+		}
 	}
 
-	public ItemStack transferStackInSlot(EntityPlayer par1EntityPlayer, int i) {
+	public ItemStack transferStackInSlot(@Nonnull EntityPlayer player, int index) {
 		return null;
 	}
 
-	public boolean canInteractWith(EntityPlayer entityplayer) {
+	public boolean canInteractWith(@Nonnull EntityPlayer player) {
 		return true;
 	}
 }

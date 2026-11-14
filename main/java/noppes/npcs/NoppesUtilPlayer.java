@@ -35,6 +35,7 @@ import noppes.npcs.controllers.data.Quest;
 import noppes.npcs.controllers.data.QuestData;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleDialog;
+import noppes.npcs.controllers.data.PlayerMail;
 
 public class NoppesUtilPlayer {
 	public static void teleportPlayer(EntityPlayerMP player, double x, double y, double z, int dimension) {
@@ -130,68 +131,145 @@ public class NoppesUtilPlayer {
 		data.dialogId = -1;
 	}
 
+
 	public static void questCompletion(EntityPlayerMP player, int questId) {
 		PlayerData data = PlayerData.get(player);
 		PlayerQuestData playerdata = data.questData;
 		QuestData questdata = (QuestData) playerdata.activeQuests.get(questId);
-		if (questdata != null) {
-			Quest quest = questdata.quest;
-			if (quest.questInterface.isCompleted(player)) {
-				QuestEvent.QuestTurnedInEvent event = new QuestEvent.QuestTurnedInEvent(data.scriptData.getPlayer(),
-						quest);
-				event.expReward = quest.rewardExp;
-				List list = new ArrayList();
-				Iterator var8 = quest.rewardItems.items.iterator();
 
-				while (var8.hasNext()) {
-					ItemStack item = (ItemStack) var8.next();
-					if (!item.isEmpty()) {
-						list.add(NpcAPI.Instance().getIItemStack(item));
-					}
+		if (questdata == null) {
+			return;
+		}
+
+		Quest quest = questdata.quest;
+
+		if (!quest.questInterface.isCompleted(player)) {
+			return;
+		}
+
+		QuestEvent.QuestTurnedInEvent event = new QuestEvent.QuestTurnedInEvent(
+				data.scriptData.getPlayer(), quest);
+
+		event.expReward = quest.rewardExp;
+
+		NpcAPI npcApi = NpcAPI.Instance();
+
+		if (npcApi == null) {
+			throw new IllegalStateException(
+					"CustomNPCs API is unavailable during quest completion");
+		}
+
+		List<IItemStack> itemRewards = new ArrayList<>();
+
+		for (Object value : quest.rewardItems.items) {
+			if (!(value instanceof ItemStack)) {
+				continue;
+			}
+
+			ItemStack item = (ItemStack) value;
+
+			if (!item.isEmpty()) {
+				IItemStack wrappedItem = npcApi.getIItemStack(item);
+
+				if (wrappedItem != null) {
+					itemRewards.add(wrappedItem);
 				}
+			}
+		}
 
-				if (!quest.randomReward) {
-					event.itemRewards = (IItemStack[]) list.toArray(new IItemStack[list.size()]);
-				} else if (!list.isEmpty()) {
-					event.itemRewards = new IItemStack[] {
-							(IItemStack) list.get(player.getRNG().nextInt(list.size())) };
+		if (!quest.randomReward) {
+			event.itemRewards = itemRewards.toArray(new IItemStack[0]);
+		} else if (!itemRewards.isEmpty()) {
+			event.itemRewards = new IItemStack[] {
+					itemRewards.get(player.getRNG().nextInt(itemRewards.size()))
+			};
+		}
+
+		EventHooks.onQuestTurnedIn(data.scriptData, event);
+
+		IItemStack[] rewards = event.itemRewards;
+
+		if (rewards != null) {
+			for (IItemStack item : rewards) {
+				if (item != null) {
+					NoppesUtilServer.GivePlayerItem(
+							player, player, item.getMCItemStack());
 				}
+			}
+		}
 
-				EventHooks.onQuestTurnedIn(data.scriptData, event);
-				IItemStack[] var12 = event.itemRewards;
-				int var14 = var12.length;
+		quest.questInterface.handleComplete(player);
 
-				for (int var10 = 0; var10 < var14; ++var10) {
-					IItemStack item = var12[var10];
-					if (item != null) {
-						NoppesUtilServer.GivePlayerItem(player, player, item.getMCItemStack());
-					}
+		if (event.expReward > 0) {
+			NoppesUtilServer.playSound(
+					player,
+					SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP,
+					0.1F,
+					0.5F * ((player.world.rand.nextFloat()
+							- player.world.rand.nextFloat()) * 0.7F + 1.8F));
+
+			player.addExperience(event.expReward);
+		}
+
+		quest.factionOptions.addPoints(player);
+
+		for (int slot = 0; slot < 3; ++slot) {
+			PlayerMail mail = quest.getMail(slot);
+
+			if (mail != null && mail.isValid()) {
+				PlayerDataController.instance.addPlayerMessage(
+						player.getServer(),
+						player.getName(),
+						mail
+				);
+			}
+		}
+
+		if (quest.command != null && !quest.command.trim().isEmpty()) {
+			FakePlayer cplayer = EntityNPCInterface.CommandPlayer;
+
+			cplayer.setWorld(player.world);
+			cplayer.setPosition(player.posX, player.posY, player.posZ);
+
+			String[] commands = quest.command.replace("\r", "").split("\n");
+
+			for (String command : commands) {
+				String currentCommand = command.trim();
+
+				if (!currentCommand.isEmpty()) {
+					NoppesUtilServer.runCommand(
+							cplayer,
+							"QuestCompletion",
+							currentCommand,
+							player);
 				}
+			}
+		}
 
-				quest.questInterface.handleComplete(player);
-				if (event.expReward > 0) {
-					NoppesUtilServer.playSound(player, SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.1F,
-							0.5F * ((player.world.rand.nextFloat() - player.world.rand.nextFloat()) * 0.7F + 1.8F));
-					player.addExperience(event.expReward);
+		PlayerQuestController.setQuestFinished(quest, player);
+
+		for (int slot = 0; slot < 3; ++slot) {
+			int nextQuestId = quest.getNextQuestId(slot);
+
+			if (nextQuestId < 0) {
+				continue;
+			}
+
+			boolean duplicate = false;
+
+			for (int previousSlot = 0; previousSlot < slot; ++previousSlot) {
+				if (quest.getNextQuestId(previousSlot) == nextQuestId) {
+					duplicate = true;
+					break;
 				}
+			}
 
-				quest.factionOptions.addPoints(player);
-				if (quest.mail.isValid()) {
-					PlayerDataController.instance.addPlayerMessage(player.getServer(), player.getName(), quest.mail);
+			if (!duplicate) {
+				Quest nextQuest = quest.getNextQuest(slot);
+
+				if (nextQuest != null) {
+					PlayerQuestController.addActiveQuest(nextQuest, player);
 				}
-
-				if (!quest.command.isEmpty()) {
-					FakePlayer cplayer = EntityNPCInterface.CommandPlayer;
-					cplayer.setWorld(player.world);
-					cplayer.setPosition(player.posX, player.posY, player.posZ);
-					NoppesUtilServer.runCommand(cplayer, "QuestCompletion", quest.command, player);
-				}
-
-				PlayerQuestController.setQuestFinished(quest, player);
-				if (quest.hasNewQuest()) {
-					PlayerQuestController.addActiveQuest(quest.getNextQuest(), player);
-				}
-
 			}
 		}
 	}
@@ -281,27 +359,33 @@ public class NoppesUtilPlayer {
 		}
 	}
 
-	public static List countStacks(IInventory inv, boolean ignoreDamage, boolean ignoreNBT) {
-		List list = new ArrayList();
+
+	public static List<ItemStack> countStacks(
+			IInventory inv,
+			boolean ignoreDamage,
+			boolean ignoreNBT) {
+
+		List<ItemStack> list = new ArrayList<>();
 
 		for (int i = 0; i < inv.getSizeInventory(); ++i) {
 			ItemStack item = inv.getStackInSlot(i);
-			if (!NoppesUtilServer.IsItemStackNull(item)) {
-				boolean found = false;
-				Iterator var7 = list.iterator();
 
-				while (var7.hasNext()) {
-					ItemStack is = (ItemStack) var7.next();
-					if (compareItems(item, is, ignoreDamage, ignoreNBT)) {
-						is.setCount(is.getCount() + item.getCount());
-						found = true;
-						break;
-					}
-				}
+			if (NoppesUtilServer.IsItemStackNull(item)) {
+				continue;
+			}
 
-				if (!found) {
-					list.add(item.copy());
+			boolean found = false;
+
+			for (ItemStack existing : list) {
+				if (compareItems(item, existing, ignoreDamage, ignoreNBT)) {
+					existing.setCount(existing.getCount() + item.getCount());
+					found = true;
+					break;
 				}
+			}
+
+			if (!found) {
+				list.add(item.copy());
 			}
 		}
 

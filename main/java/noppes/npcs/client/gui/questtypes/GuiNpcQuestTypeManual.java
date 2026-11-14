@@ -1,7 +1,8 @@
 package noppes.npcs.client.gui.questtypes;
 
-import java.util.Iterator;
+import java.util.Map;
 import java.util.TreeMap;
+
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import noppes.npcs.client.gui.util.GuiNpcButton;
@@ -13,16 +14,24 @@ import noppes.npcs.controllers.data.Quest;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.quests.QuestManual;
 
-public class GuiNpcQuestTypeManual extends SubGuiInterface implements ITextfieldListener {
-	private GuiScreen parent;
-	private QuestManual quest;
-	private GuiNpcTextField lastSelected;
+public class GuiNpcQuestTypeManual extends SubGuiInterface
+		implements ITextfieldListener {
 
-	public GuiNpcQuestTypeManual(EntityNPCInterface npc, Quest q, GuiScreen parent) {
+	private static final int TARGET_COUNT = 6;
+	private static final int ROW_HEIGHT = 22;
+
+	private final QuestManual quest;
+
+	public GuiNpcQuestTypeManual(
+			EntityNPCInterface npc,
+			Quest q,
+			GuiScreen parent) {
+
 		this.npc = npc;
 		this.parent = parent;
 		this.title = "Quest Manual Setup";
 		this.quest = (QuestManual) q.questInterface;
+
 		this.setBackground("menubg.png");
 		this.xSize = 356;
 		this.ySize = 216;
@@ -31,59 +40,109 @@ public class GuiNpcQuestTypeManual extends SubGuiInterface implements ITextfield
 
 	public void initGui() {
 		super.initGui();
-		int i = 0;
-		this.addLabel(
-				new GuiNpcLabel(0, "You can fill in npc or player names too", this.guiLeft + 4, this.guiTop + 50));
 
-		for (Iterator var2 = this.quest.manuals.keySet().iterator(); var2.hasNext(); ++i) {
-			String name = (String) var2.next();
-			this.addTextField(new GuiNpcTextField(i, this, this.fontRenderer, this.guiLeft + 4,
-					this.guiTop + 70 + i * 22, 180, 20, name));
-			this.addTextField(new GuiNpcTextField(i + 3, this, this.fontRenderer, this.guiLeft + 186,
-					this.guiTop + 70 + i * 22, 24, 20, this.quest.manuals.get(name) + ""));
-			this.getTextField(i + 3).numbersOnly = true;
-			this.getTextField(i + 3).setMinMaxDefault(1, Integer.MAX_VALUE, 1);
+		this.addLabel(new GuiNpcLabel(
+				0,
+				"You can fill in npc or player names too",
+				this.guiLeft + 4,
+				this.guiTop + 34
+		));
+
+		int row = 0;
+
+		for (Map.Entry<String, Integer> entry
+				: this.quest.manuals.entrySet()) {
+
+			if (row >= TARGET_COUNT) {
+				break;
+			}
+
+			this.addTargetFields(
+					row,
+					entry.getKey(),
+					entry.getValue()
+			);
+
+			++row;
 		}
 
-		while (i < 3) {
-			this.addTextField(new GuiNpcTextField(i, this, this.fontRenderer, this.guiLeft + 4,
-					this.guiTop + 70 + i * 22, 180, 20, ""));
-			this.addTextField(new GuiNpcTextField(i + 3, this, this.fontRenderer, this.guiLeft + 186,
-					this.guiTop + 70 + i * 22, 24, 20, "1"));
-			this.getTextField(i + 3).numbersOnly = true;
-			this.getTextField(i + 3).setMinMaxDefault(1, Integer.MAX_VALUE, 1);
-			++i;
+		while (row < TARGET_COUNT) {
+			this.addTargetFields(row, "", 1);
+			++row;
 		}
 
-		this.addButton(new GuiNpcButton(0, this.guiLeft + 4, this.guiTop + 140, 98, 20, "gui.back"));
+		this.addButton(new GuiNpcButton(
+				0,
+				this.guiLeft + 4,
+				this.guiTop + 190,
+				98,
+				20,
+				"gui.back"
+		));
+	}
+
+	private void addTargetFields(
+			int row,
+			String name,
+			int amount) {
+
+		int y = this.guiTop + 52 + row * ROW_HEIGHT;
+
+		this.addTextField(new GuiNpcTextField(
+				row,
+				this,
+				this.fontRenderer,
+				this.guiLeft + 4,
+				y,
+				180,
+				20,
+				name
+		));
+
+		this.addTextField(new GuiNpcTextField(
+				row + TARGET_COUNT,
+				this,
+				this.fontRenderer,
+				this.guiLeft + 186,
+				y,
+				24,
+				20,
+				String.valueOf(amount)
+		));
+
+		this.getTextField(row + TARGET_COUNT).numbersOnly = true;
+		this.getTextField(row + TARGET_COUNT).setMinMaxDefault(
+				1,
+				Integer.MAX_VALUE,
+				1
+		);
 	}
 
 	protected void actionPerformed(GuiButton guibutton) {
 		super.actionPerformed(guibutton);
+
 		if (guibutton.id == 0) {
 			this.close();
 		}
-
 	}
 
-	public void save() {
-	}
-
-	public void unFocused(GuiNpcTextField guiNpcTextField) {
-		if (guiNpcTextField.getId() < 3) {
-			this.lastSelected = guiNpcTextField;
-		}
-
+	public void unFocused(GuiNpcTextField textField) {
 		this.saveTargets();
 	}
 
 	private void saveTargets() {
-		TreeMap map = new TreeMap();
+		TreeMap<String, Integer> map = new TreeMap<>();
 
-		for (int i = 0; i < 3; ++i) {
-			String name = this.getTextField(i).getText();
+		for (int i = 0; i < TARGET_COUNT; ++i) {
+			String name = this.getTextField(i).getText().trim();
+
 			if (!name.isEmpty()) {
-				map.put(name, this.getTextField(i + 3).getInteger());
+				int amount = Math.max(
+						1,
+						this.getTextField(i + TARGET_COUNT).getInteger()
+				);
+
+				map.put(name, amount);
 			}
 		}
 
