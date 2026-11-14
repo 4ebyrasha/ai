@@ -8,34 +8,35 @@ import net.minecraft.entity.ai.EntityAITarget;
 import net.minecraft.entity.ai.EntityAINearestAttackableTarget.Sorter;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.util.math.MathHelper;
-import noppes.npcs.LogWriter;
 import noppes.npcs.entity.EntityNPCInterface;
 
 public class EntityAIClosestTarget extends EntityAITarget {
-	private final Class targetClass;
+
+	private final Class<? extends EntityLivingBase> targetClass;
 	private final int targetChance;
 	private final Sorter theNearestAttackableTargetSorter;
-	private final Predicate targetEntitySelector;
+	private final Predicate<? super EntityLivingBase> targetEntitySelector;
 	private EntityLivingBase targetEntity;
-	private EntityNPCInterface npc;
+	private final EntityNPCInterface npc;
 
 	public EntityAIClosestTarget(
 			EntityNPCInterface npc,
-			Class par2Class,
-			int par3,
-			boolean par4,
-			boolean par5,
-			Predicate par6IEntitySelector
+			Class<? extends EntityLivingBase> targetClass,
+			int targetChance,
+			boolean checkSight,
+			boolean nearbyOnly,
+			Predicate<? super EntityLivingBase> targetEntitySelector
 	) {
-		super(npc, par4, par5);
-		this.targetClass = par2Class;
-		this.targetChance = par3;
+		super(npc, checkSight, nearbyOnly);
+		this.targetClass = targetClass;
+		this.targetChance = targetChance;
 		this.theNearestAttackableTargetSorter = new Sorter(npc);
 		this.setMutexBits(1);
-		this.targetEntitySelector = par6IEntitySelector;
+		this.targetEntitySelector = targetEntitySelector;
 		this.npc = npc;
 	}
 
+	@Override
 	public boolean shouldExecute() {
 		if (this.targetChance > 0
 				&& this.taskOwner.getRNG().nextInt(this.targetChance) != 0) {
@@ -44,45 +45,32 @@ public class EntityAIClosestTarget extends EntityAITarget {
 
 		double distance = this.getTargetDistance();
 
-		List list = this.taskOwner.world.getEntitiesWithinAABB(
-				this.targetClass,
-				this.taskOwner.getEntityBoundingBox().grow(
-						distance,
-						(double) MathHelper.ceil(distance / 2.0D),
-						distance
-				),
-				this.targetEntitySelector
-		);
+		List<? extends EntityLivingBase> entities =
+				this.taskOwner.world.getEntitiesWithinAABB(
+						this.targetClass,
+						this.taskOwner.getEntityBoundingBox().grow(
+								distance,
+								(double) MathHelper.ceil(distance / 2.0D),
+								distance
+						),
+						this.targetEntitySelector
+				);
 
-		Collections.sort(list, this.theNearestAttackableTargetSorter);
+		Collections.sort(entities, this.theNearestAttackableTargetSorter);
 
-		if (list.isEmpty()) {
+		if (entities.isEmpty()) {
 			return false;
 		}
 
-		this.targetEntity = (EntityLivingBase) list.get(0);
+		this.targetEntity = entities.get(0);
 		return true;
 	}
 
+	@Override
 	public void startExecuting() {
 		EntityLivingBase selectedTarget = this.targetEntity;
 
 		this.taskOwner.setAttackTarget(selectedTarget);
-
-		boolean assigned = this.taskOwner.getAttackTarget() == selectedTarget;
-
-		LogWriter.info(
-				"[EntityAIClosestTarget.startExecuting] "
-						+ "NPC=" + this.npc.getName()
-						+ " npcId=" + this.npc.getEntityId()
-						+ " selectedTarget=" + selectedTarget.getName()
-						+ " targetId=" + selectedTarget.getEntityId()
-						+ " assigned=" + assigned
-						+ " currentTarget="
-						+ (this.taskOwner.getAttackTarget() == null
-						? "null"
-						: this.taskOwner.getAttackTarget().getName())
-		);
 
 		if (selectedTarget instanceof EntityMob
 				&& ((EntityMob) selectedTarget).getAttackTarget() == null) {

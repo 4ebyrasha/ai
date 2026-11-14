@@ -150,34 +150,38 @@ public class PlayerWrapper extends EntityLivingBaseWrapper implements IPlayer {
 
 	public IQuest[] getActiveQuests() {
 		PlayerQuestData data = this.getData().questData;
-		List quests = new ArrayList();
-		Iterator var3 = data.activeQuests.keySet().iterator();
+		List<IQuest> quests = new ArrayList<IQuest>();
 
-		while (var3.hasNext()) {
-			int id = (Integer) var3.next();
+		Iterator<?> iterator = data.activeQuests.keySet().iterator();
+
+		while (iterator.hasNext()) {
+			int id = (Integer) iterator.next();
 			IQuest quest = (IQuest) QuestController.instance.quests.get(id);
+
 			if (quest != null) {
 				quests.add(quest);
 			}
 		}
 
-		return (IQuest[]) quests.toArray(new IQuest[quests.size()]);
+		return quests.toArray(new IQuest[quests.size()]);
 	}
 
 	public IQuest[] getFinishedQuests() {
 		PlayerQuestData data = this.getData().questData;
-		List quests = new ArrayList();
-		Iterator var3 = data.finishedQuests.keySet().iterator();
+		List<IQuest> quests = new ArrayList<IQuest>();
 
-		while (var3.hasNext()) {
-			int id = (Integer) var3.next();
+		Iterator<?> iterator = data.finishedQuests.keySet().iterator();
+
+		while (iterator.hasNext()) {
+			int id = (Integer) iterator.next();
 			IQuest quest = (IQuest) QuestController.instance.quests.get(id);
+
 			if (quest != null) {
 				quests.add(quest);
 			}
 		}
 
-		return (IQuest[]) quests.toArray(new IQuest[quests.size()]);
+		return quests.toArray(new IQuest[quests.size()]);
 	}
 
 	public void startQuest(int id) {

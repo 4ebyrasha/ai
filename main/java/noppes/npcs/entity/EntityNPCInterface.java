@@ -732,22 +732,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public void setAttackTarget(EntityLivingBase entity) {
-
 		if (entity instanceof EntityPlayer
 				&& !canBePerceivedBy((EntityPlayer) entity)) {
-
-			EntityPlayer player = (EntityPlayer) entity;
-
-			LogWriter.warn(
-					"[EntityNPCInterface.setAttackTarget] REJECTED_BY_PERCEPTION"
-							+ " NPC=" + this.getName()
-							+ " npcId=" + this.getEntityId()
-							+ " player=" + player.getName()
-							+ " playerId=" + player.getEntityId()
-							+ " tracking=" + this.tracking.contains(player.getEntityId())
-							+ " trackingSize=" + this.tracking.size()
-			);
-
 			return;
 		}
 
@@ -758,14 +744,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		boolean alreadyCurrentTarget = this.getAttackTarget() == entity;
 
 		if (playerInvulnerable || isOwner || alreadyCurrentTarget) {
-			LogWriter.warn(
-					"[EntityNPCInterface.setAttackTarget] REJECTED_BY_GUARD"
-							+ " NPC=" + this.getName()
-							+ " target=" + (entity == null ? "null" : entity.getName())
-							+ " playerInvulnerable=" + playerInvulnerable
-							+ " isOwner=" + isOwner
-							+ " alreadyCurrentTarget=" + alreadyCurrentTarget
-			);
 			return;
 		}
 
@@ -773,44 +751,24 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			NpcEvent.TargetEvent event =
 					new NpcEvent.TargetEvent(this.wrappedNPC, entity);
 
-			boolean cancelled = EventHooks.onNPCTarget(this, event);
-
-			if (cancelled) {
-				LogWriter.warn(
-						"[EntityNPCInterface.setAttackTarget] CANCELLED_BY_TARGET_EVENT"
-								+ " NPC=" + this.getName()
-								+ " target=" + entity.getName()
-				);
+			if (EventHooks.onNPCTarget(this, event)) {
 				return;
 			}
 
 			if (event.entity == null) {
-				LogWriter.warn(
-						"[EntityNPCInterface.setAttackTarget] TARGET_EVENT_SET_NULL"
-								+ " NPC=" + this.getName()
-								+ " originalTarget=" + entity.getName()
-				);
 				entity = null;
 			} else {
 				entity = event.entity.getMCEntity();
 
 				if (entity == null) {
-					LogWriter.warn(
-							"[EntityNPCInterface.setAttackTarget] TARGET_EVENT_RETURNED_INVALID_ENTITY"
-									+ " NPC=" + this.getName()
-					);
 					return;
 				}
 			}
 		} else {
-			Iterator var4 = this.targetTasks.taskEntries.iterator();
-
-			while (var4.hasNext()) {
-				EntityAITaskEntry en = (EntityAITaskEntry) var4.next();
-
-				if (en.using) {
-					en.using = false;
-					en.action.resetTask();
+			for (EntityAITaskEntry entry : this.targetTasks.taskEntries) {
+				if (entry.using) {
+					entry.using = false;
+					entry.action.resetTask();
 				}
 			}
 
@@ -833,16 +791,6 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 
 		super.setAttackTarget(entity);
-
-		LogWriter.warn(
-				"[EntityNPCInterface.setAttackTarget] ASSIGNMENT_RESULT"
-						+ " NPC=" + this.getName()
-						+ " requestedTarget=" + (entity == null ? "null" : entity.getName())
-						+ " actualTarget="
-						+ (this.getAttackTarget() == null
-						? "null"
-						: this.getAttackTarget().getName())
-		);
 	}
 
 	public void attackEntityWithRangedAttack(@Nonnull EntityLivingBase entity, float f) {

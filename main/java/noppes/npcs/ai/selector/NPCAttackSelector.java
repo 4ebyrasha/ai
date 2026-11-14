@@ -4,15 +4,11 @@ import com.google.common.base.Predicate;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.MobEffects;
-import noppes.npcs.LogWriter;
 import noppes.npcs.entity.EntityNPCInterface;
 
-public class NPCAttackSelector implements Predicate {
+public class NPCAttackSelector implements Predicate<EntityLivingBase> {
 
 	private final EntityNPCInterface npc;
-
-	private long lastLogTick = Long.MIN_VALUE;
-	private int lastLoggedPlayerId = -1;
 
 	public NPCAttackSelector(EntityNPCInterface npc) {
 		this.npc = npc;
@@ -25,77 +21,73 @@ public class NPCAttackSelector implements Predicate {
 
 		EntityPlayer player = (EntityPlayer) entity;
 
-		String reason = null;
-		boolean result = false;
-		boolean perceived = this.npc.canBePerceivedBy(player);
-
 		if (!entity.isEntityAlive()) {
-			reason = "player is not alive";
-		} else if (entity == this.npc) {
-			reason = "player is NPC itself";
-		} else if (!perceived) {
-			reason = "NPC is not perceivable by player";
-		} else if (!this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)) {
-			reason = "outside aggro range";
-		} else if (this.npc.ais.directLOS
-				&& !this.npc.getEntitySenses().canSee(entity)) {
-			reason = "direct LOS failed";
-		} else if (!this.npc.ais.attackInvisible
-				&& entity.isPotionActive(MobEffects.INVISIBILITY)
-				&& !this.npc.isInRange(entity, 3.0D)) {
-			reason = "player is invisible";
-		} else if (!this.isInsideReturnRange(entity)) {
-			reason = "outside return-to-start range";
-		} else if (!this.npc.faction.isAggressiveToPlayer(player)) {
-			reason = "faction does not consider player hostile";
-		} else if (player.capabilities.disableDamage) {
-			reason = "player has disableDamage";
-		} else {
-			result = true;
-			reason = "TARGET ACCEPTED";
+			return false;
 		}
 
-		this.logPlayerCheck(player, result, perceived, reason);
+		if (entity == this.npc) {
+			return false;
+		}
 
-		return result;
+		if (!this.npc.canBePerceivedBy(player)) {
+			return false;
+		}
+
+		if (!this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)) {
+			return false;
+		}
+
+		if (this.npc.ais.directLOS
+				&& !this.npc.getEntitySenses().canSee(entity)) {
+			return false;
+		}
+
+		if (!this.npc.ais.attackInvisible
+				&& entity.isPotionActive(MobEffects.INVISIBILITY)
+				&& !this.npc.isInRange(entity, 3.0D)) {
+			return false;
+		}
+
+		if (!this.isInsideReturnRange(entity)) {
+			return false;
+		}
+
+		if (!this.npc.faction.isAggressiveToPlayer(player)) {
+			return false;
+		}
+
+		return !player.capabilities.disableDamage;
 	}
 
 	private boolean isOtherEntityApplicable(EntityLivingBase entity) {
-		if (entity.isEntityAlive()
-				&& entity != this.npc
-				&& this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)
-				&& entity.getHealth() >= 1.0F) {
+		if (!entity.isEntityAlive()
+				|| entity == this.npc
+				|| !this.npc.isInRange(entity, (double) this.npc.stats.aggroRange)
+				|| entity.getHealth() < 1.0F) {
+			return false;
+		}
 
-			if (entity instanceof EntityPlayer
-					&& !this.npc.canBePerceivedBy((EntityPlayer) entity)) {
-				return false;
-			}
+		if (this.npc.ais.directLOS
+				&& !this.npc.getEntitySenses().canSee(entity)) {
+			return false;
+		}
 
-			if (this.npc.ais.directLOS
-					&& !this.npc.getEntitySenses().canSee(entity)) {
-				return false;
-			}
+		if (!this.npc.ais.attackInvisible
+				&& entity.isPotionActive(MobEffects.INVISIBILITY)
+				&& !this.npc.isInRange(entity, 3.0D)) {
+			return false;
+		}
 
-			if (!this.npc.ais.attackInvisible
-					&& entity.isPotionActive(MobEffects.INVISIBILITY)
-					&& !this.npc.isInRange(entity, 3.0D)) {
-				return false;
-			}
+		if (!this.isInsideReturnRange(entity)) {
+			return false;
+		}
 
-			if (!this.isInsideReturnRange(entity)) {
-				return false;
-			}
+		if (entity instanceof EntityNPCInterface) {
+			EntityNPCInterface target = (EntityNPCInterface) entity;
 
-			if (entity instanceof EntityNPCInterface) {
-				EntityNPCInterface target = (EntityNPCInterface) entity;
-
-				if (target.isKilled()) {
-					return false;
-				}
-
-				return this.npc.advanced.attackOtherFactions
-						&& this.npc.faction.isAggressiveToNpc(target);
-			}
+			return !target.isKilled()
+					&& this.npc.advanced.attackOtherFactions
+					&& this.npc.faction.isAggressiveToNpc(target);
 		}
 
 		return false;
@@ -135,50 +127,8 @@ public class NPCAttackSelector implements Predicate {
 		return distance <= (double) allowedDistance * allowedDistance;
 	}
 
-	private void logPlayerCheck(
-			EntityPlayer player,
-			boolean accepted,
-			boolean perceived,
-			String reason
-	) {
-		long worldTick = this.npc.world.getTotalWorldTime();
-
-		if (player.getEntityId() == this.lastLoggedPlayerId
-				&& this.lastLogTick != Long.MIN_VALUE
-				&& worldTick - this.lastLogTick < 20L) {
-			return;
-		}
-
-		this.lastLoggedPlayerId = player.getEntityId();
-		this.lastLogTick = worldTick;
-
-		double distance = this.npc.getDistance(player);
-
-		LogWriter.info(
-				"[NPCAttackSelector.isEntityApplicable] "
-						+ "NPC=" + this.npc.getName()
-						+ " npcId=" + this.npc.getEntityId()
-						+ " player=" + player.getName()
-						+ " playerId=" + player.getEntityId()
-						+ " distance=" + String.format("%.2f", distance)
-						+ " aggroRange=" + this.npc.stats.aggroRange
-						+ " factionId=" + this.npc.faction.id
-						+ " reputation="
-						+ noppes.npcs.controllers.data.PlayerData
-						.get(player).factionData
-						.getFactionPoints(player, this.npc.faction.id)
-						+ " directLOS=" + this.npc.ais.directLOS
-						+ " perceived=" + perceived
-						+ " tracking=" + this.npc.tracking.contains(player.getEntityId())
-						+ " trackingSize=" + this.npc.tracking.size()
-						+ " accepted=" + accepted
-						+ " reason=" + reason
-		);
-	}
-
 	@Override
-	public boolean apply(Object object) {
-		return object instanceof EntityLivingBase
-				&& this.isEntityApplicable((EntityLivingBase) object);
+	public boolean apply(EntityLivingBase entity) {
+		return this.isEntityApplicable(entity);
 	}
 }
