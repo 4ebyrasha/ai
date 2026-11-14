@@ -739,13 +739,11 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			EntityPlayer player = (EntityPlayer) entity;
 
 			LogWriter.warn(
-					"[EntityNPCInterface.setAttackTarget] "
-							+ "NPC=" + this.getName()
+					"[EntityNPCInterface.setAttackTarget] REJECTED_BY_PERCEPTION"
+							+ " NPC=" + this.getName()
 							+ " npcId=" + this.getEntityId()
-							+ " rejected player=" + player.getName()
+							+ " player=" + player.getName()
 							+ " playerId=" + player.getEntityId()
-							+ " EnableInvisibleNpcs="
-							+ CustomNpcs.EnableInvisibleNpcs
 							+ " tracking=" + this.tracking.contains(player.getEntityId())
 							+ " trackingSize=" + this.tracking.size()
 			);
@@ -753,56 +751,98 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			return;
 		}
 
-		if ((!(entity instanceof EntityPlayer)
-				|| !((EntityPlayer) entity).capabilities.disableDamage)
-				&& (entity == null || entity != this.getOwner())
-				&& this.getAttackTarget() != entity) {
+		boolean playerInvulnerable = entity instanceof EntityPlayer
+				&& ((EntityPlayer) entity).capabilities.disableDamage;
 
-			if (entity != null) {
-				NpcEvent.TargetEvent event =
-						new NpcEvent.TargetEvent(this.wrappedNPC, entity);
+		boolean isOwner = entity != null && entity == this.getOwner();
+		boolean alreadyCurrentTarget = this.getAttackTarget() == entity;
 
-				if (EventHooks.onNPCTarget(this, event)) {
-					return;
-				}
-
-				if (event.entity == null) {
-					entity = null;
-				} else {
-					entity = event.entity.getMCEntity();
-				}
-			} else {
-				Iterator var4 = this.targetTasks.taskEntries.iterator();
-
-				while (var4.hasNext()) {
-					EntityAITaskEntry en = (EntityAITaskEntry) var4.next();
-
-					if (en.using) {
-						en.using = false;
-						en.action.resetTask();
-					}
-				}
-
-				if (EventHooks.onNPCTargetLost(this, this.getAttackTarget())) {
-					return;
-				}
-			}
-
-			if (entity != null
-					&& entity != this
-					&& this.ais.onAttack != 3
-					&& !this.isAttacking()
-					&& !this.isRemote()) {
-
-				Line line = this.advanced.getAttackLine();
-
-				if (line != null) {
-					this.saySurrounding(Line.formatTarget(line, entity));
-				}
-			}
-
-			super.setAttackTarget(entity);
+		if (playerInvulnerable || isOwner || alreadyCurrentTarget) {
+			LogWriter.warn(
+					"[EntityNPCInterface.setAttackTarget] REJECTED_BY_GUARD"
+							+ " NPC=" + this.getName()
+							+ " target=" + (entity == null ? "null" : entity.getName())
+							+ " playerInvulnerable=" + playerInvulnerable
+							+ " isOwner=" + isOwner
+							+ " alreadyCurrentTarget=" + alreadyCurrentTarget
+			);
+			return;
 		}
+
+		if (entity != null) {
+			NpcEvent.TargetEvent event =
+					new NpcEvent.TargetEvent(this.wrappedNPC, entity);
+
+			boolean cancelled = EventHooks.onNPCTarget(this, event);
+
+			if (cancelled) {
+				LogWriter.warn(
+						"[EntityNPCInterface.setAttackTarget] CANCELLED_BY_TARGET_EVENT"
+								+ " NPC=" + this.getName()
+								+ " target=" + entity.getName()
+				);
+				return;
+			}
+
+			if (event.entity == null) {
+				LogWriter.warn(
+						"[EntityNPCInterface.setAttackTarget] TARGET_EVENT_SET_NULL"
+								+ " NPC=" + this.getName()
+								+ " originalTarget=" + entity.getName()
+				);
+				entity = null;
+			} else {
+				entity = event.entity.getMCEntity();
+
+				if (entity == null) {
+					LogWriter.warn(
+							"[EntityNPCInterface.setAttackTarget] TARGET_EVENT_RETURNED_INVALID_ENTITY"
+									+ " NPC=" + this.getName()
+					);
+					return;
+				}
+			}
+		} else {
+			Iterator var4 = this.targetTasks.taskEntries.iterator();
+
+			while (var4.hasNext()) {
+				EntityAITaskEntry en = (EntityAITaskEntry) var4.next();
+
+				if (en.using) {
+					en.using = false;
+					en.action.resetTask();
+				}
+			}
+
+			if (EventHooks.onNPCTargetLost(this, this.getAttackTarget())) {
+				return;
+			}
+		}
+
+		if (entity != null
+				&& entity != this
+				&& this.ais.onAttack != 3
+				&& !this.isAttacking()
+				&& !this.isRemote()) {
+
+			Line line = this.advanced.getAttackLine();
+
+			if (line != null) {
+				this.saySurrounding(Line.formatTarget(line, entity));
+			}
+		}
+
+		super.setAttackTarget(entity);
+
+		LogWriter.warn(
+				"[EntityNPCInterface.setAttackTarget] ASSIGNMENT_RESULT"
+						+ " NPC=" + this.getName()
+						+ " requestedTarget=" + (entity == null ? "null" : entity.getName())
+						+ " actualTarget="
+						+ (this.getAttackTarget() == null
+						? "null"
+						: this.getAttackTarget().getName())
+		);
 	}
 
 	public void attackEntityWithRangedAttack(@Nonnull EntityLivingBase entity, float f) {
