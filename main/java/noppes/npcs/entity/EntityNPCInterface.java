@@ -75,15 +75,7 @@ import java.util.HashSet;
 import net.minecraftforge.fml.common.registry.EntityRegistry;
 import net.minecraftforge.fml.common.network.internal.FMLMessage;
 
-import noppes.npcs.CustomItems;
-import noppes.npcs.CustomNpcs;
-import noppes.npcs.EventHooks;
-import noppes.npcs.IChatMessages;
-import noppes.npcs.NBTTags;
-import noppes.npcs.NoppesUtilServer;
-import noppes.npcs.NpcDamageSource;
-import noppes.npcs.Server;
-import noppes.npcs.VersionCompatibility;
+import noppes.npcs.*;
 import noppes.npcs.ai.CombatHandler;
 import noppes.npcs.ai.EntityAIAmbushTarget;
 import noppes.npcs.ai.EntityAIAnimation;
@@ -741,18 +733,35 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	public void setAttackTarget(EntityLivingBase entity) {
 
-		// ─── ФИЛЬТР ВОСПРИЯТИЯ ───
-		// Не таргетируем игрока, который не воспринимает NPC.
 		if (entity instanceof EntityPlayer
 				&& !canBePerceivedBy((EntityPlayer) entity)) {
+
+			EntityPlayer player = (EntityPlayer) entity;
+
+			LogWriter.warn(
+					"[EntityNPCInterface.setAttackTarget] "
+							+ "NPC=" + this.getName()
+							+ " npcId=" + this.getEntityId()
+							+ " rejected player=" + player.getName()
+							+ " playerId=" + player.getEntityId()
+							+ " EnableInvisibleNpcs="
+							+ CustomNpcs.EnableInvisibleNpcs
+							+ " tracking=" + this.tracking.contains(player.getEntityId())
+							+ " trackingSize=" + this.tracking.size()
+			);
+
 			return;
 		}
-		// ─────────────────────────
 
-		if ((!(entity instanceof EntityPlayer) || !((EntityPlayer) entity).capabilities.disableDamage)
-				&& (entity == null || entity != this.getOwner()) && this.getAttackTarget() != entity) {
+		if ((!(entity instanceof EntityPlayer)
+				|| !((EntityPlayer) entity).capabilities.disableDamage)
+				&& (entity == null || entity != this.getOwner())
+				&& this.getAttackTarget() != entity) {
+
 			if (entity != null) {
-				NpcEvent.TargetEvent event = new NpcEvent.TargetEvent(this.wrappedNPC, entity);
+				NpcEvent.TargetEvent event =
+						new NpcEvent.TargetEvent(this.wrappedNPC, entity);
+
 				if (EventHooks.onNPCTarget(this, event)) {
 					return;
 				}
@@ -767,6 +776,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 				while (var4.hasNext()) {
 					EntityAITaskEntry en = (EntityAITaskEntry) var4.next();
+
 					if (en.using) {
 						en.using = false;
 						en.action.resetTask();
@@ -778,8 +788,14 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 				}
 			}
 
-			if (entity != null && entity != this && this.ais.onAttack != 3 && !this.isAttacking() && !this.isRemote()) {
+			if (entity != null
+					&& entity != this
+					&& this.ais.onAttack != 3
+					&& !this.isAttacking()
+					&& !this.isRemote()) {
+
 				Line line = this.advanced.getAttackLine();
+
 				if (line != null) {
 					this.saySurrounding(Line.formatTarget(line, entity));
 				}

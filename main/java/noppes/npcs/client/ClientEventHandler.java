@@ -1,10 +1,9 @@
 package noppes.npcs.client;
 
-import java.util.Iterator;
-
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.renderer.BlockRendererDispatcher;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.GlStateManager;
@@ -19,7 +18,7 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 
 import net.minecraftforge.client.event.RenderWorldLastEvent;
-import net.minecraftforge.client.event.RenderLivingEvent.Post;
+import net.minecraftforge.client.event.RenderLivingEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 import noppes.npcs.LogWriter;
@@ -55,7 +54,7 @@ public class ClientEventHandler {
 
 			TileEntity te = player.world.getTileEntity(TileBuilder.DrawPos);
 
-			if (te != null && te instanceof TileBuilder) {
+			if (te instanceof TileBuilder) {
 				TileBuilder tile = (TileBuilder) te;
 				SchematicWrapper schem = tile.getSchematic();
 
@@ -180,7 +179,7 @@ public class ClientEventHandler {
 	}
 
 	@SubscribeEvent
-	public void post(Post event) {
+	public void post(RenderLivingEvent.Post<?> event) {
 		MarkData data = MarkData.get(event.getEntity());
 		EntityPlayer player = Minecraft.getMinecraft().player;
 
@@ -188,18 +187,16 @@ public class ClientEventHandler {
 			return;
 		}
 
-		Iterator var4 = data.marks.iterator();
+		for (Object markObject : data.marks) {
+			MarkData.Mark mark = (MarkData.Mark) markObject;
 
-		while (var4.hasNext()) {
-			MarkData.Mark m = (MarkData.Mark) var4.next();
-
-			if (m.getType() != 0 && m.availability.isAvailable(player)) {
+			if (mark.getType() != 0 && mark.availability.isAvailable(player)) {
 				MarkRenderer.render(
 						event.getEntity(),
 						event.getX(),
 						event.getY(),
 						event.getZ(),
-						m
+						mark
 				);
 				break;
 			}
@@ -210,7 +207,7 @@ public class ClientEventHandler {
 	public void addMwcInventoryTabs(
 			net.minecraftforge.client.event.GuiScreenEvent.InitGuiEvent.Post event
 	) {
-		if (!isMwcEquipmentGui(event.getGui())) {
+		if (!isSupportedInventoryGui(event.getGui())) {
 			return;
 		}
 
@@ -236,7 +233,7 @@ public class ClientEventHandler {
 	public void onMwcInventoryTabClicked(
 			net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent.Pre event
 	) {
-		if (!isMwcEquipmentGui(event.getGui())) {
+		if (!isSupportedInventoryGui(event.getGui())) {
 			return;
 		}
 
@@ -260,9 +257,12 @@ public class ClientEventHandler {
 		}
 	}
 
-	private static boolean isMwcEquipmentGui(net.minecraft.client.gui.GuiScreen gui) {
-		return gui != null
-				&& MWC_EQUIPMENT_GUI.equals(gui.getClass().getName());
+	private static boolean isSupportedInventoryGui(
+			net.minecraft.client.gui.GuiScreen gui
+	) {
+		return gui instanceof GuiInventory
+				|| (gui != null
+				&& MWC_EQUIPMENT_GUI.equals(gui.getClass().getName()));
 	}
 
 	public void drawSelectionBox(BlockPos pos) {
