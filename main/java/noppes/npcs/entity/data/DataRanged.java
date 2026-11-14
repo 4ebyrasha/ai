@@ -39,6 +39,7 @@ public class DataRanged implements INPCRanged {
 	private String hitSound = "minecraft:entity.arrow.hit";
 	private String groundSound = "minecraft:block.stone.break";
 	private boolean ignorePlayerIFrames = false;
+	private boolean hideEffectParticles = false;
 	private int magazineSize = 30;
 	private int ammoInMagazine = -1;
 	private int reloadDurationTicks = 60;
@@ -78,6 +79,7 @@ public class DataRanged implements INPCRanged {
 		this.pXlr8 = compound.getBoolean("pXlr8");
 		this.pGlows = compound.getBoolean("pGlows");
 		this.aimWhileShooting = compound.getBoolean("AimWhileShooting");
+		this.hideEffectParticles = compound.getBoolean("HideEffectParticles");
 		this.ignorePlayerIFrames = compound.getBoolean("IgnorePlayerIFrames");
 		this.magazineSize = ValueUtil.CorrectInt(
 				compound.hasKey("MagazineSize") ? compound.getInteger("MagazineSize") : 30,
@@ -133,6 +135,7 @@ public class DataRanged implements INPCRanged {
 		compound.setBoolean("pGlows", this.pGlows);
 		compound.setBoolean("AimWhileShooting", this.aimWhileShooting);
 		compound.setBoolean("IgnorePlayerIFrames", this.ignorePlayerIFrames);
+		compound.setBoolean("HideEffectParticles", this.hideEffectParticles);
 		compound.setInteger("MagazineSize", this.magazineSize);
 		compound.setInteger("AmmoInMagazine", this.ammoInMagazine < 0
 				? this.magazineSize : this.ammoInMagazine);
@@ -558,6 +561,14 @@ public class DataRanged implements INPCRanged {
 		this.minDelay = interval;
 		this.maxDelay = interval;
 
+		this.npc.updateClient = true;
+	}
+	public boolean getHideEffectParticles() {
+		return this.hideEffectParticles;
+	}
+
+	public void setHideEffectParticles(boolean hide) {
+		this.hideEffectParticles = hide;
 		this.npc.updateClient = true;
 	}
 }

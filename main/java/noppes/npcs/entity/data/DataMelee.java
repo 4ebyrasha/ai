@@ -15,6 +15,7 @@ public class DataMelee implements INPCMelee {
 	private int potionDuration = 5;
 	private int potionAmp = 0;
 	private boolean ignorePlayerIFrames = false;
+	private boolean hideEffectParticles = false;
 
 	public DataMelee(EntityNPCInterface npc) {
 		this.npc = npc;
@@ -29,6 +30,7 @@ public class DataMelee implements INPCMelee {
 		this.potionDuration = compound.getInteger("PotionDuration");
 		this.potionAmp = compound.getInteger("PotionAmp");
 		this.ignorePlayerIFrames = compound.getBoolean("MeleeIgnorePlayerIFrames");
+		this.hideEffectParticles = compound.getBoolean("MeleeHideEffectParticles");
 	}
 
 	public NBTTagCompound writeToNBT(NBTTagCompound compound) {
@@ -40,6 +42,7 @@ public class DataMelee implements INPCMelee {
 		compound.setInteger("PotionDuration", this.potionDuration);
 		compound.setInteger("PotionAmp", this.potionAmp);
 		compound.setBoolean("MeleeIgnorePlayerIFrames", this.ignorePlayerIFrames);
+		compound.setBoolean("MeleeHideEffectParticles", this.hideEffectParticles);
 		return compound;
 	}
 
@@ -100,5 +103,14 @@ public class DataMelee implements INPCMelee {
 
 	public void setIgnorePlayerIFrames(boolean ignore) {
 		this.ignorePlayerIFrames = ignore;
+	}
+
+	public boolean getHideEffectParticles() {
+		return this.hideEffectParticles;
+	}
+
+	public void setHideEffectParticles(boolean hide) {
+		this.hideEffectParticles = hide;
+		this.npc.updateClient = true;
 	}
 }

@@ -766,3 +766,6 @@ npc.reloadDuration=Перезарядка(сек.)
 npc.reloadAfterDeAggro=Без цели(сек.)
 
 npc.fireRateRPM=Скорострел.(в/м)
+
+npc.hideEffectParticles.melee=Скрывать частицы зелий
+npc.hideEffectParticles.ranged=Скрывать частицы зелий

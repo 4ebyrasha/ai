@@ -357,9 +357,13 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 		if (this.stats.melee.getEffectType() != 0) {
 			if (this.stats.melee.getEffectType() != 1) {
-				((EntityLivingBase) par1Entity)
-						.addPotionEffect(new PotionEffect(PotionEffectType.getMCType(this.stats.melee.getEffectType()),
-								this.stats.melee.getEffectTime() * 20, this.stats.melee.getEffectStrength()));
+				((EntityLivingBase) par1Entity).addPotionEffect(
+						new PotionEffect(
+								PotionEffectType.getMCType(this.stats.melee.getEffectType()),
+								this.stats.melee.getEffectTime() * 20,
+								this.stats.melee.getEffectStrength(),
+								false,
+								!this.stats.melee.getHideEffectParticles()));
 			} else {
 				par1Entity.setFire(this.stats.melee.getEffectTime());
 			}

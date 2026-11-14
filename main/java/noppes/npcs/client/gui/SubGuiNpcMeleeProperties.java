@@ -59,6 +59,12 @@ public class SubGuiNpcMeleeProperties extends SubGuiInterface implements ITextfi
 		this.addLabel(new GuiNpcLabel(8, "npc.ignorePlayerIFrames.melee",
 				this.guiLeft + 145, this.guiTop + 15));
 
+		this.addLabel(new GuiNpcLabel(9, "npc.hideEffectParticles.melee",
+				this.guiLeft + 145, this.guiTop + 50));
+
+		this.addButton(new GuiNpcButtonYesNo(9, this.guiLeft + 180, this.guiTop + 65,
+				this.stats.getHideEffectParticles()));
+
 		this.addButton(new GuiNpcButtonYesNo(8, this.guiLeft + 180, this.guiTop + 30,
 				this.stats.getIgnorePlayerIFrames()));
 
@@ -93,6 +99,10 @@ public class SubGuiNpcMeleeProperties extends SubGuiInterface implements ITextfi
 
 		if (button.id == 8) {
 			this.stats.setIgnorePlayerIFrames(((GuiNpcButtonYesNo) guibutton).getBoolean());
+		}
+
+		if (button.id == 9) {
+			this.stats.setHideEffectParticles(((GuiNpcButtonYesNo) guibutton).getBoolean());
 		}
 
 		if (button.id == 66) {

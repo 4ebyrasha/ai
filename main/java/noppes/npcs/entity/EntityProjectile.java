@@ -57,6 +57,7 @@ public class EntityProjectile extends EntityThrowable {
 	private static final DataParameter<Integer> Size;
 	private static final DataParameter<Integer> Particle;
 	private boolean ignorePlayerIFrames;
+	private boolean showEffectParticles = true;
 	private BlockPos tilePos;
 	private Block inTile;
 	protected boolean inGround;
@@ -520,8 +521,8 @@ public class EntityProjectile extends EntityThrowable {
 				if (this.effect != 0 && movingobjectposition.entityHit instanceof EntityLivingBase) {
 					if (this.effect != 1) {
 						Potion p = PotionEffectType.getMCType(this.effect);
-						((EntityLivingBase) movingobjectposition.entityHit)
-								.addPotionEffect(new PotionEffect(p, this.duration * 20, this.amplify));
+						((EntityLivingBase) movingobjectposition.entityHit).addPotionEffect(
+								new PotionEffect(p, this.duration * 20, this.amplify, false, this.showEffectParticles));
 					} else {
 						movingobjectposition.entityHit.setFire(this.duration);
 					}
@@ -588,14 +589,17 @@ public class EntityProjectile extends EntityThrowable {
 					if (this.effect != 1) {
 						Potion p = PotionEffectType.getMCType(this.effect);
 						if (p != null) {
-							entity.addPotionEffect(new PotionEffect(p, this.duration * 20, this.amplify));
+							entity.addPotionEffect(new PotionEffect(
+									p, this.duration * 20, this.amplify, false, this.showEffectParticles));
 						}
 					} else {
 						entity.setFire(this.duration);
 					}
 				}
 
-				this.world.playEvent((EntityPlayer) null, 2002, this.getPosition(), this.getPotionColor(this.effect));
+				if (this.showEffectParticles) {
+					this.world.playEvent((EntityPlayer) null, 2002, this.getPosition(), this.getPotionColor(this.effect));
+				}
 			}
 
 			this.setDead();
@@ -611,6 +615,7 @@ public class EntityProjectile extends EntityThrowable {
 	}
 
 	public void writeEntityToNBT(NBTTagCompound par1NBTTagCompound) {
+		par1NBTTagCompound.setBoolean("ShowEffectParticles", this.showEffectParticles);
 		par1NBTTagCompound.setShort("xTile", (short) this.tilePos.getX());
 		par1NBTTagCompound.setShort("yTile", (short) this.tilePos.getY());
 		par1NBTTagCompound.setShort("zTile", (short) this.tilePos.getZ());
@@ -648,6 +653,8 @@ public class EntityProjectile extends EntityThrowable {
 	}
 
 	public void readEntityFromNBT(NBTTagCompound compound) {
+		this.showEffectParticles = !compound.hasKey("ShowEffectParticles")
+				|| compound.getBoolean("ShowEffectParticles");
 		this.tilePos = new BlockPos(compound.getShort("xTile"), compound.getShort("yTile"), compound.getShort("zTile"));
 		this.inTile = Block.getBlockById(compound.getByte("inTile") & 255);
 		this.inData = compound.getByte("inData") & 255;
@@ -731,6 +738,7 @@ public class EntityProjectile extends EntityThrowable {
 	}
 
 	public void getStatProperties(DataRanged stats) {
+		this.showEffectParticles = !stats.getHideEffectParticles();
 		this.damage = (float) stats.getStrength();
 		this.ignorePlayerIFrames = stats.getIgnorePlayerIFrames();
 		this.punch = stats.getKnockback();
