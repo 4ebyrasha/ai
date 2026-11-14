@@ -319,7 +319,12 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	public boolean attackEntityAsMob(@Nonnull Entity par1Entity) {
 		float f = (float) this.stats.melee.getStrength();
-		if (this.stats.melee.getDelay() < 10) {
+
+		if (par1Entity instanceof EntityPlayer) {
+			if (this.stats.melee.getIgnorePlayerIFrames()) {
+				par1Entity.hurtResistantTime = 0;
+			}
+		} else if (this.stats.melee.getDelay() < 10) {
 			par1Entity.hurtResistantTime = 0;
 		}
 

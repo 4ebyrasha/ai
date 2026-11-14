@@ -1,12 +1,7 @@
 package noppes.npcs.client.gui;
 
 import net.minecraft.client.gui.GuiButton;
-import noppes.npcs.client.gui.util.GuiButtonBiDirectional;
-import noppes.npcs.client.gui.util.GuiNpcButton;
-import noppes.npcs.client.gui.util.GuiNpcLabel;
-import noppes.npcs.client.gui.util.GuiNpcTextField;
-import noppes.npcs.client.gui.util.ITextfieldListener;
-import noppes.npcs.client.gui.util.SubGuiInterface;
+import noppes.npcs.client.gui.util.*;
 import noppes.npcs.entity.data.DataMelee;
 
 public class SubGuiNpcMeleeProperties extends SubGuiInterface implements ITextfieldListener {
@@ -61,6 +56,12 @@ public class SubGuiNpcMeleeProperties extends SubGuiInterface implements ITextfi
 			}
 		}
 
+		this.addLabel(new GuiNpcLabel(8, "npc.ignorePlayerIFrames.melee",
+				this.guiLeft + 145, this.guiTop + 15));
+
+		this.addButton(new GuiNpcButtonYesNo(8, this.guiLeft + 180, this.guiTop + 30,
+				this.stats.getIgnorePlayerIFrames()));
+
 		this.addButton(new GuiNpcButton(66, this.guiLeft + 164, this.guiTop + 192, 90, 20, "gui.done"));
 	}
 
@@ -88,6 +89,10 @@ public class SubGuiNpcMeleeProperties extends SubGuiInterface implements ITextfi
 
 		if (button.id == 7) {
 			this.stats.setEffect(this.stats.getEffectType(), button.getValue(), this.stats.getEffectTime());
+		}
+
+		if (button.id == 8) {
+			this.stats.setIgnorePlayerIFrames(((GuiNpcButtonYesNo) guibutton).getBoolean());
 		}
 
 		if (button.id == 66) {

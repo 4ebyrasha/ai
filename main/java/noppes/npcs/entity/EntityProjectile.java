@@ -56,6 +56,7 @@ public class EntityProjectile extends EntityThrowable {
 	private static final DataParameter<Integer> Velocity;
 	private static final DataParameter<Integer> Size;
 	private static final DataParameter<Integer> Particle;
+	private boolean ignorePlayerIFrames;
 	private BlockPos tilePos;
 	private Block inTile;
 	protected boolean inGround;
@@ -471,8 +472,14 @@ public class EntityProjectile extends EntityThrowable {
 				damage = 0.001F;
 			}
 
-			if (movingobjectposition.entityHit.attackEntityFrom(DamageSource.causeThrownDamage(this, this.getThrower()),
-					damage)) {
+			if (!this.world.isRemote
+					&& this.ignorePlayerIFrames
+					&& movingobjectposition.entityHit instanceof EntityPlayer) {
+				((EntityPlayer) movingobjectposition.entityHit).hurtResistantTime = 0;
+			}
+
+			if (movingobjectposition.entityHit.attackEntityFrom(
+					DamageSource.causeThrownDamage(this, this.getThrower()), damage)) {
 				if (movingobjectposition.entityHit instanceof EntityLivingBase
 						&& (this.isArrow() || this.sticksToWalls())) {
 					EntityLivingBase entityliving = (EntityLivingBase) movingobjectposition.entityHit;
@@ -637,6 +644,7 @@ public class EntityProjectile extends EntityThrowable {
 		par1NBTTagCompound.setBoolean("Spins", this.dataManager.get(Rotating));
 		par1NBTTagCompound.setBoolean("Sticks", this.dataManager.get(Sticks));
 		par1NBTTagCompound.setInteger("accuracy", this.accuracy);
+		par1NBTTagCompound.setBoolean("IgnorePlayerIFrames", this.ignorePlayerIFrames);
 	}
 
 	public void readEntityFromNBT(NBTTagCompound compound) {
@@ -655,6 +663,7 @@ public class EntityProjectile extends EntityThrowable {
 		this.accelerate = compound.getBoolean("accelerate");
 		this.effect = compound.getInteger("PotionEffect");
 		this.accuracy = compound.getInteger("accuracy");
+		this.ignorePlayerIFrames = compound.getBoolean("IgnorePlayerIFrames");
 		this.dataManager.set(Particle, compound.getInteger("trailenum"));
 		this.dataManager.set(Size, compound.getInteger("size"));
 		this.dataManager.set(Glows, compound.getBoolean("glows"));
@@ -723,6 +732,7 @@ public class EntityProjectile extends EntityThrowable {
 
 	public void getStatProperties(DataRanged stats) {
 		this.damage = (float) stats.getStrength();
+		this.ignorePlayerIFrames = stats.getIgnorePlayerIFrames();
 		this.punch = stats.getKnockback();
 		this.accelerate = stats.getAccelerate();
 		this.explosiveRadius = stats.getExplodeSize();

@@ -757,3 +757,6 @@ cheba.trader.tooltip.buyback.add=Добавить выбранный в инве
 
 cheba.trader.editor.page_short=Стр.%s
 cheba.trader.shared_limits=Общие лимиты магазина:
+
+npc.ignorePlayerIFrames.melee=Игнор. i-frames ударов
+npc.ignorePlayerIFrames.ranged=Игнор. i-frames пуль

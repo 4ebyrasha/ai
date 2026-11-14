@@ -37,6 +37,7 @@ public class DataRanged implements INPCRanged {
 	private String fireSound = "minecraft:entity.arrow.shoot";
 	private String hitSound = "minecraft:entity.arrow.hit";
 	private String groundSound = "minecraft:block.stone.break";
+	private boolean ignorePlayerIFrames = false;
 
 	public DataRanged(EntityNPCInterface npc) {
 		this.npc = npc;
@@ -63,6 +64,7 @@ public class DataRanged implements INPCRanged {
 		this.pXlr8 = compound.getBoolean("pXlr8");
 		this.pGlows = compound.getBoolean("pGlows");
 		this.aimWhileShooting = compound.getBoolean("AimWhileShooting");
+		this.ignorePlayerIFrames = compound.getBoolean("IgnorePlayerIFrames");
 		this.pEffect = compound.getInteger("pEffect");
 		this.pDur = compound.getInteger("pDur");
 		this.pEffAmp = compound.getInteger("pEffAmp");
@@ -94,6 +96,7 @@ public class DataRanged implements INPCRanged {
 		compound.setBoolean("pXlr8", this.pXlr8);
 		compound.setBoolean("pGlows", this.pGlows);
 		compound.setBoolean("AimWhileShooting", this.aimWhileShooting);
+		compound.setBoolean("IgnorePlayerIFrames", this.ignorePlayerIFrames);
 		compound.setInteger("pEffect", this.pEffect);
 		compound.setInteger("pDur", this.pDur);
 		compound.setInteger("pEffAmp", this.pEffAmp);
@@ -353,5 +356,14 @@ public class DataRanged implements INPCRanged {
 	public void setMeleeRange(int range) {
 		this.meleeDistance = range;
 		this.npc.updateAI = true;
+	}
+
+	public boolean getIgnorePlayerIFrames() {
+		return this.ignorePlayerIFrames;
+	}
+
+	public void setIgnorePlayerIFrames(boolean value) {
+		this.ignorePlayerIFrames = value;
+		this.npc.updateClient = true;
 	}
 }

@@ -23,7 +23,7 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.stats = stats;
 		this.setBackground("menubg.png");
 		this.xSize = 256;
-		this.ySize = 216;
+		this.ySize = 244;
 		this.closeOnEsc = true;
 	}
 
@@ -103,7 +103,13 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.addButton(new GuiNpcButton(13, var10004, y, 80, 20,
 				new String[] { "gui.no", "gui.whendistant", "gui.whenhidden" }, this.ranged.getFireType()));
 		this.addLabel(new GuiNpcLabel(13, "stats.indirect", this.guiLeft + 5, y + 5));
-		this.addButton(new GuiNpcButton(66, this.guiLeft + 190, this.guiTop + 190, 60, 20, "gui.done"));
+		this.addLabel(new GuiNpcLabel(14, "npc.ignorePlayerIFrames.ranged",
+				this.guiLeft + 5, this.guiTop + 207));
+
+		this.addButton(new GuiNpcButtonYesNo(14, this.guiLeft + 100, this.guiTop + 202,
+				this.ranged.getIgnorePlayerIFrames()));
+
+		this.addButton(new GuiNpcButton(66, this.guiLeft + 190, this.guiTop + 218, 60, 20, "gui.done"));
 	}
 
 	public void unFocused(GuiNpcTextField textfield) {
@@ -156,6 +162,8 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 			this.ranged.setHasAimAnimation(((GuiNpcButtonYesNo) guibutton).getBoolean());
 		} else if (id == 13) {
 			this.ranged.setFireType(((GuiNpcButton) guibutton).getValue());
+		} else if (id == 14) {
+			this.ranged.setIgnorePlayerIFrames(((GuiNpcButtonYesNo) guibutton).getBoolean());
 		}
 
 	}
