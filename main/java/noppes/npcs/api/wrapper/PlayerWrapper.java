@@ -585,7 +585,7 @@ public class PlayerWrapper extends EntityLivingBaseWrapper implements IPlayer {
 
 	@Override
 	public EntityPlayerMP getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+		return (EntityPlayerMP)
+		this.entity;
 	}
 }
