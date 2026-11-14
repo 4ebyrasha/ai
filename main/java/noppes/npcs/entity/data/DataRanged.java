@@ -20,6 +20,7 @@ public class DataRanged implements INPCRanged {
 	private int maxDelay = 40;
 	private int rangedRange = 15;
 	private int fireRate = 5;
+	private int fireRateRPM = 40;
 	private int shotCount = 1;
 	private int accuracy = 60;
 	private int meleeDistance = 0;
@@ -61,6 +62,13 @@ public class DataRanged implements INPCRanged {
 		this.fireRate = compound.getInteger("FireRate");
 		this.minDelay = ValueUtil.CorrectInt(compound.getInteger("minDelay"), 1, 9999);
 		this.maxDelay = ValueUtil.CorrectInt(compound.getInteger("maxDelay"), 1, 9999);
+		int averageDelay = Math.max(1, (this.minDelay + this.maxDelay) / 2);
+
+		this.fireRateRPM = ValueUtil.CorrectInt(
+				compound.hasKey("FireRateRPM")
+						? compound.getInteger("FireRateRPM")
+						: 1200 / averageDelay,
+				1, 1200);
 		this.shotCount = ValueUtil.CorrectInt(compound.getInteger("ShotCount"), 1, 10);
 		this.accuracy = compound.getInteger("Accuracy");
 		this.pRender3D = compound.getBoolean("pRender3D");
@@ -114,6 +122,7 @@ public class DataRanged implements INPCRanged {
 		compound.setInteger("FireRate", this.fireRate);
 		compound.setInteger("minDelay", this.minDelay);
 		compound.setInteger("maxDelay", this.maxDelay);
+		compound.setInteger("FireRateRPM", this.fireRateRPM);
 		compound.setInteger("ShotCount", this.shotCount);
 		compound.setInteger("Accuracy", this.accuracy);
 		compound.setBoolean("pRender3D", this.pRender3D);
@@ -290,9 +299,20 @@ public class DataRanged implements INPCRanged {
 	}
 
 	public void setDelay(int min, int max) {
-		min = Math.min(min, max);
+		min = Math.max(1, Math.min(min, 9999));
+		max = Math.max(1, Math.min(max, 9999));
+
+		if (min > max) {
+			int temp = min;
+			min = max;
+			max = temp;
+		}
+
 		this.minDelay = min;
 		this.maxDelay = max;
+
+		int averageDelay = Math.max(1, (min + max) / 2);
+		this.fireRateRPM = ValueUtil.CorrectInt(1200 / averageDelay, 1, 1200);
 	}
 
 	public int getBurst() {
@@ -522,5 +542,22 @@ public class DataRanged implements INPCRanged {
 		if (this.ticksWithoutTarget >= this.reloadAfterDeAggroTicks) {
 			this.startReload();
 		}
+	}
+	public int getFireRateRPM() {
+		return this.fireRateRPM;
+	}
+
+	public int getFireIntervalTicks() {
+		return Math.max(1, (1200 + this.fireRateRPM / 2) / this.fireRateRPM);
+	}
+
+	public void setFireRateRPM(int rpm) {
+		this.fireRateRPM = ValueUtil.CorrectInt(rpm, 1, 1200);
+
+		int interval = this.getFireIntervalTicks();
+		this.minDelay = interval;
+		this.maxDelay = interval;
+
+		this.npc.updateClient = true;
 	}
 }

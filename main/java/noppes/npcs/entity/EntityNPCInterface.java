@@ -820,14 +820,15 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		if (proj == null) {
 			this.updateAI = true;
 		} else {
-			if (!this.stats.ranged.tryConsumeRound()) {
-				return;
-			}
 
 			NpcEvent.RangedLaunchedEvent event = new NpcEvent.RangedLaunchedEvent(this.wrappedNPC, entity,
 					(float) this.stats.ranged.getStrength());
 
 			for (int i = 0; i < this.stats.ranged.getShotCount(); ++i) {
+				if (!this.stats.ranged.tryConsumeRound()) {
+					break;
+				}
+
 				EntityProjectile projectile = this.shoot(entity, this.stats.ranged.getAccuracy(), proj, f == 1.0F);
 				projectile.damage = event.damage;
 				projectile.callback = (projectile1, pos, entity1) -> {

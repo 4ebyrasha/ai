@@ -54,16 +54,13 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.getTextField(9).setMinMaxDefault(0, this.stats.aggroRange, 5);
 		var10006 = this.guiLeft + 80;
 		y += 22;
-		this.addTextField(
-				new GuiNpcTextField(3, this, this.fontRenderer, var10006, y, 50, 18, this.ranged.getDelayMin() + ""));
-		this.addLabel(new GuiNpcLabel(3, "stats.mindelay", this.guiLeft + 5, y + 5));
+		this.addTextField(new GuiNpcTextField(3, this, this.fontRenderer,
+				this.guiLeft + 80, y, 50, 18,
+				this.ranged.getFireRateRPM() + ""));
+		this.addLabel(new GuiNpcLabel(3, "npc.fireRateRPM",
+				this.guiLeft + 5, y + 5));
 		this.getTextField(3).numbersOnly = true;
-		this.getTextField(3).setMinMaxDefault(1, 9999, 20);
-		this.addTextField(new GuiNpcTextField(4, this, this.fontRenderer, this.guiLeft + 200, y, 50, 18,
-				this.ranged.getDelayMax() + ""));
-		this.addLabel(new GuiNpcLabel(4, "stats.maxdelay", this.guiLeft + 135, y + 5));
-		this.getTextField(4).numbersOnly = true;
-		this.getTextField(4).setMinMaxDefault(1, 9999, 20);
+		this.getTextField(3).setMinMaxDefault(1, 1200, 40);
 		var10006 = this.guiLeft + 80;
 		y += 22;
 		this.addTextField(
@@ -113,13 +110,13 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.getTextField(12).setMinMaxDefault(1, 999, 30);
 
 // Reload duration
-		this.addTextField(new GuiNpcTextField(13, this, this.fontRenderer,
+		this.addTextField(new GuiNpcTextField(16, this, this.fontRenderer,
 				this.guiLeft + 200, this.guiTop + 202, 50, 18,
 				this.ranged.getReloadDurationSeconds() + ""));
-		this.addLabel(new GuiNpcLabel(13, "npc.reloadDuration",
+		this.addLabel(new GuiNpcLabel(16, "npc.reloadDuration",
 				this.guiLeft + 135, this.guiTop + 207));
-		this.getTextField(13).numbersOnly = true;
-		this.getTextField(13).setMinMaxDefault(1, 300, 3);
+		this.getTextField(16).numbersOnly = true;
+		this.getTextField(16).setMinMaxDefault(1, 300, 3);
 
 // Reload after de-aggro
 		this.addTextField(new GuiNpcTextField(15, this, this.fontRenderer,
@@ -146,11 +143,7 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		} else if (textfield.getId() == 2) {
 			this.ranged.setRange(textfield.getInteger());
 		} else if (textfield.getId() == 3) {
-			this.ranged.setDelay(textfield.getInteger(), this.ranged.getDelayMax());
-			this.initGui();
-		} else if (textfield.getId() == 4) {
-			this.ranged.setDelay(this.ranged.getDelayMin(), textfield.getInteger());
-			this.initGui();
+			this.ranged.setFireRateRPM(textfield.getInteger());
 		} else if (textfield.getId() == 5) {
 			this.ranged.setBurstDelay(textfield.getInteger());
 		} else if (textfield.getId() == 6) {
@@ -167,7 +160,7 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 			this.ranged.setSound(1, textfield.getText());
 		} else if (textfield.getId() == 12) {
 			this.ranged.setMagazineSize(textfield.getInteger());
-		} else if (textfield.getId() == 13) {
+		} else if (textfield.getId() == 16) {
 			this.ranged.setReloadDurationSeconds(textfield.getInteger());
 		} else if (textfield.getId() == 15) {
 			this.ranged.setReloadAfterDeAggroSeconds(textfield.getInteger());

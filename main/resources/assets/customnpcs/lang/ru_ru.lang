@@ -764,3 +764,5 @@ npc.ignorePlayerIFrames.ranged=Игнор. i-frames пуль
 npc.magazineSize=Емкость магазина
 npc.reloadDuration=Перезарядка(сек.)
 npc.reloadAfterDeAggro=Без цели(сек.)
+
+npc.fireRateRPM=Скорострел.(в/м)
