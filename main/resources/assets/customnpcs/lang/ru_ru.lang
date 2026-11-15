@@ -771,3 +771,4 @@ npc.hideEffectParticles.melee=Скрывать частицы зелий
 npc.hideEffectParticles.ranged=Скрывать частицы зелий
 
 npc.rangedAdvanced=Дополнительно
+npc.reaction=Реакция (сек.)

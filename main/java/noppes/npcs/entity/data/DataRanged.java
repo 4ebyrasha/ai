@@ -16,10 +16,7 @@ public class DataRanged implements INPCRanged {
 	private int pSize = 5;
 	private int pArea = 0;
 	private int pTrail = 0;
-	private int minDelay = 20;
-	private int maxDelay = 40;
 	private int rangedRange = 15;
-	private int fireRate = 5;
 	private int fireRateRPM = 40;
 	private int shotCount = 1;
 	private int accuracy = 60;
@@ -46,6 +43,7 @@ public class DataRanged implements INPCRanged {
 	private int reloadAfterDeAggroTicks = 40;
 	private int reloadTicksRemaining = 0;
 	private int ticksWithoutTarget = 0;
+	private int reactionTicks = 0;
 
 	public DataRanged(EntityNPCInterface npc) {
 		this.npc = npc;
@@ -60,16 +58,24 @@ public class DataRanged implements INPCRanged {
 		this.pArea = compound.getInteger("pArea");
 		this.pTrail = compound.getInteger("pTrail");
 		this.rangedRange = compound.getInteger("MaxFiringRange");
-		this.fireRate = compound.getInteger("FireRate");
-		this.minDelay = ValueUtil.CorrectInt(compound.getInteger("minDelay"), 1, 9999);
-		this.maxDelay = ValueUtil.CorrectInt(compound.getInteger("maxDelay"), 1, 9999);
-		int averageDelay = Math.max(1, (this.minDelay + this.maxDelay) / 2);
+
+		int legacyMinDelay = ValueUtil.CorrectInt(
+				compound.hasKey("minDelay") ? compound.getInteger("minDelay") : 20,
+				1, 9999);
+
+		int legacyMaxDelay = ValueUtil.CorrectInt(
+				compound.hasKey("maxDelay") ? compound.getInteger("maxDelay") : 40,
+				1, 9999);
+
+		int legacyAverageDelay = Math.max(1,
+				(legacyMinDelay + legacyMaxDelay) / 2);
 
 		this.fireRateRPM = ValueUtil.CorrectInt(
 				compound.hasKey("FireRateRPM")
 						? compound.getInteger("FireRateRPM")
-						: 1200 / averageDelay,
+						: 1200 / legacyAverageDelay,
 				1, 1200);
+
 		this.shotCount = ValueUtil.CorrectInt(compound.getInteger("ShotCount"), 1, 10);
 		this.accuracy = compound.getInteger("Accuracy");
 		this.pRender3D = compound.getBoolean("pRender3D");
@@ -121,9 +127,6 @@ public class DataRanged implements INPCRanged {
 		compound.setInteger("pArea", this.pArea);
 		compound.setInteger("pTrail", this.pTrail);
 		compound.setInteger("MaxFiringRange", this.rangedRange);
-		compound.setInteger("FireRate", this.fireRate);
-		compound.setInteger("minDelay", this.minDelay);
-		compound.setInteger("maxDelay", this.maxDelay);
 		compound.setInteger("FireRateRPM", this.fireRateRPM);
 		compound.setInteger("ShotCount", this.shotCount);
 		compound.setInteger("Accuracy", this.accuracy);
@@ -141,6 +144,10 @@ public class DataRanged implements INPCRanged {
 				? this.magazineSize : this.ammoInMagazine);
 		compound.setInteger("ReloadDurationTicks", this.reloadDurationTicks);
 		compound.setInteger("ReloadAfterDeAggroTicks", this.reloadAfterDeAggroTicks);
+		this.reactionTicks = ValueUtil.CorrectInt(
+				compound.hasKey("ReactionTicks")
+						? compound.getInteger("ReactionTicks") : 0,
+				0, 6000);
 		compound.setInteger("ReloadTicksRemaining", this.reloadTicksRemaining);
 		compound.setInteger("TicksWithoutTarget", this.ticksWithoutTarget);
 		compound.setInteger("pEffect", this.pEffect);
@@ -151,6 +158,7 @@ public class DataRanged implements INPCRanged {
 		compound.setString("GroundSound", this.groundSound);
 		compound.setInteger("FireIndirect", this.canFireIndirect);
 		compound.setInteger("DistanceToMelee", this.meleeDistance);
+		compound.setInteger("ReactionTicks", this.reactionTicks);
 		return compound;
 	}
 
@@ -285,37 +293,23 @@ public class DataRanged implements INPCRanged {
 	}
 
 	public int getDelayMin() {
-		return this.minDelay;
+		return this.getFireIntervalTicks();
 	}
 
 	public int getDelayMax() {
-		return this.maxDelay;
+		return this.getFireIntervalTicks();
 	}
 
 	public int getDelayRNG() {
-		int delay = this.minDelay;
-		if (this.maxDelay - this.minDelay > 0) {
-			delay += this.npc.world.rand.nextInt(this.maxDelay - this.minDelay);
-		}
-
-		return delay;
+		return this.getFireIntervalTicks();
 	}
 
 	public void setDelay(int min, int max) {
 		min = Math.max(1, Math.min(min, 9999));
 		max = Math.max(1, Math.min(max, 9999));
 
-		if (min > max) {
-			int temp = min;
-			min = max;
-			max = temp;
-		}
-
-		this.minDelay = min;
-		this.maxDelay = max;
-
 		int averageDelay = Math.max(1, (min + max) / 2);
-		this.fireRateRPM = ValueUtil.CorrectInt(1200 / averageDelay, 1, 1200);
+		this.setFireRateRPM(Math.max(1, 1200 / averageDelay));
 	}
 
 	public int getBurst() {
@@ -327,11 +321,12 @@ public class DataRanged implements INPCRanged {
 	}
 
 	public int getBurstDelay() {
-		return this.fireRate;
+		return this.getFireIntervalTicks();
 	}
 
 	public void setBurstDelay(int delay) {
-		this.fireRate = delay;
+		delay = Math.max(1, Math.min(delay, 1200));
+		this.setFireRateRPM(Math.max(1, 1200 / delay));
 	}
 
 	public String getSound(int type) {
@@ -448,13 +443,17 @@ public class DataRanged implements INPCRanged {
 		return this.reloadTicksRemaining > 0;
 	}
 
-	public int getReloadDurationSeconds() {
-		return Math.max(1, (this.reloadDurationTicks + 19) / 20);
+	public double getReloadDurationSeconds() {
+		return this.reloadDurationTicks / 20.0D;
 	}
 
-	public void setReloadDurationSeconds(int seconds) {
-		seconds = ValueUtil.CorrectInt(seconds, 1, 300);
-		this.reloadDurationTicks = seconds * 20;
+	public void setReloadDurationSeconds(double seconds) {
+		if (Double.isNaN(seconds) || Double.isInfinite(seconds)) {
+			return;
+		}
+
+		this.reloadDurationTicks = ValueUtil.CorrectInt(
+				(int) Math.round(seconds * 20.0D), 1, 6000);
 
 		if (this.reloadTicksRemaining > this.reloadDurationTicks) {
 			this.reloadTicksRemaining = this.reloadDurationTicks;
@@ -463,14 +462,38 @@ public class DataRanged implements INPCRanged {
 		this.npc.updateClient = true;
 	}
 
-	public int getReloadAfterDeAggroSeconds() {
-		return (this.reloadAfterDeAggroTicks + 19) / 20;
+	public double getReloadAfterDeAggroSeconds() {
+		return this.reloadAfterDeAggroTicks / 20.0D;
 	}
 
-	public void setReloadAfterDeAggroSeconds(int seconds) {
-		seconds = ValueUtil.CorrectInt(seconds, 0, 300);
-		this.reloadAfterDeAggroTicks = seconds * 20;
+	public void setReloadAfterDeAggroSeconds(double seconds) {
+		if (Double.isNaN(seconds) || Double.isInfinite(seconds)) {
+			return;
+		}
+
+		this.reloadAfterDeAggroTicks = ValueUtil.CorrectInt(
+				(int) Math.round(seconds * 20.0D), 0, 6000);
+
 		this.ticksWithoutTarget = 0;
+		this.npc.updateClient = true;
+	}
+
+	public double getReactionSeconds() {
+		return this.reactionTicks / 20.0D;
+	}
+
+	public int getReactionTicks() {
+		return this.reactionTicks;
+	}
+
+	public void setReactionSeconds(double seconds) {
+		if (Double.isNaN(seconds) || Double.isInfinite(seconds)) {
+			return;
+		}
+
+		this.reactionTicks = ValueUtil.CorrectInt(
+				(int) Math.round(seconds * 20.0D), 0, 6000);
+
 		this.npc.updateClient = true;
 	}
 
@@ -556,13 +579,9 @@ public class DataRanged implements INPCRanged {
 
 	public void setFireRateRPM(int rpm) {
 		this.fireRateRPM = ValueUtil.CorrectInt(rpm, 1, 1200);
-
-		int interval = this.getFireIntervalTicks();
-		this.minDelay = interval;
-		this.maxDelay = interval;
-
 		this.npc.updateClient = true;
 	}
+	
 	public boolean getHideEffectParticles() {
 		return this.hideEffectParticles;
 	}

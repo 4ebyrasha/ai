@@ -16,7 +16,6 @@ import noppes.npcs.entity.data.DataStats;
 public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfieldListener, ISubGuiListener {
 	private DataRanged ranged;
 	private DataStats stats;
-	private GuiSoundSelection gui;
 	private GuiNpcTextField soundSelected = null;
 
 	public SubGuiNpcRangeProperties(DataStats stats) {
@@ -66,12 +65,6 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 		this.addLabel(new GuiNpcLabel(6, "stats.burstcount", this.guiLeft + 5, y + 5));
 		this.getTextField(6).numbersOnly = true;
 		this.getTextField(6).setMinMaxDefault(1, 100, 20);
-
-		this.addTextField(new GuiNpcTextField(5, this, this.fontRenderer,
-				this.guiLeft + 200, y, 50, 18, this.ranged.getBurstDelay() + ""));
-		this.addLabel(new GuiNpcLabel(5, "stats.burstspeed", this.guiLeft + 135, y + 5));
-		this.getTextField(5).numbersOnly = true;
-		this.getTextField(5).setMinMaxDefault(0, 30, 0);
 
 		y += 22;
 
@@ -124,8 +117,6 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 			this.ranged.setAccuracy(textfield.getInteger());
 		} else if (textfield.getId() == 2) {
 			this.ranged.setRange(textfield.getInteger());
-		} else if (textfield.getId() == 5) {
-			this.ranged.setBurstDelay(textfield.getInteger());
 		} else if (textfield.getId() == 6) {
 			this.ranged.setBurst(textfield.getInteger());
 		} else if (textfield.getId() == 7) {
@@ -144,14 +135,8 @@ public class SubGuiNpcRangeProperties extends SubGuiInterface implements ITextfi
 	protected void actionPerformed(GuiButton guibutton) {
 		int id = guibutton.id;
 
-		if (id == 7) {
-			this.soundSelected = this.getTextField(7);
-			this.setSubGui(new GuiSoundSelection(this.soundSelected.getText()));
-		} else if (id == 11) {
-			this.soundSelected = this.getTextField(11);
-			this.setSubGui(new GuiSoundSelection(this.soundSelected.getText()));
-		} else if (id == 10) {
-			this.soundSelected = this.getTextField(10);
+		if (id == 7 || id == 11 || id == 10) {
+			this.soundSelected = this.getTextField(id);
 			this.setSubGui(new GuiSoundSelection(this.soundSelected.getText()));
 		} else if (id == 66) {
 			this.close();

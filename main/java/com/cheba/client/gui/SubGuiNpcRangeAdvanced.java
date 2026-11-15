@@ -16,7 +16,7 @@ public class SubGuiNpcRangeAdvanced extends SubGuiInterface implements ITextfiel
         this.ranged = ranged;
         this.setBackground("menubg.png");
         this.xSize = 256;
-        this.ySize = 216;
+        this.ySize = 246;
         this.closeOnEsc = true;
     }
 
@@ -44,31 +44,44 @@ public class SubGuiNpcRangeAdvanced extends SubGuiInterface implements ITextfiel
         this.addTextField(new GuiNpcTextField(16, this, this.fontRenderer,
                 this.guiLeft + 165, this.guiTop + 70, 60, 18,
                 this.ranged.getReloadDurationSeconds() + ""));
-        this.getTextField(16).numbersOnly = true;
-        this.getTextField(16).setMinMaxDefault(1, 300, 3);
+        this.getTextField(16).decimalNumbers = true;
 
         this.addLabel(new GuiNpcLabel(15, "npc.reloadAfterDeAggro",
                 this.guiLeft + 5, this.guiTop + 105));
         this.addTextField(new GuiNpcTextField(15, this, this.fontRenderer,
                 this.guiLeft + 165, this.guiTop + 100, 60, 18,
                 this.ranged.getReloadAfterDeAggroSeconds() + ""));
-        this.getTextField(15).numbersOnly = true;
-        this.getTextField(15).setMinMaxDefault(0, 300, 2);
+        this.getTextField(15).decimalNumbers = true;
+
+        this.addLabel(new GuiNpcLabel(18, "npc.reaction",
+                this.guiLeft + 5, this.guiTop + 135));
+        this.addTextField(new GuiNpcTextField(18, this, this.fontRenderer,
+                this.guiLeft + 165, this.guiTop + 130, 60, 18,
+                this.ranged.getReactionSeconds() + ""));
+        this.getTextField(18).decimalNumbers = true;
 
         this.addLabel(new GuiNpcLabel(14, "npc.ignorePlayerIFrames.ranged",
-                this.guiLeft + 5, this.guiTop + 135));
+                this.guiLeft + 5, this.guiTop + 165));
         this.addButton(new GuiNpcButtonYesNo(14,
-                this.guiLeft + 165, this.guiTop + 130,
+                this.guiLeft + 165, this.guiTop + 160,
                 this.ranged.getIgnorePlayerIFrames()));
 
         this.addLabel(new GuiNpcLabel(17, "npc.hideEffectParticles.ranged",
-                this.guiLeft + 5, this.guiTop + 165));
+                this.guiLeft + 5, this.guiTop + 195));
         this.addButton(new GuiNpcButtonYesNo(17,
-                this.guiLeft + 165, this.guiTop + 160,
+                this.guiLeft + 165, this.guiTop + 190,
                 this.ranged.getHideEffectParticles()));
 
         this.addButton(new GuiNpcButton(66,
-                this.guiLeft + 190, this.guiTop + 190, 60, 20, "gui.done"));
+                this.guiLeft + 190, this.guiTop + 220, 60, 20, "gui.done"));
+    }
+
+    private double parseSeconds(String value, double fallback) {
+        try {
+            return Double.parseDouble(value.trim().replace(',', '.'));
+        } catch (NumberFormatException exception) {
+            return fallback;
+        }
     }
 
     public void unFocused(GuiNpcTextField textfield) {
@@ -77,9 +90,17 @@ public class SubGuiNpcRangeAdvanced extends SubGuiInterface implements ITextfiel
         } else if (textfield.getId() == 12) {
             this.ranged.setMagazineSize(textfield.getInteger());
         } else if (textfield.getId() == 16) {
-            this.ranged.setReloadDurationSeconds(textfield.getInteger());
+            this.ranged.setReloadDurationSeconds(
+                    this.parseSeconds(textfield.getText(), this.ranged.getReloadDurationSeconds()));
+            textfield.setText(this.ranged.getReloadDurationSeconds() + "");
         } else if (textfield.getId() == 15) {
-            this.ranged.setReloadAfterDeAggroSeconds(textfield.getInteger());
+            this.ranged.setReloadAfterDeAggroSeconds(
+                    this.parseSeconds(textfield.getText(), this.ranged.getReloadAfterDeAggroSeconds()));
+            textfield.setText(this.ranged.getReloadAfterDeAggroSeconds() + "");
+        } else if (textfield.getId() == 18) {
+            this.ranged.setReactionSeconds(
+                    this.parseSeconds(textfield.getText(), this.ranged.getReactionSeconds()));
+            textfield.setText(this.ranged.getReactionSeconds() + "");
         }
     }
 

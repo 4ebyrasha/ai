@@ -10,20 +10,23 @@ import noppes.npcs.entity.EntityNPCInterface;
 public class EntityAIRangedAttack extends EntityAIBase {
 	private final EntityNPCInterface npc;
 	private EntityLivingBase attackTarget;
+	private EntityLivingBase reactionTarget;
+
 	private double rangedAttackTime = 0.0D;
+	private int reactionTicksRemaining = 0;
 	private int moveTries = 0;
-	private int burstCount = 0;
+
 	private boolean hasFired = false;
 	private boolean navOverride = false;
 
 	public EntityAIRangedAttack(IRangedAttackMob par1IRangedAttackMob) {
 		if (!(par1IRangedAttackMob instanceof EntityLivingBase)) {
 			throw new IllegalArgumentException("ArrowAttackGoal requires Mob implements RangedAttackMob");
-		} else {
-			this.npc = (EntityNPCInterface) par1IRangedAttackMob;
-			this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
-			this.setMutexBits(this.navOverride ? AiMutex.PATHING : AiMutex.LOOK + AiMutex.PASSIVE);
 		}
+
+		this.npc = (EntityNPCInterface) par1IRangedAttackMob;
+		this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
+		this.setMutexBits(this.navOverride ? AiMutex.PATHING : AiMutex.LOOK + AiMutex.PASSIVE);
 	}
 
 	private double getFireIntervalTicks() {
@@ -35,7 +38,8 @@ public class EntityAIRangedAttack extends EntityAIBase {
 	public boolean shouldExecute() {
 		this.attackTarget = this.npc.getAttackTarget();
 
-		if (this.attackTarget != null && this.attackTarget.isEntityAlive()
+		if (this.attackTarget != null
+				&& this.attackTarget.isEntityAlive()
 				&& this.npc.isInRange(this.attackTarget, (double) this.npc.stats.aggroRange)
 				&& this.npc.inventory.getProjectile() != null) {
 			return this.npc.stats.ranged.getMeleeRange() < 1
@@ -47,11 +51,14 @@ public class EntityAIRangedAttack extends EntityAIBase {
 
 	public void resetTask() {
 		this.attackTarget = null;
+		this.reactionTarget = null;
+		this.reactionTicksRemaining = 0;
+
 		this.npc.setAttackTarget((EntityLivingBase) null);
 		this.npc.getNavigator().clearPath();
+
 		this.moveTries = 0;
 		this.hasFired = false;
-		this.burstCount = 0;
 		this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
 	}
 
@@ -61,6 +68,13 @@ public class EntityAIRangedAttack extends EntityAIBase {
 		}
 
 		this.npc.getLookHelper().setLookPositionWithEntity(this.attackTarget, 30.0F, 30.0F);
+
+		if (this.attackTarget != this.reactionTarget) {
+			this.reactionTarget = this.attackTarget;
+			this.reactionTicksRemaining = this.npc.stats.ranged.getReactionTicks();
+			this.rangedAttackTime = 0.0D;
+			this.hasFired = false;
+		}
 
 		double distanceSq = this.npc.getDistanceSq(
 				this.attackTarget.posX,
@@ -91,8 +105,13 @@ public class EntityAIRangedAttack extends EntityAIBase {
 			return;
 		}
 
+		// Задержка реакции после получения новой цели.
+		if (this.reactionTicksRemaining > 0) {
+			--this.reactionTicksRemaining;
+			return;
+		}
+
 		// Дробный таймер сохраняет точный средний RPM.
-		// Остаток отрицательного значения не теряется между выстрелами.
 		this.rangedAttackTime -= 1.0D;
 
 		if (distanceSq > range) {
@@ -113,34 +132,27 @@ public class EntityAIRangedAttack extends EntityAIBase {
 			return;
 		}
 
-		if (this.burstCount++ <= this.npc.stats.ranged.getBurst()) {
-			this.rangedAttackTime = this.npc.stats.ranged.getBurstDelay();
-		} else {
-			this.burstCount = 0;
-			this.hasFired = true;
-			this.rangedAttackTime += this.getFireIntervalTicks();
+		boolean indirect = false;
+
+		switch (this.npc.stats.ranged.getFireType()) {
+			case 1:
+				indirect = distanceSq > (double) range / 2.0D;
+				break;
+			case 2:
+				indirect = !canSee;
+				break;
 		}
 
-		if (this.burstCount > 1) {
-			boolean indirect = false;
+		this.npc.attackEntityWithRangedAttack(
+				this.attackTarget,
+				indirect ? 1.0F : 0.0F);
 
-			switch (this.npc.stats.ranged.getFireType()) {
-				case 1:
-					indirect = distanceSq > (double) range / 2.0D;
-					break;
-				case 2:
-					indirect = !canSee;
-					break;
-			}
-
-			this.npc.attackEntityWithRangedAttack(
-					this.attackTarget,
-					indirect ? 1.0F : 0.0F);
-
-			if (this.npc.currentAnimation != 6) {
-				this.npc.swingArm(EnumHand.MAIN_HAND);
-			}
+		if (this.npc.currentAnimation != 6) {
+			this.npc.swingArm(EnumHand.MAIN_HAND);
 		}
+
+		this.hasFired = true;
+		this.rangedAttackTime += this.getFireIntervalTicks();
 	}
 
 	public boolean hasFired() {
