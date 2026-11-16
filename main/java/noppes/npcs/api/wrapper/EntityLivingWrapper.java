@@ -67,7 +67,6 @@ public class EntityLivingWrapper extends EntityLivingBaseWrapper implements IEnt
 
 	@Override
 	public EntityLiving getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+		return (EntityLiving) this.entity;
 	}
 }

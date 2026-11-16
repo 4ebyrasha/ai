@@ -1,6 +1,5 @@
 package noppes.npcs.api.wrapper;
 
-import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.passive.EntityVillager;
 import noppes.npcs.api.entity.IVillager;
 
@@ -14,7 +13,8 @@ public class VillagerWrapper extends EntityLivingWrapper implements IVillager {
 	}
 
 	public String getCareer() {
-		return ((EntityVillager) this.entity).getProfessionForge().getCareer(((EntityVillager) this.entity).getProfession())
+		return ((EntityVillager) this.entity).getProfessionForge()
+				.getCareer(((EntityVillager) this.entity).getProfession())
 				.getName();
 	}
 
@@ -27,8 +27,7 @@ public class VillagerWrapper extends EntityLivingWrapper implements IVillager {
 	}
 
 	@Override
-	public EntityMob getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+	public EntityVillager getMCEntity() {
+		return (EntityVillager) this.entity;
 	}
 }

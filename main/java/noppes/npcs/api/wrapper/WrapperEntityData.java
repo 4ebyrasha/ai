@@ -20,13 +20,17 @@ import net.minecraftforge.event.AttachCapabilitiesEvent;
 import noppes.npcs.LogWriter;
 import noppes.npcs.api.entity.IEntity;
 import noppes.npcs.controllers.PixelmonHelper;
+import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.entity.EntityProjectile;
 
 public class WrapperEntityData implements ICapabilityProvider {
 	@CapabilityInject(WrapperEntityData.class)
 	public static Capability ENTITYDATA_CAPABILITY = null;
+
 	public IEntity base;
-	private static final ResourceLocation key = new ResourceLocation("customnpcs", "entitydata");
+
+	private static final ResourceLocation key =
+			new ResourceLocation("customnpcs", "entitydata");
 
 	public WrapperEntityData(IEntity base) {
 		this.base = base;
@@ -43,15 +47,18 @@ public class WrapperEntityData implements ICapabilityProvider {
 	public static IEntity get(Entity entity) {
 		if (entity == null) {
 			return null;
-		} else {
-			WrapperEntityData data = (WrapperEntityData) entity.getCapability(ENTITYDATA_CAPABILITY, (EnumFacing) null);
-			if (data == null) {
-				LogWriter.warn("Unable to get EntityData for " + entity);
-				return getData(entity).base;
-			} else {
-				return data.base;
-			}
 		}
+
+		WrapperEntityData data = (WrapperEntityData) entity.getCapability(
+				ENTITYDATA_CAPABILITY, (EnumFacing) null);
+
+		if (data == null) {
+			LogWriter.warn("Unable to get EntityData for " + entity);
+			WrapperEntityData fallback = getData(entity);
+			return fallback == null ? null : fallback.base;
+		}
+
+		return data.base;
 	}
 
 	public static void register(AttachCapabilitiesEvent event) {
@@ -59,33 +66,48 @@ public class WrapperEntityData implements ICapabilityProvider {
 	}
 
 	private static WrapperEntityData getData(Entity entity) {
-		if (entity != null && entity.world != null && !entity.world.isRemote) {
-			if (entity instanceof EntityPlayerMP) {
-				return new WrapperEntityData(new PlayerWrapper((EntityPlayerMP) entity));
-			} else if (PixelmonHelper.isPixelmon(entity)) {
-				return new WrapperEntityData(new PixelmonWrapper((EntityTameable) entity));
-			} else if (entity instanceof EntityAnimal) {
-				return new WrapperEntityData(new AnimalWrapper((EntityAnimal) entity));
-			} else if (entity instanceof EntityMob) {
-				return new WrapperEntityData(new MonsterWrapper((EntityMob) entity));
-			} else if (entity instanceof EntityLiving) {
-				return new WrapperEntityData(new EntityLivingWrapper((EntityLiving) entity));
-			} else if (entity instanceof EntityLivingBase) {
-				return new WrapperEntityData(new EntityLivingBaseWrapper((EntityLivingBase) entity));
-			} else if (entity instanceof EntityVillager) {
-				return new WrapperEntityData(new VillagerWrapper((EntityVillager) entity));
-			} else if (entity instanceof EntityItem) {
-				return new WrapperEntityData(new EntityItemWrapper((EntityItem) entity));
-			} else if (entity instanceof EntityProjectile) {
-				return new WrapperEntityData(new ProjectileWrapper((EntityProjectile) entity));
-			} else if (entity instanceof EntityThrowable) {
-				return new WrapperEntityData(new ThrowableWrapper((EntityThrowable) entity));
-			} else {
-				return entity instanceof EntityArrow ? new WrapperEntityData(new ArrowWrapper((EntityArrow) entity))
-						: new WrapperEntityData(new EntityWrapper(entity));
-			}
-		} else {
+		if (entity == null || entity.world == null || entity.world.isRemote) {
 			return null;
 		}
+
+		if (entity instanceof EntityPlayerMP) {
+			return new WrapperEntityData(
+					new PlayerWrapper((EntityPlayerMP) entity));
+		} else if (entity instanceof EntityNPCInterface) {
+			return new WrapperEntityData(
+					new NPCWrapper((EntityNPCInterface) entity));
+		} else if (PixelmonHelper.isPixelmon(entity)) {
+			return new WrapperEntityData(
+					new PixelmonWrapper((EntityTameable) entity));
+		} else if (entity instanceof EntityAnimal) {
+			return new WrapperEntityData(
+					new AnimalWrapper((EntityAnimal) entity));
+		} else if (entity instanceof EntityMob) {
+			return new WrapperEntityData(
+					new MonsterWrapper((EntityMob) entity));
+		} else if (entity instanceof EntityVillager) {
+			return new WrapperEntityData(
+					new VillagerWrapper((EntityVillager) entity));
+		} else if (entity instanceof EntityLiving) {
+			return new WrapperEntityData(
+					new EntityLivingWrapper((EntityLiving) entity));
+		} else if (entity instanceof EntityLivingBase) {
+			return new WrapperEntityData(
+					new EntityLivingBaseWrapper((EntityLivingBase) entity));
+		} else if (entity instanceof EntityItem) {
+			return new WrapperEntityData(
+					new EntityItemWrapper((EntityItem) entity));
+		} else if (entity instanceof EntityProjectile) {
+			return new WrapperEntityData(
+					new ProjectileWrapper((EntityProjectile) entity));
+		} else if (entity instanceof EntityThrowable) {
+			return new WrapperEntityData(
+					new ThrowableWrapper((EntityThrowable) entity));
+		} else if (entity instanceof EntityArrow) {
+			return new WrapperEntityData(
+					new ArrowWrapper((EntityArrow) entity));
+		}
+
+		return new WrapperEntityData(new EntityWrapper(entity));
 	}
 }

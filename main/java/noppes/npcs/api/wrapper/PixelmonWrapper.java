@@ -23,7 +23,6 @@ public class PixelmonWrapper extends AnimalWrapper implements IPixelmon {
 
 	@Override
 	public EntityTameable getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+		return (EntityTameable) this.entity;
 	}
 }
