@@ -3,7 +3,6 @@ package com.cheba.trader;
 import com.cheba.currency.TraderCurrencyBridge;
 
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.NonNullList;
 import net.minecraft.world.World;
@@ -63,7 +62,11 @@ public final class TraderTradeService {
         }
     }
 
-    /** Старый вызов остаётся совместимым: один комплект. */
+    /**
+     * Старый API покупки одного комплекта через RoleTrader.
+     *
+     * Оставлен для совместимости со старым интерфейсом CustomNPCs.
+     */
     public Result buy(
             EntityPlayer player,
             RoleTrader role,
@@ -73,9 +76,7 @@ public final class TraderTradeService {
     }
 
     /**
-     * Покупает multiplier комплектов предложения.
-     * Например, 5 предметов в предложении при multiplier=10
-     * превращаются в 50 предметов
+     * Старый API покупки через RoleTrader с проверкой расстояния.
      */
     public Result buy(
             EntityPlayer player,
@@ -83,18 +84,8 @@ public final class TraderTradeService {
             String offerId,
             int multiplier
     ) {
-        if (player == null
-                || role == null
-                || offerId == null
-                || multiplier < 1
-                || multiplier > MAX_MULTIPLIER) {
+        if (player == null || role == null) {
             return Result.INVALID_OFFER;
-        }
-
-        World world = player.world;
-
-        if (world.isRemote || role.npc.world.isRemote) {
-            return Result.SERVER_ONLY;
         }
 
         if (player.world != role.npc.world
@@ -102,7 +93,90 @@ public final class TraderTradeService {
             return Result.TOO_FAR;
         }
 
-        NpcTradeConfig offer = findOffer(role, offerId);
+        String oldScope;
+
+        String market = role.getMarket();
+
+        if (role.sharedLimits
+                && market != null
+                && !market.trim().isEmpty()) {
+            oldScope = "market:" + market.trim().toLowerCase(Locale.ROOT);
+        } else {
+            oldScope = "npc:" + role.npc.getUniqueID();
+        }
+
+        return buyInternal(
+                player,
+                role.getDynamicOffers(),
+                oldScope,
+                offerId,
+                multiplier
+        );
+    }
+
+    /**
+     * Новый API покупки через независимый профиль и каталог.
+     *
+     * Не требует NPC и не проверяет расстояние до него.
+     * Доступ к этой функции должен предоставляться только через
+     * серверную торговую сессию, проверяющую владельца session token.
+     */
+    public Result buy(
+            EntityPlayer player,
+            TraderProfile profile,
+            TraderPreset preset,
+            String offerId,
+            int multiplier
+    ) {
+        if (player == null
+                || profile == null
+                || preset == null
+                || profile.getPresetName().isEmpty()
+                || !profile.getPresetName().equalsIgnoreCase(preset.getName())) {
+            return Result.INVALID_OFFER;
+        }
+
+        return buyInternal(
+                player,
+                preset.getOffers(),
+                profile.getLimitScope(),
+                offerId,
+                multiplier
+        );
+    }
+
+    /**
+     * Общая реализация покупки для старого и нового API.
+     *
+     * Выполняет проверку предложения, лимитов, оплаты и инвентаря.
+     * Изменения инвентаря и списание валюты выполняются только после
+     * всех предварительных проверок.
+     */
+    private Result buyInternal(
+            EntityPlayer player,
+            List<NpcTradeConfig> offers,
+            String limitScope,
+            String offerId,
+            int multiplier
+    ) {
+        if (player == null
+                || offers == null
+                || limitScope == null
+                || limitScope.isEmpty()
+                || offerId == null
+                || offerId.trim().isEmpty()
+                || multiplier < 1
+                || multiplier > MAX_MULTIPLIER) {
+            return Result.INVALID_OFFER;
+        }
+
+        World world = player.world;
+
+        if (world == null || world.isRemote) {
+            return Result.SERVER_ONLY;
+        }
+
+        NpcTradeConfig offer = findOffer(offers, offerId);
 
         if (offer == null || !offer.isValid()) {
             return Result.INVALID_OFFER;
@@ -135,6 +209,10 @@ public final class TraderTradeService {
             return Result.INVALID_OFFER;
         }
 
+        if (moneyPrice < 0L) {
+            return Result.INVALID_OFFER;
+        }
+
         List<ItemStack> scaledPriceItems = scalePriceItems(
                 offer.getPriceItems(),
                 multiplier
@@ -150,8 +228,7 @@ public final class TraderTradeService {
             return Result.SERVER_ONLY;
         }
 
-        String marketKey = getMarketKey(role);
-        String stockKey = marketKey + "|offer:" + offer.getId();
+        String stockKey = limitScope + "|offer:" + offer.getId();
         String playerKey = stockKey + "|" + player.getUniqueID();
 
         long outputCount = outputCountLong;
@@ -159,7 +236,6 @@ public final class TraderTradeService {
         int dailyStock = offer.getDailyStock();
         int maxPerDay = offer.getMaxPerDay();
 
-        // Проверяем общий дневной запас товара
         if (dailyStock >= 0
                 && exceedsLimit(
                 state.getSoldCount(stockKey),
@@ -169,7 +245,6 @@ public final class TraderTradeService {
             return Result.OUT_OF_STOCK;
         }
 
-        // Проверяем персональный дневной лимит игрока
         if (maxPerDay >= 0
                 && exceedsLimit(
                 state.getPlayerPurchaseCount(playerKey),
@@ -253,7 +328,6 @@ public final class TraderTradeService {
             return Result.INVENTORY_CHANGED;
         }
 
-        // Записываем только те счетчики которые действительно используются
         state.recordPurchase(
                 dailyStock >= 0 ? stockKey : null,
                 maxPerDay >= 0 ? playerKey : null,
@@ -275,12 +349,19 @@ public final class TraderTradeService {
         return current > limit || increment > limit - current;
     }
 
+    /**
+     * Находит предложение по постоянному Offer ID.
+     */
     private NpcTradeConfig findOffer(
-            RoleTrader role,
+            List<NpcTradeConfig> offers,
             String offerId
     ) {
-        for (NpcTradeConfig offer : role.getDynamicOffers()) {
-            if (offerId.equals(offer.getId())) {
+        if (offers == null || offerId == null) {
+            return null;
+        }
+
+        for (NpcTradeConfig offer : offers) {
+            if (offer != null && offerId.equals(offer.getId())) {
                 return offer;
             }
         }
