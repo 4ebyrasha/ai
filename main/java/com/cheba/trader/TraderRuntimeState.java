@@ -6,6 +6,8 @@ import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TraderRuntimeState extends WorldSavedData {
 
@@ -113,12 +115,19 @@ public class TraderRuntimeState extends WorldSavedData {
         }
     }
 
-    private long addSaturated(long current, long increment) {
-        if (increment > 0L && current > Long.MAX_VALUE - increment) {
+    /**
+     * Складывает счётчики без переполнения long.
+     */
+    private static long addSaturated(long first, long second) {
+        if (second > 0L && first > Long.MAX_VALUE - second) {
             return Long.MAX_VALUE;
         }
 
-        return current + increment;
+        if (second < 0L && first < Long.MIN_VALUE - second) {
+            return Long.MIN_VALUE;
+        }
+
+        return first + second;
     }
 
     @Override
@@ -144,5 +153,88 @@ public class TraderRuntimeState extends WorldSavedData {
         tag.setTag("PlayerPurchases", playerPurchases.copy());
 
         return tag;
+    }
+    /**
+     * Переносит дневные счётчики из старой области лимитов
+     * в новую, сохраняя количество продаж и покупок игроков.
+     * <p>
+     * Исходные ключи удаляются после переноса, поэтому повторный
+     * вызов миграции не увеличивает счётчики повторно.
+     *
+     * @param world мир, в котором находится старое хранилище
+     * @param oldScope старая область лимитов
+     * @param newScope новая область лимитов
+     */
+    public static void migrateScope(
+            World world,
+            String oldScope,
+            String newScope
+    ) {
+        if (world == null
+                || world.isRemote
+                || oldScope == null
+                || oldScope.isEmpty()
+                || newScope == null
+                || newScope.isEmpty()
+                || oldScope.equals(newScope)) {
+            return;
+        }
+
+        TraderRuntimeState state = get(world);
+
+        if (state == null) {
+            return;
+        }
+
+        String oldPrefix = oldScope + "|offer:";
+        String newPrefix = newScope + "|offer:";
+
+        boolean changed = migrateCompound(
+                state.stockSales,
+                oldPrefix,
+                newPrefix
+        );
+
+        changed |= migrateCompound(
+                state.playerPurchases,
+                oldPrefix,
+                newPrefix
+        );
+
+        if (changed) {
+            state.markDirty();
+        }
+    }
+    /**
+     * Переносит все ключи с указанным префиксом.
+     */
+    private static boolean migrateCompound(
+            NBTTagCompound data,
+            String oldPrefix,
+            String newPrefix
+    ) {
+        List<String> keys = new ArrayList<>(data.getKeySet());
+        boolean changed = false;
+
+        for (String oldKey : keys) {
+            if (!oldKey.startsWith(oldPrefix)) {
+                continue;
+            }
+
+            String newKey = newPrefix + oldKey.substring(oldPrefix.length());
+
+            long oldValue = data.getLong(oldKey);
+            long newValue = data.getLong(newKey);
+
+            data.setLong(
+                    newKey,
+                    addSaturated(newValue, oldValue)
+            );
+
+            data.removeTag(oldKey);
+            changed = true;
+        }
+
+        return changed;
     }
 }

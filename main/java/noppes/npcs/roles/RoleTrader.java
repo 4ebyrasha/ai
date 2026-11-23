@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
+import com.cheba.trader.TraderPreset;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -77,6 +78,63 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 			return lastModified == file.lastModified()
 					&& fileLength == file.length();
 		}
+	}
+
+	/**
+	 * Создаёт независимую копию старого магазина в формате нового каталога.
+	 *
+	 * @param presetName имя нового каталога
+	 * @return каталог со всеми предложениями и старыми настройками
+	 */
+	public TraderPreset createTraderPreset(String presetName) {
+		TraderPreset preset = new TraderPreset(presetName);
+
+		for (NpcTradeConfig offer : dynamicOffers) {
+			if (offer == null) {
+				continue;
+			}
+
+			NpcTradeConfig copy = NpcTradeConfig.readFromNBT(
+					offer.writeToNBT()
+			);
+
+			if (copy != null) {
+				preset.addOffer(copy);
+			}
+		}
+
+		for (NpcBuybackConfig offer : buybackOffers) {
+			if (offer == null) {
+				continue;
+			}
+
+			NpcBuybackConfig copy = NpcBuybackConfig.readFromNBT(
+					offer.writeToNBT()
+			);
+
+			if (copy != null) {
+				preset.addBuybackOffer(copy);
+			}
+		}
+
+		NBTTagCompound legacyData = new NBTTagCompound();
+
+		legacyData.setTag(
+				"TraderCurrency",
+				inventoryCurrency.getToNBT()
+		);
+
+		legacyData.setTag(
+				"TraderSold",
+				inventorySold.getToNBT()
+		);
+
+		legacyData.setBoolean("TraderIgnoreDamage", ignoreDamage);
+		legacyData.setBoolean("TraderIgnoreNBT", ignoreNBT);
+
+		preset.setLegacyData(legacyData);
+
+		return preset;
 	}
 
 	public RoleTrader(EntityNPCInterface npc) {

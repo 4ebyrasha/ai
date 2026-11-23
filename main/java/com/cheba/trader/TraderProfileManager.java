@@ -5,13 +5,12 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
+import noppes.npcs.entity.EntityNPCInterface;
+import noppes.npcs.roles.RoleTrader;
 
 import javax.annotation.Nonnull;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * Хранилище торговых профилей и каталогов мира.
@@ -191,6 +190,122 @@ public class TraderProfileManager extends WorldSavedData {
         markDirty();
 
         return true;
+    }
+
+    /**
+     * Переносит старого NPC с RoleTrader в новую систему профилей.
+     *
+     * Каждый NPC получает собственный профиль и Trader ID.
+     * NPC с одинаковым старым marketName используют один каталог.
+     * При включённых sharedLimits они также используют общую группу
+     * лимитов с прежним названием рынка.
+     *
+     * Метод безопасен для повторного вызова: NPC с существующей
+     * TraderBinding повторно не мигрирует.
+     *
+     * @param npc старый NPC
+     * @param role его старая торговая роль
+     * @return созданный или найденный профиль
+     */
+    public TraderProfile migrateLegacyNpc(
+            EntityNPCInterface npc,
+            RoleTrader role
+    ) {
+        if (npc == null
+                || role == null
+                || npc.world == null
+                || npc.world.isRemote) {
+            return null;
+        }
+
+        if (npc.hasTraderBinding()) {
+            return getProfileById(
+                    npc.getTraderBinding().getTraderId()
+            );
+        }
+
+        String npcUuid = npc.getUniqueID().toString();
+
+        String oldMarketName = role.getMarket() == null
+                ? ""
+                : role.getMarket().trim();
+
+        String presetName = oldMarketName.isEmpty()
+                ? "legacy-" + npcUuid
+                : oldMarketName;
+
+        /*
+         * Сначала переносим каталог.
+         *
+         * Если другой NPC уже перенёс этот рынок,
+         * повторно каталог не создаём.
+         */
+        TraderPreset preset = getPreset(presetName);
+
+        if (preset == null) {
+            preset = role.createTraderPreset(presetName);
+
+            if (!addPreset(preset)) {
+                preset = getPreset(presetName);
+            }
+        }
+
+        if (preset == null) {
+            return null;
+        }
+
+        /*
+         * Профиль всегда индивидуальный.
+         * Общность лимитов задаётся отдельно через limitGroupName.
+         */
+        String profileName = "legacy-" + npcUuid;
+
+        String limitGroupName = role.sharedLimits
+                && !oldMarketName.isEmpty()
+                ? oldMarketName
+                : "";
+
+        TraderProfile profile = new TraderProfile(
+                UUID.randomUUID().toString(),
+                profileName,
+                preset.getName(),
+                limitGroupName,
+                role.sharedLimits
+        );
+
+        if (!addProfile(profile)) {
+            return null;
+        }
+
+        /*
+         * Переносим старые счётчики.
+         *
+         * Старые ключи:
+         * market:<name>|offer:<id>
+         * npc:<uuid>|offer:<id>
+         *
+         * Новые ключи:
+         * group:<name>|offer:<id>
+         * trader:<traderId>|offer:<id>
+         */
+        String oldScope;
+
+        if (role.sharedLimits && !oldMarketName.isEmpty()) {
+            oldScope = "market:"
+                    + oldMarketName.toLowerCase(Locale.ROOT);
+        } else {
+            oldScope = "npc:" + npcUuid;
+        }
+
+        TraderRuntimeState.migrateScope(
+                npc.world,
+                oldScope,
+                profile.getLimitScope()
+        );
+
+        npc.setTraderBinding(new TraderBinding(profile.getId()));
+
+        return profile;
     }
 
     public void markChanged() {

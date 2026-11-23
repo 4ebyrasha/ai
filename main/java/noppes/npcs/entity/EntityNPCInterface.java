@@ -2,6 +2,7 @@ package noppes.npcs.entity;
 
 import com.cheba.api.IPerceptionFilter;
 import com.cheba.trader.TraderBinding;
+import com.cheba.trader.TraderProfileManager;
 import com.google.common.base.Predicate;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
@@ -141,6 +142,7 @@ import noppes.npcs.items.ItemSoulstoneFilled;
 import noppes.npcs.roles.JobBard;
 import noppes.npcs.roles.JobInterface;
 import noppes.npcs.roles.RoleInterface;
+import noppes.npcs.roles.RoleTrader;
 import noppes.npcs.util.GameProfileAlt;
 
 import javax.annotation.Nonnull;
@@ -1234,6 +1236,26 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 		if (this.advanced.role != 0 && this.roleInterface != null) {
 			this.roleInterface.readFromNBT(compound);
+		}
+		/*
+		 * Мигрируем старого торговца после загрузки RoleTrader.
+		 *
+		 * К этому моменту старая роль уже прочитала данные NPC
+		 * и загрузила соответствующий market JSON.
+		 */
+		if (!this.isRemote()
+				&& this.traderBinding == null
+				&& this.roleInterface instanceof RoleTrader) {
+
+			TraderProfileManager manager =
+					TraderProfileManager.get(this.world);
+
+			if (manager != null) {
+				manager.migrateLegacyNpc(
+						this,
+						(RoleTrader) this.roleInterface
+				);
+			}
 		}
 
 		if (this.advanced.job != 0 && this.jobInterface != null) {
