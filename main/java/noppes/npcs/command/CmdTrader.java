@@ -438,7 +438,17 @@ public class CmdTrader extends CommandNoppesBase {
             String[] args
     ) throws CommandException {
 
+        if (args.length < 1) {
+            throw new CommandException(
+                    "Usage: /customnpcs trader unbind <npcName>"
+            );
+        }
+
         String npcName = decodeName(args[0]);
+
+        if (npcName.isEmpty()) {
+            throw new CommandException("Invalid NPC name");
+        }
 
         EntityNPCInterface npc = findNpc(sender, npcName);
 
