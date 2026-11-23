@@ -16,8 +16,6 @@ import net.minecraft.nbt.NBTTagCompound;
 import noppes.npcs.client.Client;
 import noppes.npcs.constants.EnumPacketServer;
 
-import javax.annotation.Nonnull;
-
 public class GuiTraderPresetEditor extends GuiScreen {
 
     private static final int PANEL_WIDTH = 390;
@@ -202,6 +200,10 @@ public class GuiTraderPresetEditor extends GuiScreen {
                 5, x + 284, y + 174, 96, 20, "Clear product"
         ));
 
+        buttonList.add(new GuiButton(
+                6, x + 190, y + 198, 190, 20, "Payment items"
+        ));
+
         priceField = createField(0, x + 275, y + 55);
         sellPriceField = createField(1, x + 275, y + 78);
         maxPerDayField = createField(2, x + 275, y + 101);
@@ -292,7 +294,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(@Nonnull GuiButton button)
+    protected void actionPerformed(GuiButton button)
             throws IOException {
 
         if (saving) {
@@ -392,6 +394,20 @@ public class GuiTraderPresetEditor extends GuiScreen {
                     offer.setResult(ItemStack.EMPTY);
                     statusMessage = "Product cleared.";
                 }
+                break;
+            }
+
+            case 6: {
+                NpcTradeConfig offer = getSelectedOffer();
+
+                if (offer == null) {
+                    statusMessage = "Select an offer first.";
+                    return;
+                }
+
+                mc.displayGuiScreen(
+                        new GuiTraderPresetPaymentEditor(this, offer)
+                );
                 break;
             }
         }
