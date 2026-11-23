@@ -35,6 +35,8 @@ public class GuiTraderPresetEditor extends GuiScreen {
     private GuiTextField maxPerDayField;
     private GuiTextField dailyStockField;
 
+    private boolean saving;
+
     public GuiTraderPresetEditor(TraderPreset preset) {
         if (preset == null) {
             throw new IllegalArgumentException("Preset cannot be null");
@@ -48,6 +50,29 @@ public class GuiTraderPresetEditor extends GuiScreen {
 
         if (!this.preset.getOffers().isEmpty()) {
             selectedOfferId = this.preset.getOffers().get(0).getId();
+        }
+    }
+
+    public void onSaveResult(
+            boolean success,
+            String message,
+            TraderPreset savedPreset
+    ) {
+        saving = false;
+
+        if (success) {
+            if (savedPreset == null
+                    || !preset.replaceContents(
+                    savedPreset,
+                    savedPreset.getRevision()
+            )) {
+                statusMessage = "Saved, but editor could not refresh.";
+                return;
+            }
+
+            statusMessage = message;
+        } else {
+            statusMessage = message;
         }
     }
 
@@ -338,6 +363,10 @@ public class GuiTraderPresetEditor extends GuiScreen {
     }
 
     private void savePreset() {
+        if (saving) {
+            return;
+        }
+
         for (NpcTradeConfig offer : preset.getOffers()) {
             if (offer.getResult().isEmpty()
                     || (offer.getPriceMoney() <= 0L
@@ -365,8 +394,8 @@ public class GuiTraderPresetEditor extends GuiScreen {
                 data
         );
 
-        statusMessage = "Save request sent.";
-        mc.displayGuiScreen(null);
+        saving = true;
+        statusMessage = "Saving...";
     }
 
     @Override
@@ -415,6 +444,9 @@ public class GuiTraderPresetEditor extends GuiScreen {
     @Override
     protected void keyTyped(char typedChar, int keyCode)
             throws IOException {
+        if (saving) {
+            return;
+        }
 
         if (priceField.textboxKeyTyped(typedChar, keyCode)
                 || sellPriceField.textboxKeyTyped(typedChar, keyCode)
@@ -434,6 +466,12 @@ public class GuiTraderPresetEditor extends GuiScreen {
         sellPriceField.updateCursorCounter();
         maxPerDayField.updateCursorCounter();
         dailyStockField.updateCursorCounter();
+        if (buttonList.size() > 2) {
+            buttonList.get(2).enabled = !saving;
+        }
+        for (GuiButton button : buttonList) {
+            button.enabled = !saving || button.id == 3;
+        }
     }
 
     @Override

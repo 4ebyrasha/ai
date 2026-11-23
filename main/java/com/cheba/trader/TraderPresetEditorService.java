@@ -49,16 +49,15 @@ public final class TraderPresetEditorService {
 
         if (!data.hasKey("ExpectedRevision", 4)
                 || !data.hasKey("Preset", 10)) {
-            sendMessage(player, "Invalid editor data.");
+            sendResult(player, false, "Invalid editor data.", null);
             return;
         }
 
         long expectedRevision = data.getLong("ExpectedRevision");
         NBTTagCompound presetTag = data.getCompoundTag("Preset");
 
-        if (expectedRevision < 0L
-                || !isValidPresetTag(presetTag)) {
-            sendMessage(player, "Invalid trader preset.");
+        if (expectedRevision < 0L || !isValidPresetTag(presetTag)) {
+            sendResult(player, false, "Invalid trader preset.", null);
             return;
         }
 
@@ -67,12 +66,12 @@ public final class TraderPresetEditorService {
         try {
             editedPreset = TraderPreset.readFromNBT(presetTag);
         } catch (RuntimeException exception) {
-            sendMessage(player, "Could not read trader preset.");
+            sendResult(player, false, "Could not read trader preset.", null);
             return;
         }
 
         if (editedPreset == null) {
-            sendMessage(player, "Invalid trader preset.");
+            sendResult(player, false, "Invalid trader preset.", null);
             return;
         }
 
@@ -80,7 +79,7 @@ public final class TraderPresetEditorService {
                 TraderProfileManager.get(player.world);
 
         if (manager == null) {
-            sendMessage(player, "Trader storage is unavailable.");
+            sendResult(player, false, "Trader storage is unavailable.", null);
             return;
         }
 
@@ -88,13 +87,17 @@ public final class TraderPresetEditorService {
                 manager.getPreset(editedPreset.getName());
 
         if (currentPreset == null) {
-            sendMessage(player, "Trader preset not found.");
+            sendResult(player, false, "Trader preset not found.", null);
             return;
         }
 
         if (currentPreset.getRevision() != expectedRevision) {
-            sendMessage(player,
-                    "Trader preset was changed by another editor. Reload it before saving.");
+            sendResult(
+                    player,
+                    false,
+                    "Preset was changed by another editor. Reload it before saving.",
+                    null
+            );
             return;
         }
 
@@ -103,7 +106,7 @@ public final class TraderPresetEditorService {
                 expectedRevision,
                 editedPreset
         )) {
-            sendMessage(player, "Trader preset could not be saved.");
+            sendResult(player, false, "Trader preset could not be saved.", null);
             return;
         }
 
@@ -111,16 +114,47 @@ public final class TraderPresetEditorService {
                 manager.getPreset(editedPreset.getName());
 
         if (savedPreset == null) {
-            sendMessage(player, "Trader preset was saved, but could not be reloaded.");
+            sendResult(
+                    player,
+                    false,
+                    "Preset was saved, but could not be reloaded.",
+                    null
+            );
             return;
         }
 
         broadcastPresetUpdate(player, savedPreset);
 
-        sendMessage(
+        sendResult(
                 player,
-                "Trader preset saved: " + savedPreset.getName()
-                        + " (revision " + savedPreset.getRevision() + ")."
+                true,
+                "Catalog saved. Revision: " + savedPreset.getRevision(),
+                savedPreset
+        );
+    }
+
+    private static void sendResult(
+            EntityPlayerMP player,
+            boolean success,
+            String message,
+            TraderPreset preset
+    ) {
+        if (player == null) {
+            return;
+        }
+
+        NBTTagCompound data = new NBTTagCompound();
+        data.setBoolean("Success", success);
+        data.setString("Message", message == null ? "" : message);
+
+        if (success && preset != null) {
+            data.setTag("Preset", preset.writeToNBT());
+        }
+
+        Server.sendData(
+                player,
+                EnumPacketClient.TraderPresetEditorResult,
+                data
         );
     }
 

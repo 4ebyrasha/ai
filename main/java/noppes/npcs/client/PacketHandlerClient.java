@@ -109,6 +109,30 @@ public class PacketHandlerClient extends PacketHandlerServer {
 					new GuiTraderPresetEditor(preset)
 			);
 
+		} else if (type == EnumPacketClient.TraderPresetEditorResult) {
+			NBTTagCompound data = Server.readNBT(buffer);
+
+			boolean success = data.getBoolean("Success");
+			String message = data.getString("Message");
+
+			GuiScreen currentScreen =
+					Minecraft.getMinecraft().currentScreen;
+
+			if (currentScreen instanceof GuiTraderPresetEditor) {
+				TraderPreset preset = null;
+
+				if (success && data.hasKey("Preset", 10)) {
+					preset = TraderPreset.readFromNBT(
+							data.getCompoundTag("Preset")
+					);
+				}
+
+				((GuiTraderPresetEditor) currentScreen).onSaveResult(
+						success,
+						message,
+						preset
+				);
+			}
 		} else if (type == EnumPacketClient.TraderSessionOpen) {
 			NBTTagCompound data = Server.readNBT(buffer);
 
