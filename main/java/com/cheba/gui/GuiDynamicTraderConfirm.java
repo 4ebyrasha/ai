@@ -28,7 +28,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
     private final String profileName;
     private final TraderPreset preset;
     private final int page;
-    private final NpcTradeConfig offer;
+    private final String offerId;
 
     private GuiTextField quantityField;
 
@@ -43,7 +43,11 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
         this.profileName = profileName;
         this.preset = preset;
         this.page = page;
-        this.offer = offer;
+        this.offerId = offer.getId();
+    }
+
+    private NpcTradeConfig getCurrentOffer() {
+        return preset.getOffer(offerId);
     }
 
     private int getMultiplier() {
@@ -129,12 +133,16 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             throws IOException {
 
         if (button.id == 0) {
-            Client.sendData(
-                    EnumPacketServer.TraderSessionBuy,
-                    session.getToken(),
-                    offer.getId(),
-                    getMultiplier()
-            );
+            NpcTradeConfig currentOffer = getCurrentOffer();
+
+            if (currentOffer != null && currentOffer.isValid()) {
+                Client.sendData(
+                        EnumPacketServer.TraderSessionBuy,
+                        session.getToken(),
+                        currentOffer.getId(),
+                        getMultiplier()
+                );
+            }
         }
 
         returnToCatalog();
@@ -189,6 +197,15 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
     ) {
         drawDefaultBackground();
 
+        NpcTradeConfig currentOffer = getCurrentOffer();
+
+        boolean available = currentOffer != null
+                && currentOffer.isValid();
+
+        if (!buttonList.isEmpty()) {
+            buttonList.get(0).enabled = available;
+        }
+
         drawCenteredString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.confirm.title"),
@@ -197,7 +214,25 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
                 0xFFFFFF
         );
 
-        ItemStack result = offer.getResult();
+        if (!available) {
+            drawCenteredString(
+                    fontRenderer,
+                    "This offer is no longer available",
+                    width / 2,
+                    height / 2 - 20,
+                    0xFF5555
+            );
+
+            super.drawScreen(
+                    mouseX,
+                    mouseY,
+                    partialTicks
+            );
+
+            return;
+        }
+
+        ItemStack result = currentOffer.getResult();
 
         if (!result.isEmpty()) {
             RenderHelper.enableGUIStandardItemLighting();
@@ -228,12 +263,12 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
 
         int multiplier = getMultiplier();
 
-        if (offer.getPriceMoney() > 0L) {
+        if (currentOffer.getPriceMoney() > 0L) {
             long totalPrice;
 
             try {
                 totalPrice = Math.multiplyExact(
-                        offer.getPriceMoney(),
+                        currentOffer.getPriceMoney(),
                         (long) multiplier
                 );
             } catch (ArithmeticException ignored) {
@@ -252,7 +287,8 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             );
         }
 
-        List<ItemStack> priceItems = offer.getPriceItems();
+        List<ItemStack> priceItems =
+                currentOffer.getPriceItems();
 
         int y = height / 2 + 2;
         int visible = Math.min(4, priceItems.size());

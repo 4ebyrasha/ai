@@ -70,6 +70,11 @@ public class CustomNpcsPermissions {
 			"customnpcs.soulstone.all", false);
 	public static final CustomNpcsPermissions.Permission SCENES = new CustomNpcsPermissions.Permission(
 			"customnpcs.scenes");
+	public static final CustomNpcsPermissions.Permission TRADER_PRESET_EDIT =
+			new CustomNpcsPermissions.Permission(
+					"customnpcs.trader.preset.edit",
+					false
+			);
 	public static CustomNpcsPermissions Instance;
 
 	public CustomNpcsPermissions() {

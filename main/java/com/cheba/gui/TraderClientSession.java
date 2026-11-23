@@ -75,4 +75,35 @@ public final class TraderClientSession {
                 token
         );
     }
+
+    /**
+     * Применяет серверное обновление каталога.
+     * <p>
+     * Объект preset не заменяется: открытые GUI могут хранить
+     * ссылки на него и продолжат видеть актуальное содержимое.
+     */
+    public boolean applyPresetUpdate(
+            String updateToken,
+            TraderPreset updatedPreset
+    ) {
+        if (closed
+                || activeSession != this
+                || updateToken == null
+                || !token.equals(updateToken)
+                || updatedPreset == null
+                || !preset.getName().equalsIgnoreCase(updatedPreset.getName())) {
+            return false;
+        }
+
+        long incomingRevision = updatedPreset.getRevision();
+
+        if (incomingRevision <= preset.getRevision()) {
+            return false;
+        }
+
+        return preset.replaceContents(
+                updatedPreset,
+                incomingRevision
+        );
+    }
 }

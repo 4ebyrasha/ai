@@ -236,6 +236,17 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             float partialTicks
     ) {
         drawDefaultBackground();
+        int pageCount = getPageCount();
+
+        page = Math.max(
+                0,
+                Math.min(page, pageCount - 1)
+        );
+
+        if (buttonList.size() >= 3) {
+            buttonList.get(0).enabled = page > 0;
+            buttonList.get(2).enabled = page < pageCount - 1;
+        }
 
         drawCenteredString(
                 fontRenderer,

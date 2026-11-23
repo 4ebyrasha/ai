@@ -1,5 +1,6 @@
 package noppes.npcs;
 
+import com.cheba.trader.TraderPresetEditorService;
 import io.netty.buffer.ByteBuf;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -134,7 +135,16 @@ public class PacketHandlerServer {
 			EntityNPCInterface npc
 	) throws Exception {
 
-		if (type == EnumPacketServer.TraderSessionOpenSell) {
+		if (type == EnumPacketServer.TraderPresetEditorSave) {
+			NBTTagCompound data =
+					TraderPresetEditorService.readPacket(buffer);
+
+			TraderPresetEditorService.handleSave(
+					player,
+					data
+			);
+
+		} else if (type == EnumPacketServer.TraderSessionOpenSell) {
 			String token = Server.readString(buffer);
 
 			TraderPacketService.handleSessionOpenSell(

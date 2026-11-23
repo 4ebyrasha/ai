@@ -122,6 +122,30 @@ public class PacketHandlerClient extends PacketHandlerServer {
 					)
 			);
 
+		} else if (type == EnumPacketClient.TraderPresetUpdate) {
+			NBTTagCompound data = Server.readNBT(buffer);
+
+			String token = data.getString("Token");
+
+			if (token.isEmpty() || !data.hasKey("Preset", 10)) {
+				return;
+			}
+
+			TraderPreset updatedPreset = TraderPreset.readFromNBT(
+					data.getCompoundTag("Preset")
+			);
+
+			if (updatedPreset == null) {
+				return;
+			}
+
+			TraderClientSession session =
+					TraderClientSession.getActiveSession();
+
+			if (session != null) {
+				session.applyPresetUpdate(token, updatedPreset);
+			}
+
 		} else if (type == EnumPacketClient.CHATBUBBLE) {
 			entity = Minecraft.getMinecraft().world.getEntityByID(buffer.readInt());
 			if (entity == null || !(entity instanceof EntityNPCInterface)) {
