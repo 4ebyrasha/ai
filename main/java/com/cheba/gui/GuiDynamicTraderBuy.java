@@ -30,8 +30,8 @@ public class GuiDynamicTraderBuy extends GuiScreen {
     private static final int CELL_SIZE = 22;
 
     private final TraderClientSession session;
-    private final TraderPreset preset;
     private final String profileName;
+    private final TraderPreset preset;
 
     private int page;
 
@@ -82,7 +82,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
         ));
 
         int pages = getPageCount();
-
         page = Math.min(page, pages - 1);
 
         buttonList.get(0).enabled = page > 0;
@@ -111,7 +110,6 @@ public class GuiDynamicTraderBuy extends GuiScreen {
 
     private int getPageCount() {
         int maxSlot = -1;
-
         List<NpcTradeConfig> offers = preset.getOffers();
 
         for (int i = 0; i < offers.size(); i++) {
@@ -127,10 +125,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             );
         }
 
-        return Math.max(
-                1,
-                maxSlot / PAGE_SIZE + 1
-        );
+        return Math.max(1, maxSlot / PAGE_SIZE + 1);
     }
 
     /**
@@ -165,7 +160,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
             mc.displayGuiScreen(
                     new GuiDynamicTraderMenu(
                             session,
-                            preset.getName(),
+                            profileName,
                             preset
                     )
             );
@@ -218,6 +213,7 @@ public class GuiDynamicTraderBuy extends GuiScreen {
                         mc.displayGuiScreen(
                                 new GuiDynamicTraderConfirm(
                                         session,
+                                        profileName,
                                         preset,
                                         page,
                                         offer

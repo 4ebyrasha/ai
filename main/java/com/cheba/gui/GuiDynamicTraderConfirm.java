@@ -25,6 +25,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
     private static final int MAX_MULTIPLIER = 64;
 
     private final TraderClientSession session;
+    private final String profileName;
     private final TraderPreset preset;
     private final int page;
     private final NpcTradeConfig offer;
@@ -33,11 +34,13 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
 
     public GuiDynamicTraderConfirm(
             TraderClientSession session,
+            String profileName,
             TraderPreset preset,
             int page,
             NpcTradeConfig offer
     ) {
         this.session = session;
+        this.profileName = profileName;
         this.preset = preset;
         this.page = page;
         this.offer = offer;
@@ -61,6 +64,22 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
         } catch (NumberFormatException ignored) {
             return 1;
         }
+    }
+
+    /**
+     * Возвращает игрока к каталогу, сохраняя текущую сессию.
+     */
+    private void returnToCatalog() {
+        session.beginTransition();
+
+        mc.displayGuiScreen(
+                new GuiDynamicTraderBuy(
+                        session,
+                        profileName,
+                        preset,
+                        page
+                )
+        );
     }
 
     @Override
@@ -118,15 +137,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             );
         }
 
-        session.beginTransition();
-
-        mc.displayGuiScreen(
-                new GuiDynamicTraderBuy(
-                        session,
-                        preset,
-                        page
-                )
-        );
+        returnToCatalog();
     }
 
     @Override
@@ -134,16 +145,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             throws IOException {
 
         if (keyCode == 1) {
-            session.beginTransition();
-
-            mc.displayGuiScreen(
-                    new GuiDynamicTraderBuy(
-                            session,
-                            preset,
-                            page
-                    )
-            );
-
+            returnToCatalog();
             return;
         }
 
