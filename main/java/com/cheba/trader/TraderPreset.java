@@ -95,7 +95,8 @@ public class TraderPreset {
         }
 
         for (NpcBuybackConfig existing : buybackOffers) {
-            if (existing.getId().equals(offer.getId())) {
+            if (existing.getId().equals(offer.getId())
+                    || existing.matches(offer.getItem())) {
                 return false;
             }
         }

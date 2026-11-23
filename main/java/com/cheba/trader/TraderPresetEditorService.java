@@ -223,6 +223,29 @@ public final class TraderPresetEditorService {
             if (!buybackIds.add(buybackTag.getString("Id"))) {
                 return false;
             }
+
+            ItemStack item = new ItemStack(
+                    buybackTag.getCompoundTag("Item")
+            );
+
+            for (int previousIndex = 0;
+                 previousIndex < i;
+                 previousIndex++) {
+
+                ItemStack previousItem = new ItemStack(
+                        buybackOffers
+                                .getCompoundTagAt(previousIndex)
+                                .getCompoundTag("Item")
+                );
+
+                if (ItemStack.areItemsEqual(item, previousItem)
+                        && ItemStack.areItemStackTagsEqual(
+                        item,
+                        previousItem
+                )) {
+                    return false;
+                }
+            }
         }
 
         return true;

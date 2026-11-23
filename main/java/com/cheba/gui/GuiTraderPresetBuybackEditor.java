@@ -13,6 +13,8 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.item.ItemStack;
 
+import javax.annotation.Nonnull;
+
 public class GuiTraderPresetBuybackEditor extends GuiScreen {
 
     private static final int PANEL_WIDTH = 300;
@@ -176,10 +178,10 @@ public class GuiTraderPresetBuybackEditor extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button)
+    protected void actionPerformed(@Nonnull GuiButton button)
             throws IOException {
 
-        if (button.id != 4 && !savePriceField()) {
+        if (!savePriceField()) {
             return;
         }
 
