@@ -16,6 +16,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import noppes.npcs.client.Client;
 import noppes.npcs.constants.EnumPacketServer;
 
+import javax.annotation.Nonnull;
+
 public class GuiTraderPresetEditor extends GuiScreen {
 
     private static final int PANEL_WIDTH = 390;
@@ -28,6 +30,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     private final TraderPreset preset;
 
     private String selectedOfferId;
+    private String draggedOfferId;
     private String statusMessage = "";
 
     private GuiTextField priceField;
@@ -59,6 +62,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
             TraderPreset savedPreset
     ) {
         saving = false;
+        draggedOfferId = null;
 
         if (success) {
             if (savedPreset == null
@@ -138,6 +142,33 @@ public class GuiTraderPresetEditor extends GuiScreen {
         }
 
         return null;
+    }
+
+    private int getGridSlotAtMouse(int mouseX, int mouseY) {
+        int gridX = left() + 12;
+        int gridY = top() + 43;
+
+        int relativeX = mouseX - gridX;
+        int relativeY = mouseY - gridY;
+
+        if (relativeX < 0 || relativeY < 0) {
+            return -1;
+        }
+
+        int column = relativeX / SLOT_SIZE;
+        int row = relativeY / SLOT_SIZE;
+
+        if (column < 0 || column >= GRID_COLUMNS
+                || row < 0 || row >= GRID_ROWS) {
+            return -1;
+        }
+
+        if (relativeX % SLOT_SIZE >= SLOT_SIZE
+                || relativeY % SLOT_SIZE >= SLOT_SIZE) {
+            return -1;
+        }
+
+        return row * GRID_COLUMNS + column;
     }
 
     @Override
@@ -261,8 +292,12 @@ public class GuiTraderPresetEditor extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button)
+    protected void actionPerformed(@Nonnull GuiButton button)
             throws IOException {
+
+        if (saving) {
+            return;
+        }
 
         if (button.id != 3 && !saveFields()) {
             return;
@@ -395,6 +430,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
         );
 
         saving = true;
+        draggedOfferId = null;
         statusMessage = "Saving...";
     }
 
@@ -420,34 +456,92 @@ public class GuiTraderPresetEditor extends GuiScreen {
             return;
         }
 
-        int gridX = left() + 12;
-        int gridY = top() + 43;
+        int slot = getGridSlotAtMouse(mouseX, mouseY);
 
-        int column = (mouseX - gridX) / SLOT_SIZE;
-        int row = (mouseY - gridY) / SLOT_SIZE;
-
-        if (mouseX < gridX || mouseY < gridY
-                || column < 0 || column >= GRID_COLUMNS
-                || row < 0 || row >= GRID_ROWS) {
+        if (slot < 0) {
+            draggedOfferId = null;
             return;
         }
 
-        int slot = row * GRID_COLUMNS + column;
         NpcTradeConfig offer = getOfferAtSlot(slot);
 
-        if (offer != null) {
-            if (!saveFields()) {
-                return;
-            }
-
-            selectedOfferId = offer.getId();
-            refreshFields();
+        if (offer == null) {
+            draggedOfferId = null;
+            return;
         }
+
+        if (!saveFields()) {
+            draggedOfferId = null;
+            return;
+        }
+
+        selectedOfferId = offer.getId();
+        draggedOfferId = offer.getId();
+
+        refreshFields();
+    }
+
+    @Override
+    protected void mouseReleased(
+            int mouseX,
+            int mouseY,
+            int state
+    ) {
+        super.mouseReleased(mouseX, mouseY, state);
+
+        if (state != 0 || draggedOfferId == null) {
+            return;
+        }
+
+        String movingOfferId = draggedOfferId;
+        draggedOfferId = null;
+
+        if (saving) {
+            return;
+        }
+
+        int targetSlot = getGridSlotAtMouse(mouseX, mouseY);
+
+        if (targetSlot < 0) {
+            return;
+        }
+
+        NpcTradeConfig movingOffer = preset.getOffer(movingOfferId);
+
+        if (movingOffer == null) {
+            return;
+        }
+
+        int sourceSlot = movingOffer.getDisplaySlot();
+
+        if (sourceSlot == targetSlot) {
+            return;
+        }
+
+        if (!saveFields()) {
+            return;
+        }
+
+        NpcTradeConfig targetOffer = getOfferAtSlot(targetSlot);
+
+        if (targetOffer == movingOffer) {
+            return;
+        }
+
+        if (targetOffer == null) {
+            movingOffer.setDisplaySlot(targetSlot);
+        } else {
+            targetOffer.setDisplaySlot(sourceSlot);
+            movingOffer.setDisplaySlot(targetSlot);
+        }
+
+        statusMessage = "Offer position updated.";
     }
 
     @Override
     protected void keyTyped(char typedChar, int keyCode)
             throws IOException {
+
         if (saving) {
             return;
         }
@@ -566,6 +660,8 @@ public class GuiTraderPresetEditor extends GuiScreen {
             int mouseX,
             int mouseY
     ) {
+        int hoveredSlot = getGridSlotAtMouse(mouseX, mouseY);
+
         for (int slot = 0; slot < 54; slot++) {
             int column = slot % GRID_COLUMNS;
             int row = slot / GRID_COLUMNS;
@@ -579,6 +675,13 @@ public class GuiTraderPresetEditor extends GuiScreen {
                     && offer.getId().equals(selectedOfferId)
                     ? 0xFF777744
                     : 0xFF555555;
+
+            if (draggedOfferId != null && hoveredSlot == slot
+                    && !draggedOfferId.equals(
+                    offer == null ? null : offer.getId()
+            )) {
+                color = 0xFF446644;
+            }
 
             drawRect(
                     slotX,
