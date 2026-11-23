@@ -226,55 +226,7 @@ public final class TraderPacketService {
         TraderSellService.Outcome outcome =
                 SELL_SERVICE.sell(player, npcEntityId);
 
-        switch (outcome.getStatus()) {
-            case SUCCESS:
-                player.sendMessage(new TextComponentTranslation(
-                        "cheba.trader.message.sell_success",
-                        outcome.getAmount()
-                ));
-                break;
-
-            case INVALID_CONTAINER:
-                sendMessage(player, "cheba.trader.message.sell.invalid_container");
-                break;
-
-            case INVALID_NPC:
-                sendMessage(player, "cheba.trader.message.not_found");
-                break;
-
-            case TOO_FAR:
-                sendMessage(player, "cheba.trader.message.too_far");
-                break;
-
-            case NOT_TRADER:
-                sendMessage(player, "cheba.trader.message.not_trader");
-                break;
-
-            case EMPTY:
-                sendMessage(player, "cheba.trader.message.sell.empty");
-                break;
-
-            case ITEM_NOT_BUYABLE:
-                sendMessage(player, "cheba.trader.message.sell.item_not_buyable");
-                break;
-
-            case PROTECTED_ITEM:
-                sendMessage(player, "cheba.trader.message.protected_item");
-                break;
-
-            case CURRENCY_UNAVAILABLE:
-                sendMessage(player, "cheba.trader.message.currency_unavailable");
-                break;
-
-            case PAYMENT_FAILED:
-                sendMessage(player, "cheba.trader.message.sell.payment_failed");
-                break;
-
-            case INVALID_AMOUNT:
-            default:
-                sendMessage(player, "cheba.trader.message.generic_failure");
-                break;
-        }
+        sendSellResult(player, outcome);
     }
 
     private static void sendBuyResult(

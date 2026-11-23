@@ -133,6 +133,10 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
     public void initGui() {
         super.initGui();
 
+        if (session != null) {
+            session.completeTransition();
+        }
+
         buttonList.add(new GuiButton(
                 0,
                 guiLeft + 12,
@@ -150,6 +154,15 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                 20,
                 I18n.translateToLocal("cheba.trader.sell.execute")
         ));
+    }
+
+    @Override
+    public void onGuiClosed() {
+        if (session != null) {
+            session.onScreenClosed();
+        }
+
+        super.onGuiClosed();
     }
 
     @Override

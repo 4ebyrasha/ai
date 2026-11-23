@@ -124,6 +124,9 @@ public class GuiDynamicTraderMenu extends GuiScreen {
                 );
 
             } else if (button.id == 1) {
+                // Не закрываем сессию при переходе в окно продажи.
+                session.beginTransition();
+
                 Client.sendData(
                         EnumPacketServer.TraderSessionOpenSell,
                         session.getToken()
