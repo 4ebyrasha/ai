@@ -11,6 +11,12 @@ import net.minecraft.item.ItemStack;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleTrader;
 
+/**
+ * Серверная обработка продажи предметов.
+ * <p>
+ * Поддерживает старую торговлю через RoleTrader
+ * и независимую торговлю через TraderPreset.
+ */
 public final class TraderSellService {
 
     private final TraderCurrencyBridge currency;
@@ -25,6 +31,7 @@ public final class TraderSellService {
         INVALID_NPC,
         TOO_FAR,
         NOT_TRADER,
+        INVALID_SESSION,
         EMPTY,
         ITEM_NOT_BUYABLE,
         PROTECTED_ITEM,
@@ -34,6 +41,7 @@ public final class TraderSellService {
     }
 
     public static final class Outcome {
+
         private final Status status;
         private final long amount;
 
@@ -51,6 +59,9 @@ public final class TraderSellService {
         }
     }
 
+    /**
+     * Старая продажа через NPC.
+     */
     public Outcome sell(EntityPlayerMP player, int npcEntityId) {
         if (player == null
                 || !(player.openContainer instanceof TraderSellContainer)) {
@@ -59,6 +70,10 @@ public final class TraderSellService {
 
         TraderSellContainer container =
                 (TraderSellContainer) player.openContainer;
+
+        if (container.isSessionMode()) {
+            return new Outcome(Status.INVALID_CONTAINER, 0L);
+        }
 
         if (!container.canInteractWith(player)) {
             return new Outcome(Status.TOO_FAR, 0L);
@@ -82,7 +97,59 @@ public final class TraderSellService {
             return new Outcome(Status.NOT_TRADER, 0L);
         }
 
-        RoleTrader role = (RoleTrader) npc.roleInterface;
+        return processSale(
+                player,
+                container,
+                (RoleTrader) npc.roleInterface,
+                null
+        );
+    }
+
+    /**
+     * Независимая продажа через торговую сессию.
+     */
+    public Outcome sellSession(
+            EntityPlayerMP player,
+            String sessionToken
+    ) {
+        if (player == null
+                || !(player.openContainer instanceof TraderSellContainer)) {
+            return new Outcome(Status.INVALID_CONTAINER, 0L);
+        }
+
+        TraderSellContainer container =
+                (TraderSellContainer) player.openContainer;
+
+        if (!container.isSessionMode()
+                || !sessionToken.equals(container.getSessionToken())) {
+            return new Outcome(Status.INVALID_SESSION, 0L);
+        }
+
+        if (!container.canInteractWith(player)) {
+            return new Outcome(Status.INVALID_SESSION, 0L);
+        }
+
+        TraderSessionManager.Context context =
+                TraderSessionManager.resolve(player, sessionToken);
+
+        if (context == null) {
+            return new Outcome(Status.INVALID_SESSION, 0L);
+        }
+
+        return processSale(
+                player,
+                container,
+                null,
+                context.getPreset()
+        );
+    }
+
+    private Outcome processSale(
+            EntityPlayerMP player,
+            TraderSellContainer container,
+            RoleTrader role,
+            TraderPreset preset
+    ) {
         IInventory escrow = container.getEscrowInventory();
 
         long total = 0L;
@@ -101,7 +168,9 @@ public final class TraderSellService {
                 return new Outcome(Status.PROTECTED_ITEM, 0L);
             }
 
-            long unitPrice = getSellPrice(role, stack);
+            long unitPrice = role != null
+                    ? getSellPrice(role, stack)
+                    : getSellPrice(preset, stack);
 
             if (unitPrice <= 0L) {
                 return new Outcome(Status.ITEM_NOT_BUYABLE, 0L);
@@ -128,7 +197,7 @@ public final class TraderSellService {
             return new Outcome(Status.CURRENCY_UNAVAILABLE, 0L);
         }
 
-        // Сначала начисляем деньги. При ошибке предметы остаются в буфере.
+        // Предметы удаляются только после успешного начисления валюты.
         if (!currency.deposit(player, total)) {
             return new Outcome(Status.PAYMENT_FAILED, 0L);
         }
@@ -144,26 +213,59 @@ public final class TraderSellService {
     }
 
     /**
-     * Цена за одну единицу предмета.
-     * Приоритет: «Цена продажи» основной витрины,
-     * затем отдельный список выкупа.
+     * Получает цену продажи из старой конфигурации NPC.
      */
-    public static long getSellPrice(RoleTrader role, ItemStack stack) {
+    public static long getSellPrice(
+            RoleTrader role,
+            ItemStack stack
+    ) {
         if (role == null || stack == null || stack.isEmpty()) {
             return 0L;
         }
 
-        // Сначала проверяем цену продажи из основной витрины
         for (NpcTradeConfig offer : role.getDynamicOffers()) {
-            if (offer.getSellPriceMoney() > 0L
+            if (offer != null
+                    && offer.getSellPriceMoney() > 0L
                     && offer.matchesResult(stack)) {
                 return offer.getSellPriceMoney();
             }
         }
 
-        // Если основной витрины недостаточно, ищем предмет
-        // в отдельном списке выкупа
         for (NpcBuybackConfig offer : role.getBuybackOffers()) {
+            if (offer != null
+                    && offer.getPriceMoney() > 0L
+                    && offer.matches(stack)) {
+                return offer.getPriceMoney();
+            }
+        }
+
+        return 0L;
+    }
+
+    /**
+     * Получает цену продажи из независимого каталога.
+     * <p>
+     * Приоритет:
+     * 1. SellPriceMoney основной витрины.
+     * 2. BuybackOffers.
+     */
+    public static long getSellPrice(
+            TraderPreset preset,
+            ItemStack stack
+    ) {
+        if (preset == null || stack == null || stack.isEmpty()) {
+            return 0L;
+        }
+
+        for (NpcTradeConfig offer : preset.getOffers()) {
+            if (offer != null
+                    && offer.getSellPriceMoney() > 0L
+                    && offer.matchesResult(stack)) {
+                return offer.getSellPriceMoney();
+            }
+        }
+
+        for (NpcBuybackConfig offer : preset.getBuybackOffers()) {
             if (offer != null
                     && offer.getPriceMoney() > 0L
                     && offer.matches(stack)) {

@@ -2,6 +2,7 @@ package com.cheba.container;
 
 import com.cheba.trader.TraderItemProtection;
 
+import com.cheba.trader.TraderSessionManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.*;
@@ -17,19 +18,34 @@ public class TraderSellContainer extends Container {
     private static final int ESCROW_SIZE = 25;
 
     private final EntityNPCInterface npc;
+    private final String sessionToken;
 
     private final InventoryBasic escrow =
             new InventoryBasic("Trader sell buffer", false, ESCROW_SIZE);
 
     private boolean returned;
 
+    /**
+     * Старый контейнер торговли через NPC.
+     */
     public TraderSellContainer(
             EntityPlayer player,
             EntityNPCInterface npc
     ) {
-        this.npc = npc;
+        this(player, npc, null);
+    }
 
-        // 25 слотов буфера продажи.
+    /**
+     * Контейнер независимой торговли.
+     */
+    public TraderSellContainer(
+            EntityPlayer player,
+            EntityNPCInterface npc,
+            String sessionToken
+    ) {
+        this.npc = npc;
+        this.sessionToken = sessionToken;
+
         for (int i = 0; i < ESCROW_SIZE; i++) {
             int x = 23 + (i % 5) * 18;
             int y = 10 + (i / 5) * 18;
@@ -37,42 +53,58 @@ public class TraderSellContainer extends Container {
             addSlotToContainer(new EscrowSlot(escrow, i, x, y, player));
         }
 
-        // Основной инвентарь игрока.
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 int inventoryIndex = col + row * 9 + 9;
 
-                addSlotToContainer(
-                        new Slot(
-                                player.inventory,
-                                inventoryIndex,
-                                13 + col * 18,
-                                122 + row * 18
-                        )
-                );
+                addSlotToContainer(new Slot(
+                        player.inventory,
+                        inventoryIndex,
+                        13 + col * 18,
+                        122 + row * 18
+                ));
             }
         }
 
-        // Панель быстрого доступа.
         for (int col = 0; col < 9; col++) {
-            addSlotToContainer(
-                    new Slot(
-                            player.inventory,
-                            col,
-                            13 + col * 18,
-                            180
-                    )
-            );
+            addSlotToContainer(new Slot(
+                    player.inventory,
+                    col,
+                    13 + col * 18,
+                    180
+            ));
         }
+    }
+
+    public boolean isSessionMode() {
+        return sessionToken != null;
+    }
+
+    public String getSessionToken() {
+        return sessionToken;
     }
 
     @Override
     public boolean canInteractWith(@Nonnull EntityPlayer player) {
-        if (player.isDead || npc == null || npc.isDead) {
+        if (player == null || player.isDead) {
             return false;
         }
 
-        if (player.world != npc.world) {
+        if (sessionToken != null) {
+            if (!(player instanceof net.minecraft.entity.player.EntityPlayerMP)) {
+                return false;
+            }
+
+            TraderSessionManager.Context context =
+                    TraderSessionManager.resolve(
+                            (net.minecraft.entity.player.EntityPlayerMP) player,
+                            sessionToken
+                    );
+
+            return context != null;
+        }
+
+        if (npc == null || npc.isDead || player.world != npc.world) {
             return false;
         }
 

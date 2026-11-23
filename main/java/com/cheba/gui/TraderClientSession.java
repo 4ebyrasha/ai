@@ -1,57 +1,74 @@
 package com.cheba.gui;
 
+import com.cheba.trader.TraderPreset;
+
 import noppes.npcs.client.Client;
 import noppes.npcs.constants.EnumPacketServer;
 
 /**
- * Клиентское представление серверной торговой сессии.
- * <p>
- * Один экземпляр передаётся между всеми экранами торговли.
- * Закрытие сессии отправляется серверу только один раз.
+ * Клиентское представление независимой торговой сессии.
  */
 public final class TraderClientSession {
 
+    private static TraderClientSession activeSession;
+
     private final String token;
+    private final String profileName;
+    private final TraderPreset preset;
 
     private boolean transitioning;
     private boolean closed;
 
-    public TraderClientSession(String token) {
+    public TraderClientSession(
+            String token,
+            String profileName,
+            TraderPreset preset
+    ) {
         if (token == null || token.isEmpty()) {
             throw new IllegalArgumentException("Session token cannot be empty");
         }
 
         this.token = token;
+        this.profileName = profileName == null ? "" : profileName;
+        this.preset = preset;
+
+        activeSession = this;
     }
 
     public String getToken() {
         return token;
     }
 
-    /**
-     * Помечает закрытие текущего экрана как переход
-     * на другой экран той же торговой сессии.
-     */
+    public String getProfileName() {
+        return profileName;
+    }
+
+    public TraderPreset getPreset() {
+        return preset;
+    }
+
+    public static TraderClientSession getActiveSession() {
+        return activeSession;
+    }
+
     public void beginTransition() {
         transitioning = true;
     }
 
-    /**
-     * Вызывается новым экраном после перехода.
-     */
     public void completeTransition() {
         transitioning = false;
     }
 
-    /**
-     * Закрывает серверную сессию, если экран действительно закрывается.
-     */
     public void onScreenClosed() {
         if (transitioning || closed) {
             return;
         }
 
         closed = true;
+
+        if (activeSession == this) {
+            activeSession = null;
+        }
 
         Client.sendData(
                 EnumPacketServer.TraderSessionClose,

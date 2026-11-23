@@ -108,7 +108,11 @@ public class PacketHandlerClient extends PacketHandlerServer {
 				return;
 			}
 
-			TraderClientSession session = new TraderClientSession(token);
+			TraderClientSession session = new TraderClientSession(
+					token,
+					profileName,
+					preset
+			);
 
 			Minecraft.getMinecraft().displayGuiScreen(
 					new GuiDynamicTraderMenu(

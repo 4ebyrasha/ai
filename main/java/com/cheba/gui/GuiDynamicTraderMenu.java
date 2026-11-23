@@ -71,11 +71,21 @@ public class GuiDynamicTraderMenu extends GuiScreen {
             buttonList.add(new GuiButton(
                     0,
                     x,
-                    y,
+                    y - 12,
                     160,
                     20,
                     I18n.translateToLocal("cheba.trader.buy")
             ));
+
+            buttonList.add(new GuiButton(
+                    1,
+                    x,
+                    y + 14,
+                    160,
+                    20,
+                    I18n.translateToLocal("cheba.trader.sell")
+            ));
+
             return;
         }
 
@@ -111,6 +121,12 @@ public class GuiDynamicTraderMenu extends GuiScreen {
                                 preset,
                                 0
                         )
+                );
+
+            } else if (button.id == 1) {
+                Client.sendData(
+                        EnumPacketServer.TraderSessionOpenSell,
+                        session.getToken()
                 );
             }
 

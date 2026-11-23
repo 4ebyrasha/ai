@@ -2,6 +2,7 @@ package com.cheba.gui;
 
 import com.cheba.container.TraderSellContainer;
 import com.cheba.trader.TraderItemProtection;
+import com.cheba.trader.TraderPreset;
 import com.cheba.trader.TraderSellService;
 
 import net.minecraft.client.gui.GuiButton;
@@ -18,6 +19,8 @@ import noppes.npcs.roles.RoleTrader;
 
 @SuppressWarnings("deprecation")
 public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
+
+    private final TraderClientSession session;
 
     private static final int MAX_VISIBLE_ITEMS = 7;
 
@@ -39,9 +42,19 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
             EntityNPCInterface npc,
             TraderSellContainer container
     ) {
+        this(npc, container, null);
+    }
+
+    public GuiDynamicTraderSell(
+            EntityNPCInterface npc,
+            TraderSellContainer container,
+            TraderClientSession session
+    ) {
         super(npc, container);
 
         this.container = container;
+        this.session = session;
+
         this.xSize = 230;
         this.ySize = 225;
         this.closeOnEsc = true;
@@ -141,21 +154,45 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
     @Override
     public void actionPerformed(GuiButton button) {
-        if (button.id == 0 && npc != null) {
-            int npcEntityId = npc.getEntityId();
+        if (button.id == 0) {
+            if (session != null) {
+                session.beginTransition();
 
-            player.closeScreen();
-            mc.displayGuiScreen(
-                    new GuiDynamicTraderMenu(npcEntityId)
-            );
+                player.closeScreen();
+
+                mc.displayGuiScreen(
+                        new GuiDynamicTraderMenu(
+                                session,
+                                session.getProfileName(),
+                                session.getPreset()
+                        )
+                );
+            } else if (npc != null) {
+                int npcEntityId = npc.getEntityId();
+
+                player.closeScreen();
+
+                mc.displayGuiScreen(
+                        new GuiDynamicTraderMenu(npcEntityId)
+                );
+            }
+
             return;
         }
 
-        if (button.id == 1 && npc != null) {
-            Client.sendData(
-                    EnumPacketServer.TraderSell,
-                    npc.getEntityId()
-            );
+        if (button.id == 1) {
+            if (session != null) {
+                Client.sendData(
+                        EnumPacketServer.TraderSessionSell,
+                        session.getToken()
+                );
+            } else if (npc != null) {
+                Client.sendData(
+                        EnumPacketServer.TraderSell,
+                        npc.getEntityId()
+                );
+            }
+
             return;
         }
 
@@ -240,21 +277,18 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                 ? (RoleTrader) npc.roleInterface
                 : null;
 
-        IInventory escrow = container.getEscrowInventory();
+        TraderPreset preset = session == null
+                ? null
+                : session.getPreset();
 
-        refreshSellPriceCache(role, escrow);
+        IInventory escrow = container.getEscrowInventory();
 
         int visible = 0;
         int totalItems = 0;
         int unsellableItems = 0;
         long total = 0L;
 
-        int slots = Math.min(
-                ESCROW_SIZE,
-                escrow.getSizeInventory()
-        );
-
-        for (int slot = 0; slot < slots; slot++) {
+        for (int slot = 0; slot < Math.min(ESCROW_SIZE, escrow.getSizeInventory()); slot++) {
             ItemStack stack = escrow.getStackInSlot(slot);
 
             if (stack.isEmpty()) {
@@ -263,7 +297,14 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
 
             totalItems++;
 
-            long unitPrice = cachedUnitPrices[slot];
+            long unitPrice = session != null
+                    ? TraderSellService.getSellPrice(preset, stack)
+                    : TraderSellService.getSellPrice(role, stack);
+
+            if (TraderItemProtection.isProtected(player, stack)) {
+                unitPrice = 0L;
+            }
+
             boolean sellable = unitPrice > 0L;
 
             if (sellable) {
@@ -278,79 +319,23 @@ public class GuiDynamicTraderSell extends GuiContainerNPCInterface {
                 unsellableItems++;
             }
 
-            if (visible >= MAX_VISIBLE_ITEMS) {
-                continue;
+            if (visible < MAX_VISIBLE_ITEMS) {
+                String line = stack.getDisplayName()
+                        + " x"
+                        + stack.getCount();
+
+                line = fontRenderer.trimStringToWidth(line, textWidth);
+
+                drawString(
+                        fontRenderer,
+                        line,
+                        textX,
+                        guiTop + 12 + visible * 10,
+                        sellable ? 0x55FF55 : 0xFF5555
+                );
+
+                visible++;
             }
-
-            String line = stack.getDisplayName()
-                    + " x"
-                    + stack.getCount();
-
-            line = fontRenderer.trimStringToWidth(
-                    line,
-                    textWidth
-            );
-
-            drawString(
-                    fontRenderer,
-                    line,
-                    textX,
-                    guiTop + 12 + visible * 10,
-                    sellable ? 0x55FF55 : 0xFF5555
-            );
-
-            visible++;
-        }
-
-        if (totalItems == 0) {
-            drawString(
-                    fontRenderer,
-                    I18n.translateToLocal("cheba.trader.sell.empty_buffer"),
-                    textX,
-                    guiTop + 12,
-                    0xAAAAAA
-            );
-
-        } else if (totalItems > MAX_VISIBLE_ITEMS) {
-            drawString(
-                    fontRenderer,
-                    I18n.translateToLocalFormatted(
-                            "cheba.trader.sell.more",
-                            totalItems - MAX_VISIBLE_ITEMS
-                    ),
-                    textX,
-                    guiTop + 12 + MAX_VISIBLE_ITEMS * 10,
-                    0xAAAAAA
-            );
-        }
-
-        String totalText = I18n.translateToLocalFormatted(
-                "cheba.trader.sell.total",
-                total
-        );
-
-        drawString(
-                fontRenderer,
-                fontRenderer.trimStringToWidth(totalText, textWidth),
-                textX,
-                guiTop + 99,
-                total > 0L ? 0x55FF55 : 0xFFFFFF
-        );
-
-        if (unsellableItems > 0) {
-            drawString(
-                    fontRenderer,
-                    fontRenderer.trimStringToWidth(
-                            I18n.translateToLocalFormatted(
-                                    "cheba.trader.sell.unsellable_count",
-                                    unsellableItems
-                            ),
-                            textWidth
-                    ),
-                    textX,
-                    guiTop + 109,
-                    0xFF5555
-            );
         }
     }
 

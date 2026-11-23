@@ -1,7 +1,9 @@
 package noppes.npcs;
 
+import com.cheba.trader.TraderSessionManager;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.InventoryBasic;
 import net.minecraft.util.EnumParticleTypes;
@@ -74,7 +76,21 @@ public class CommonProxy implements IGuiHandler {
 		} else if (gui == EnumGuiType.DynamicTraderMenu) {
 			return null;
 		} else if (gui == EnumGuiType.DynamicTraderSell) {
-			return new TraderSellContainer(player, npc);
+			if (npc != null) {
+				return new TraderSellContainer(player, npc);
+			}
+
+			if (player instanceof EntityPlayerMP) {
+				String token = TraderSessionManager.getActiveToken(
+						(EntityPlayerMP) player
+				);
+
+				if (token != null) {
+					return new TraderSellContainer(player, null, token);
+				}
+			}
+
+			return null;
 		} else {
 			return gui == EnumGuiType.CustomGui ? new ContainerCustomGui(new InventoryBasic("", false, x)) : null;
 		}

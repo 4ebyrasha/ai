@@ -9,6 +9,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.text.TextComponentTranslation;
 
+import noppes.npcs.NoppesUtilServer;
+import noppes.npcs.constants.EnumGuiType;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.RoleTrader;
 
@@ -363,6 +365,92 @@ public final class TraderPacketService {
         private LastRequest(String key, long tick) {
             this.key = key;
             this.tick = tick;
+        }
+    }
+    /**
+     * Открывает независимый контейнер продажи.
+     */
+    public static void handleSessionOpenSell(
+            EntityPlayerMP player,
+            String token
+    ) {
+        if (player == null || player.world == null || player.world.isRemote
+                || token == null || token.length() > 64) {
+            return;
+        }
+
+        TraderSessionManager.Context context =
+                TraderSessionManager.resolve(player, token);
+
+        if (context == null) {
+            sendMessage(player, "cheba.trader.message.not_found");
+            return;
+        }
+
+        NoppesUtilServer.sendOpenGui(
+                player,
+                EnumGuiType.DynamicTraderSell,
+                null
+        );
+    }
+
+    /**
+     * Выполняет продажу через независимую торговую сессию.
+     */
+    public static void handleSessionSell(
+            EntityPlayerMP player,
+            String token
+    ) {
+        if (player == null || player.world == null || player.world.isRemote
+                || token == null || token.length() > 64) {
+            return;
+        }
+
+        TraderSellService.Outcome outcome =
+                SELL_SERVICE.sellSession(player, token);
+
+        sendSellResult(player, outcome);
+    }
+
+    private static void sendSellResult(
+            EntityPlayerMP player,
+            TraderSellService.Outcome outcome
+    ) {
+        switch (outcome.getStatus()) {
+            case SUCCESS:
+                player.sendMessage(new TextComponentTranslation(
+                        "cheba.trader.message.sell_success",
+                        outcome.getAmount()
+                ));
+                break;
+
+            case EMPTY:
+                sendMessage(player, "cheba.trader.message.sell.empty");
+                break;
+
+            case ITEM_NOT_BUYABLE:
+                sendMessage(player, "cheba.trader.message.sell.item_not_buyable");
+                break;
+
+            case PROTECTED_ITEM:
+                sendMessage(player, "cheba.trader.message.protected_item");
+                break;
+
+            case CURRENCY_UNAVAILABLE:
+                sendMessage(player, "cheba.trader.message.currency_unavailable");
+                break;
+
+            case PAYMENT_FAILED:
+                sendMessage(player, "cheba.trader.message.sell.payment_failed");
+                break;
+
+            case INVALID_SESSION:
+                sendMessage(player, "cheba.trader.message.not_found");
+                break;
+
+            default:
+                sendMessage(player, "cheba.trader.message.generic_failure");
+                break;
         }
     }
 }

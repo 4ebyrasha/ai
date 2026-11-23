@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
+
+import com.cheba.gui.TraderClientSession;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -425,7 +427,22 @@ public class ClientProxy extends CommonProxy {
 				}
 
 				if (gui == EnumGuiType.DynamicTraderSell) {
-					if (npc == null || !(container instanceof TraderSellContainer)) {
+					if (!(container instanceof TraderSellContainer)) {
+						return null;
+					}
+
+					TraderClientSession session =
+							TraderClientSession.getActiveSession();
+
+					if (session != null) {
+						return new GuiDynamicTraderSell(
+								null,
+								(TraderSellContainer) container,
+								session
+						);
+					}
+
+					if (npc == null) {
 						return null;
 					}
 

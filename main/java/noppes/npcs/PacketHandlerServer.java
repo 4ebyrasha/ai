@@ -134,7 +134,23 @@ public class PacketHandlerServer {
 			EntityNPCInterface npc
 	) throws Exception {
 
-		if (type == EnumPacketServer.TraderSessionBuy) {
+		if (type == EnumPacketServer.TraderSessionOpenSell) {
+			String token = Server.readString(buffer);
+
+			TraderPacketService.handleSessionOpenSell(
+					player,
+					token
+			);
+
+		} else if (type == EnumPacketServer.TraderSessionSell) {
+			String token = Server.readString(buffer);
+
+			TraderPacketService.handleSessionSell(
+					player,
+					token
+			);
+
+		} else if (type == EnumPacketServer.TraderSessionBuy) {
 			String sessionToken = Server.readString(buffer);
 			String offerId = Server.readString(buffer);
 			int multiplier = buffer.readInt();

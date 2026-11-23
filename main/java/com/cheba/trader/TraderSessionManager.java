@@ -26,6 +26,31 @@ public final class TraderSessionManager {
     }
 
     /**
+     * Возвращает токен текущей сессии игрока.
+     * <p>
+     * Используется при открытии серверного контейнера торговли.
+     */
+    public static String getActiveToken(EntityPlayerMP player) {
+        if (player == null) {
+            return null;
+        }
+
+        String token = PLAYER_SESSIONS.get(player.getUniqueID());
+        if (token == null) {
+            return null;
+        }
+
+        Session session = SESSIONS.get(token);
+
+        if (session == null || !session.owner.equals(player.getUniqueID())) {
+            PLAYER_SESSIONS.remove(player.getUniqueID());
+            return null;
+        }
+
+        return token;
+    }
+
+    /**
      * Создаёт сессию для указанного профиля.
      * <p>
      * Профиль и его каталог проверяются до создания сессии.
