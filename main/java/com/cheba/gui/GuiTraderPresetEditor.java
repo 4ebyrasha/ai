@@ -405,6 +405,10 @@ public class GuiTraderPresetEditor extends GuiScreen {
             int mouseButton
     ) throws IOException {
 
+        if (saving) {
+            return;
+        }
+
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
         priceField.mouseClicked(mouseX, mouseY, mouseButton);
@@ -466,11 +470,9 @@ public class GuiTraderPresetEditor extends GuiScreen {
         sellPriceField.updateCursorCounter();
         maxPerDayField.updateCursorCounter();
         dailyStockField.updateCursorCounter();
-        if (buttonList.size() > 2) {
-            buttonList.get(2).enabled = !saving;
-        }
+
         for (GuiButton button : buttonList) {
-            button.enabled = !saving || button.id == 3;
+            button.enabled = !saving;
         }
     }
 

@@ -95,7 +95,7 @@ public final class TraderPresetEditorService {
             sendResult(
                     player,
                     false,
-                    "Preset was changed by another editor. Reload it before saving.",
+                    "Preset was changed by another editor. Close and reopen the editor.",
                     null
             );
             return;
