@@ -10,18 +10,14 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.nbt.NBTTagCompound;
 
 import noppes.npcs.Server;
 import noppes.npcs.api.CommandNoppesBase;
 import noppes.npcs.constants.EnumPacketClient;
 
-import net.minecraft.nbt.NBTTagCompound;
-
 import javax.annotation.Nonnull;
 
-/**
- * Команды управления пользовательскими торговыми профилями.
- */
 public class CmdTrader extends CommandNoppesBase {
 
     @Nonnull
@@ -35,17 +31,6 @@ public class CmdTrader extends CommandNoppesBase {
         return "Trader profile operations";
     }
 
-    /**
-     * Открывает торговый профиль указанному игроку.
-     * <p>
-     * Использование:
-     * /customnpcs opentrader <player> <profileName>
-     *
-     * @param server сервер Minecraft
-     * @param sender отправитель команды
-     * @param args аргументы команды
-     * @throws CommandException если игрок или профиль не найдены
-     */
     @SubCommand(
             name = "opentrader",
             desc = "Open trader profile",
@@ -60,7 +45,7 @@ public class CmdTrader extends CommandNoppesBase {
 
         if (args.length < 2) {
             throw new CommandException(
-                    "Usage: /customnpcs opentrader <player> <profileName>"
+                    "Usage: /customnpcs trader opentrader <player> <profileName>"
             );
         }
 
@@ -106,9 +91,7 @@ public class CmdTrader extends CommandNoppesBase {
                 TraderSessionManager.open(player, profileName);
 
         if (session == null) {
-            throw new CommandException(
-                    "Could not create trader session"
-            );
+            throw new CommandException("Could not create trader session");
         }
 
         NBTTagCompound data = new NBTTagCompound();
@@ -119,6 +102,76 @@ public class CmdTrader extends CommandNoppesBase {
         Server.sendData(
                 player,
                 EnumPacketClient.TraderSessionOpen,
+                data
+        );
+    }
+
+    @SubCommand(
+            name = "editpreset",
+            desc = "Edit trader catalog",
+            usage = "<presetName>",
+            permission = 2
+    )
+    public void editPreset(
+            MinecraftServer server,
+            ICommandSender sender,
+            String[] args
+    ) throws CommandException {
+
+        if (!(sender instanceof EntityPlayerMP)) {
+            throw new CommandException(
+                    "This command can only be used by a player"
+            );
+        }
+
+        if (args.length < 1) {
+            throw new CommandException(
+                    "Usage: /customnpcs trader editpreset <presetName>"
+            );
+        }
+
+        StringBuilder nameBuilder = new StringBuilder();
+
+        for (String arg : args) {
+            if (nameBuilder.length() > 0) {
+                nameBuilder.append(' ');
+            }
+
+            nameBuilder.append(arg);
+        }
+
+        String presetName = nameBuilder.toString().trim();
+
+        if (presetName.isEmpty() || presetName.length() > 128) {
+            throw new CommandException("Invalid preset name");
+        }
+
+        EntityPlayerMP player = (EntityPlayerMP) sender;
+
+        TraderProfileManager manager =
+                TraderProfileManager.get(player.world);
+
+        if (manager == null) {
+            throw new CommandException(
+                    "Trader profile storage is unavailable"
+            );
+        }
+
+        TraderPreset preset = manager.getPreset(presetName);
+
+        if (preset == null) {
+            throw new CommandException(
+                    "Trader preset '%s' was not found",
+                    presetName
+            );
+        }
+
+        NBTTagCompound data = new NBTTagCompound();
+        data.setTag("Preset", preset.writeToNBT());
+
+        Server.sendData(
+                player,
+                EnumPacketClient.TraderPresetEditorOpen,
                 data
         );
     }

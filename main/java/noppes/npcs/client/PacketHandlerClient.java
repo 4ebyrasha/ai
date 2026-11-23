@@ -1,6 +1,7 @@
 package noppes.npcs.client;
 
 import com.cheba.gui.GuiDynamicTraderMenu;
+import com.cheba.gui.GuiTraderPresetEditor;
 import com.cheba.gui.TraderClientSession;
 import com.cheba.trader.TraderPreset;
 import io.netty.buffer.ByteBuf;
@@ -89,7 +90,26 @@ public class PacketHandlerClient extends PacketHandlerServer {
 	private void client(ByteBuf buffer, EntityPlayer player, EnumPacketClient type) throws Exception {
 		Entity entity;
 
-		if (type == EnumPacketClient.TraderSessionOpen) {
+		if (type == EnumPacketClient.TraderPresetEditorOpen) {
+			NBTTagCompound data = Server.readNBT(buffer);
+
+			if (!data.hasKey("Preset", 10)) {
+				return;
+			}
+
+			TraderPreset preset = TraderPreset.readFromNBT(
+					data.getCompoundTag("Preset")
+			);
+
+			if (preset == null) {
+				return;
+			}
+
+			Minecraft.getMinecraft().displayGuiScreen(
+					new GuiTraderPresetEditor(preset)
+			);
+
+		} else if (type == EnumPacketClient.TraderSessionOpen) {
 			NBTTagCompound data = Server.readNBT(buffer);
 
 			String token = data.getString("Token");
