@@ -9,27 +9,40 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Конфигурация одного торгового предложения.
+ * <p>
+ * ID предложения является постоянным идентификатором:
+ * он используется в торговых операциях и ключах лимитов.
+ * <p>
+ * DisplaySlot отвечает только за визуальное положение
+ * предложения в сетке редактора и не влияет на его ID.
+ */
 public class NpcTradeConfig {
 
-    private static final int NBT_VERSION = 1;
+    private static final int NBT_VERSION = 2;
 
     private final String id;
 
-    // Предмет, который получает покупатель.
     private ItemStack result = ItemStack.EMPTY;
 
-    // Предметы, требуемые для покупки.
     private final List<ItemStack> priceItems = new ArrayList<>();
 
-    // Денежная цена, по которой игрок покупает товар.
     private long priceMoney = 0L;
-
-    // Денежная цена, по которой NPC покупает товар у игрока.
     private long sellPriceMoney = 0L;
 
-    // -1 означает отсутствие ограничения.
+    /**
+     * -1 означает отсутствие ограничения.
+     */
     private int maxPerDay = -1;
     private int dailyStock = -1;
+
+    /**
+     * Позиция предложения в сетке 9×6.
+     * <p>
+     * -1 означает, что позиция ещё не назначена.
+     */
+    private int displaySlot = -1;
 
     public NpcTradeConfig() {
         this(UUID.randomUUID().toString());
@@ -43,6 +56,21 @@ public class NpcTradeConfig {
 
     public String getId() {
         return id;
+    }
+
+    public int getDisplaySlot() {
+        return displaySlot;
+    }
+
+    /**
+     * Устанавливает позицию предложения в сетке 9×6.
+     *
+     * @param displaySlot позиция от 0 до 53 либо -1
+     */
+    public void setDisplaySlot(int displaySlot) {
+        this.displaySlot = displaySlot >= 0 && displaySlot < 54
+                ? displaySlot
+                : -1;
     }
 
     public boolean matchesResult(ItemStack stack) {
@@ -155,6 +183,10 @@ public class NpcTradeConfig {
         return !result.isEmpty() && hasPrice();
     }
 
+    /**
+     * Сериализует предложение, сохраняя постоянный ID
+     * и независимую позицию отображения.
+     */
     public NBTTagCompound writeToNBT() {
         NBTTagCompound tag = new NBTTagCompound();
 
@@ -170,6 +202,7 @@ public class NpcTradeConfig {
         tag.setLong("SellPriceMoney", sellPriceMoney);
         tag.setInteger("MaxPerDay", maxPerDay);
         tag.setInteger("DailyStock", dailyStock);
+        tag.setInteger("DisplaySlot", displaySlot);
 
         NBTTagList items = new NBTTagList();
 
@@ -186,6 +219,13 @@ public class NpcTradeConfig {
         return tag;
     }
 
+    /**
+     * Загружает предложение из NBT.
+     *
+     * Старые сохранения не содержат DisplaySlot.
+     * В таком случае позиция остаётся -1 и назначается
+     * каталогом с учётом прежнего порядка предложений.
+     */
     public static NpcTradeConfig readFromNBT(NBTTagCompound tag) {
         NpcTradeConfig config =
                 new NpcTradeConfig(tag.getString("Id"));
@@ -217,6 +257,12 @@ public class NpcTradeConfig {
             config.dailyStock = Math.max(
                     -1,
                     tag.getInteger("DailyStock")
+            );
+        }
+
+        if (tag.hasKey("DisplaySlot", 3)) {
+            config.setDisplaySlot(
+                    tag.getInteger("DisplaySlot")
             );
         }
 
