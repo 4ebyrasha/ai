@@ -16,6 +16,8 @@ import net.minecraft.nbt.NBTTagCompound;
 import noppes.npcs.client.Client;
 import noppes.npcs.constants.EnumPacketServer;
 
+import javax.annotation.Nonnull;
+
 public class GuiTraderPresetEditor extends GuiScreen {
 
     private static final int PANEL_WIDTH = 390;
@@ -201,7 +203,11 @@ public class GuiTraderPresetEditor extends GuiScreen {
         ));
 
         buttonList.add(new GuiButton(
-                6, x + 190, y + 198, 190, 20, "Payment items"
+                6, x + 190, y + 198, 92, 20, "Payment items"
+        ));
+
+        buttonList.add(new GuiButton(
+                7, x + 284, y + 198, 96, 20, "Buyback items"
         ));
 
         priceField = createField(0, x + 275, y + 55);
@@ -294,7 +300,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button)
+    protected void actionPerformed(@Nonnull GuiButton button)
             throws IOException {
 
         if (saving) {
@@ -407,6 +413,13 @@ public class GuiTraderPresetEditor extends GuiScreen {
 
                 mc.displayGuiScreen(
                         new GuiTraderPresetPaymentEditor(this, offer)
+                );
+                break;
+            }
+
+            case 7: {
+                mc.displayGuiScreen(
+                        new GuiTraderPresetBuybackEditor(this, preset)
                 );
                 break;
             }
