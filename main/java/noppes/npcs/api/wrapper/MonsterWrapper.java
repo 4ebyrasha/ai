@@ -18,7 +18,6 @@ public class MonsterWrapper extends EntityLivingWrapper implements IMonster {
 
 	@Override
 	public EntityMob getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+		return (EntityMob) this.entity;
 	}
 }

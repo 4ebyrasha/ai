@@ -56,6 +56,8 @@ public class EntityProjectile extends EntityThrowable {
 	private static final DataParameter<Integer> Velocity;
 	private static final DataParameter<Integer> Size;
 	private static final DataParameter<Integer> Particle;
+	private boolean ignorePlayerIFrames;
+	private boolean showEffectParticles = true;
 	private BlockPos tilePos;
 	private Block inTile;
 	protected boolean inGround;
@@ -471,8 +473,14 @@ public class EntityProjectile extends EntityThrowable {
 				damage = 0.001F;
 			}
 
-			if (movingobjectposition.entityHit.attackEntityFrom(DamageSource.causeThrownDamage(this, this.getThrower()),
-					damage)) {
+			if (!this.world.isRemote
+					&& this.ignorePlayerIFrames
+					&& movingobjectposition.entityHit instanceof EntityPlayer) {
+				((EntityPlayer) movingobjectposition.entityHit).hurtResistantTime = 0;
+			}
+
+			if (movingobjectposition.entityHit.attackEntityFrom(
+					DamageSource.causeThrownDamage(this, this.getThrower()), damage)) {
 				if (movingobjectposition.entityHit instanceof EntityLivingBase
 						&& (this.isArrow() || this.sticksToWalls())) {
 					EntityLivingBase entityliving = (EntityLivingBase) movingobjectposition.entityHit;
@@ -513,8 +521,8 @@ public class EntityProjectile extends EntityThrowable {
 				if (this.effect != 0 && movingobjectposition.entityHit instanceof EntityLivingBase) {
 					if (this.effect != 1) {
 						Potion p = PotionEffectType.getMCType(this.effect);
-						((EntityLivingBase) movingobjectposition.entityHit)
-								.addPotionEffect(new PotionEffect(p, this.duration * 20, this.amplify));
+						((EntityLivingBase) movingobjectposition.entityHit).addPotionEffect(
+								new PotionEffect(p, this.duration * 20, this.amplify, false, this.showEffectParticles));
 					} else {
 						movingobjectposition.entityHit.setFire(this.duration);
 					}
@@ -581,14 +589,17 @@ public class EntityProjectile extends EntityThrowable {
 					if (this.effect != 1) {
 						Potion p = PotionEffectType.getMCType(this.effect);
 						if (p != null) {
-							entity.addPotionEffect(new PotionEffect(p, this.duration * 20, this.amplify));
+							entity.addPotionEffect(new PotionEffect(
+									p, this.duration * 20, this.amplify, false, this.showEffectParticles));
 						}
 					} else {
 						entity.setFire(this.duration);
 					}
 				}
 
-				this.world.playEvent((EntityPlayer) null, 2002, this.getPosition(), this.getPotionColor(this.effect));
+				if (this.showEffectParticles) {
+					this.world.playEvent((EntityPlayer) null, 2002, this.getPosition(), this.getPotionColor(this.effect));
+				}
 			}
 
 			this.setDead();
@@ -604,6 +615,7 @@ public class EntityProjectile extends EntityThrowable {
 	}
 
 	public void writeEntityToNBT(NBTTagCompound par1NBTTagCompound) {
+		par1NBTTagCompound.setBoolean("ShowEffectParticles", this.showEffectParticles);
 		par1NBTTagCompound.setShort("xTile", (short) this.tilePos.getX());
 		par1NBTTagCompound.setShort("yTile", (short) this.tilePos.getY());
 		par1NBTTagCompound.setShort("zTile", (short) this.tilePos.getZ());
@@ -637,9 +649,12 @@ public class EntityProjectile extends EntityThrowable {
 		par1NBTTagCompound.setBoolean("Spins", this.dataManager.get(Rotating));
 		par1NBTTagCompound.setBoolean("Sticks", this.dataManager.get(Sticks));
 		par1NBTTagCompound.setInteger("accuracy", this.accuracy);
+		par1NBTTagCompound.setBoolean("IgnorePlayerIFrames", this.ignorePlayerIFrames);
 	}
 
 	public void readEntityFromNBT(NBTTagCompound compound) {
+		this.showEffectParticles = !compound.hasKey("ShowEffectParticles")
+				|| compound.getBoolean("ShowEffectParticles");
 		this.tilePos = new BlockPos(compound.getShort("xTile"), compound.getShort("yTile"), compound.getShort("zTile"));
 		this.inTile = Block.getBlockById(compound.getByte("inTile") & 255);
 		this.inData = compound.getByte("inData") & 255;
@@ -655,6 +670,7 @@ public class EntityProjectile extends EntityThrowable {
 		this.accelerate = compound.getBoolean("accelerate");
 		this.effect = compound.getInteger("PotionEffect");
 		this.accuracy = compound.getInteger("accuracy");
+		this.ignorePlayerIFrames = compound.getBoolean("IgnorePlayerIFrames");
 		this.dataManager.set(Particle, compound.getInteger("trailenum"));
 		this.dataManager.set(Size, compound.getInteger("size"));
 		this.dataManager.set(Glows, compound.getBoolean("glows"));
@@ -722,7 +738,9 @@ public class EntityProjectile extends EntityThrowable {
 	}
 
 	public void getStatProperties(DataRanged stats) {
+		this.showEffectParticles = !stats.getHideEffectParticles();
 		this.damage = (float) stats.getStrength();
+		this.ignorePlayerIFrames = stats.getIgnorePlayerIFrames();
 		this.punch = stats.getKnockback();
 		this.accelerate = stats.getAccelerate();
 		this.explosiveRadius = stats.getExplodeSize();

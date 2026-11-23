@@ -1,6 +1,7 @@
 package noppes.npcs.entity;
 
 import com.cheba.api.IPerceptionFilter;
+import com.cheba.trader.TraderBinding;
 import com.google.common.base.Predicate;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
@@ -22,7 +23,6 @@ import net.minecraft.entity.IRangedAttackMob;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.EntityAIBase;
 import net.minecraft.entity.ai.EntityAIHurtByTarget;
-import net.minecraft.entity.ai.EntityAIOpenDoor;
 import net.minecraft.entity.ai.EntityAIRestrictSun;
 import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.ai.EntityMoveHelper;
@@ -215,6 +215,14 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	private long voiceLineLast = 0L;
 	private boolean interacting = false;
 
+	/**
+	 * Необязательная привязка NPC к самостоятельному торговому профилю.
+	 * <p>
+	 * Хранится отдельно от RoleTrader, поэтому может существовать
+	 * у NPC с любой ролью или без торговой роли.
+	 */
+	private TraderBinding traderBinding;
+
 	public EntityNPCInterface(World world) {
 		super(world);
 		this.tracking = new HashSet();
@@ -319,7 +327,12 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	public boolean attackEntityAsMob(@Nonnull Entity par1Entity) {
 		float f = (float) this.stats.melee.getStrength();
-		if (this.stats.melee.getDelay() < 10) {
+
+		if (par1Entity instanceof EntityPlayer) {
+			if (this.stats.melee.getIgnorePlayerIFrames()) {
+				par1Entity.hurtResistantTime = 0;
+			}
+		} else if (this.stats.melee.getDelay() < 10) {
 			par1Entity.hurtResistantTime = 0;
 		}
 
@@ -352,9 +365,13 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 		if (this.stats.melee.getEffectType() != 0) {
 			if (this.stats.melee.getEffectType() != 1) {
-				((EntityLivingBase) par1Entity)
-						.addPotionEffect(new PotionEffect(PotionEffectType.getMCType(this.stats.melee.getEffectType()),
-								this.stats.melee.getEffectTime() * 20, this.stats.melee.getEffectStrength()));
+				((EntityLivingBase) par1Entity).addPotionEffect(
+						new PotionEffect(
+								PotionEffectType.getMCType(this.stats.melee.getEffectType()),
+								this.stats.melee.getEffectTime() * 20,
+								this.stats.melee.getEffectStrength(),
+								false,
+								!this.stats.melee.getHideEffectParticles()));
 			} else {
 				par1Entity.setFire(this.stats.melee.getEffectTime());
 			}
@@ -375,6 +392,13 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 				}
 
 				if (!this.world.isRemote) {
+					EntityLivingBase rangedTarget = this.getAttackTarget();
+
+					boolean hasRangedTarget = rangedTarget != null
+							&& rangedTarget.isEntityAlive()
+							&& this.isInRange(rangedTarget, (double) this.stats.aggroRange);
+
+					this.stats.ranged.updateMagazine(hasRangedTarget);
 					if (!this.isKilled() && this.ticksExisted % 20 == 0) {
 						this.advanced.scenes.update();
 						// ─── ФИЛЬТР ВОСПРИЯТИЯ ───
@@ -804,13 +828,19 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		// ─────────────────────────
 
 		ItemStack proj = ItemStackWrapper.MCItem(this.inventory.getProjectile());
+
 		if (proj == null) {
 			this.updateAI = true;
 		} else {
+
 			NpcEvent.RangedLaunchedEvent event = new NpcEvent.RangedLaunchedEvent(this.wrappedNPC, entity,
 					(float) this.stats.ranged.getStrength());
 
 			for (int i = 0; i < this.stats.ranged.getShotCount(); ++i) {
+				if (!this.stats.ranged.tryConsumeRound()) {
+					break;
+				}
+
 				EntityProjectile projectile = this.shoot(entity, this.stats.ranged.getAccuracy(), proj, f == 1.0F);
 				projectile.damage = event.damage;
 				projectile.callback = (projectile1, pos, entity1) -> {
@@ -1176,14 +1206,32 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	public void readEntityFromNBT(@Nonnull NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
+
 		this.npcVersion = compound.getInteger("ModRev");
+
 		VersionCompatibility.CheckNpcCompatibility(this, compound);
+
 		this.display.readToNBT(compound);
 		this.stats.readToNBT(compound);
 		this.ais.readToNBT(compound);
 		this.script.readFromNBT(compound);
 		this.timers.readFromNBT(compound);
 		this.advanced.readToNBT(compound);
+
+		/*
+		 * Загружаем независимую привязку до чтения RoleTrader.
+		 *
+		 * Это поле не зависит от advanced.role.
+		 * NPC может иметь TraderBinding даже при role == 0.
+		 */
+		if (compound.hasKey("TraderBinding", 10)) {
+			this.traderBinding = TraderBinding.readFromNBT(
+					compound.getCompoundTag("TraderBinding")
+			);
+		} else {
+			this.traderBinding = null;
+		}
+
 		if (this.advanced.role != 0 && this.roleInterface != null) {
 			this.roleInterface.readFromNBT(compound);
 		}
@@ -1194,25 +1242,32 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 		this.inventory.readEntityFromNBT(compound);
 		this.transform.readToNBT(compound);
+
 		this.killedtime = compound.getLong("KilledTime");
 		this.totalTicksAlive = compound.getLong("TotalTicksAlive");
 		this.linkedName = compound.getString("LinkedNpcName");
+
 		if (!this.isRemote()) {
 			LinkedNpcController.Instance.loadNpcData(this);
 		}
 
-		this.getEntityAttribute(SharedMonsterAttributes.FOLLOW_RANGE).setBaseValue((double) CustomNpcs.NpcNavRange);
+		this.getEntityAttribute(
+				SharedMonsterAttributes.FOLLOW_RANGE
+		).setBaseValue((double) CustomNpcs.NpcNavRange);
+
 		this.updateAI = true;
 	}
 
 	public void writeEntityToNBT(NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
+
 		this.display.writeToNBT(compound);
 		this.stats.writeToNBT(compound);
 		this.ais.writeToNBT(compound);
 		this.script.writeToNBT(compound);
 		this.timers.writeToNBT(compound);
 		this.advanced.writeToNBT(compound);
+
 		if (this.advanced.role != 0 && this.roleInterface != null) {
 			this.roleInterface.writeToNBT(compound);
 		}
@@ -1221,8 +1276,24 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			this.jobInterface.writeToNBT(compound);
 		}
 
+		/*
+		 * Сохраняем привязку независимо от роли NPC.
+		 *
+		 * TraderBinding содержит только Trader ID.
+		 * Удаление или изменение NPC не изменяет профиль.
+		 */
+		if (this.traderBinding != null) {
+			compound.setTag(
+					"TraderBinding",
+					this.traderBinding.writeToNBT()
+			);
+		} else {
+			compound.removeTag("TraderBinding");
+		}
+
 		this.inventory.writeEntityToNBT(compound);
 		this.transform.writeToNBT(compound);
+
 		compound.setLong("KilledTime", this.killedtime);
 		compound.setLong("TotalTicksAlive", this.totalTicksAlive);
 		compound.setInteger("ModRev", this.npcVersion);
@@ -2052,5 +2123,27 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		CommandProfile = new GameProfileAlt();
 		ChatEventProfile = new GameProfileAlt();
 		GenericProfile = new GameProfileAlt();
+	}
+	/**
+	 * Возвращает привязку NPC к торговому профилю.
+	 */
+	public TraderBinding getTraderBinding() {
+		return traderBinding;
+	}
+
+	/**
+	 * Назначает NPC торговый профиль.
+	 * <p>
+	 * Передача null снимает привязку, но не удаляет сам профиль.
+	 */
+	public void setTraderBinding(TraderBinding traderBinding) {
+		this.traderBinding = traderBinding;
+	}
+
+	/**
+	 * Проверяет, привязан ли NPC к торговому профилю.
+	 */
+	public boolean hasTraderBinding() {
+		return traderBinding != null;
 	}
 }

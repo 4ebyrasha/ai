@@ -757,3 +757,18 @@ cheba.trader.tooltip.buyback.add=Добавить выбранный в инве
 
 cheba.trader.editor.page_short=Стр.%s
 cheba.trader.shared_limits=Общие лимиты магазина:
+
+npc.ignorePlayerIFrames.melee=Игнор. i-frames ударов
+npc.ignorePlayerIFrames.ranged=Игнор. i-frames пуль
+
+npc.magazineSize=Емкость магазина
+npc.reloadDuration=Перезарядка(сек.)
+npc.reloadAfterDeAggro=Без цели(сек.)
+
+npc.fireRateRPM=Скорострел.(в/м)
+
+npc.hideEffectParticles.melee=Скрывать частицы зелий
+npc.hideEffectParticles.ranged=Скрывать частицы зелий
+
+npc.rangedAdvanced=Дополнительно
+npc.reaction=Реакция (сек.)

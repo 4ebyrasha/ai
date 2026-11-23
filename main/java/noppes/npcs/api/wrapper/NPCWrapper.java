@@ -235,7 +235,6 @@ public class NPCWrapper extends EntityLivingWrapper implements ICustomNpc {
 
 	@Override
 	public EntityCreature getMCEntity() {
-		// TODO Auto-generated method stub
-		return null;
+		return (EntityCreature) this.entity;
 	}
 }

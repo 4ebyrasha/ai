@@ -10,49 +10,80 @@ import noppes.npcs.entity.EntityNPCInterface;
 public class EntityAIRangedAttack extends EntityAIBase {
 	private final EntityNPCInterface npc;
 	private EntityLivingBase attackTarget;
-	private int rangedAttackTime = 0;
+	private EntityLivingBase reactionTarget;
+
+	private double rangedAttackTime = 0.0D;
+	private int reactionTicksRemaining = 0;
 	private int moveTries = 0;
-	private int burstCount = 0;
-	private int attackTick = 0;
+
 	private boolean hasFired = false;
 	private boolean navOverride = false;
 
 	public EntityAIRangedAttack(IRangedAttackMob par1IRangedAttackMob) {
 		if (!(par1IRangedAttackMob instanceof EntityLivingBase)) {
 			throw new IllegalArgumentException("ArrowAttackGoal requires Mob implements RangedAttackMob");
-		} else {
-			this.npc = (EntityNPCInterface) par1IRangedAttackMob;
-			this.rangedAttackTime = this.npc.stats.ranged.getDelayMin() / 2;
-			this.setMutexBits(this.navOverride ? AiMutex.PATHING : AiMutex.LOOK + AiMutex.PASSIVE);
 		}
+
+		this.npc = (EntityNPCInterface) par1IRangedAttackMob;
+		this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
+		this.setMutexBits(this.navOverride ? AiMutex.PATHING : AiMutex.LOOK + AiMutex.PASSIVE);
+	}
+
+	private double getFireIntervalTicks() {
+		int rpm = this.npc.stats.ranged.getFireRateRPM();
+		rpm = Math.max(1, Math.min(1200, rpm));
+		return 1200.0D / (double) rpm;
 	}
 
 	public boolean shouldExecute() {
 		this.attackTarget = this.npc.getAttackTarget();
-		if (this.attackTarget != null && this.attackTarget.isEntityAlive()
+
+		if (this.attackTarget != null
+				&& this.attackTarget.isEntityAlive()
 				&& this.npc.isInRange(this.attackTarget, (double) this.npc.stats.aggroRange)
 				&& this.npc.inventory.getProjectile() != null) {
 			return this.npc.stats.ranged.getMeleeRange() < 1
 					|| !this.npc.isInRange(this.attackTarget, (double) this.npc.stats.ranged.getMeleeRange());
-		} else {
-			return false;
 		}
+
+		return false;
 	}
 
 	public void resetTask() {
 		this.attackTarget = null;
+		this.reactionTarget = null;
+		this.reactionTicksRemaining = 0;
+
 		this.npc.setAttackTarget((EntityLivingBase) null);
 		this.npc.getNavigator().clearPath();
+
 		this.moveTries = 0;
 		this.hasFired = false;
-		this.rangedAttackTime = this.npc.stats.ranged.getDelayMin() / 2;
+		this.rangedAttackTime = this.getFireIntervalTicks() / 2.0D;
 	}
 
 	public void updateTask() {
+		if (this.attackTarget == null || !this.attackTarget.isEntityAlive()) {
+			return;
+		}
+
 		this.npc.getLookHelper().setLookPositionWithEntity(this.attackTarget, 30.0F, 30.0F);
-		double var1 = this.npc.getDistanceSq(this.attackTarget.posX, this.attackTarget.getEntityBoundingBox().minY,
+
+		if (this.attackTarget != this.reactionTarget) {
+			this.reactionTarget = this.attackTarget;
+			this.reactionTicksRemaining = this.npc.stats.ranged.getReactionTicks();
+			this.rangedAttackTime = 0.0D;
+			this.hasFired = false;
+		}
+
+		double distanceSq = this.npc.getDistanceSq(
+				this.attackTarget.posX,
+				this.attackTarget.getEntityBoundingBox().minY,
 				this.attackTarget.posZ);
-		float range = (float) (this.npc.stats.ranged.getRange() * this.npc.stats.ranged.getRange());
+
+		float range = (float) (this.npc.stats.ranged.getRange()
+				* this.npc.stats.ranged.getRange());
+
 		if (!this.navOverride && this.npc.ais.directLOS) {
 			if (this.npc.getEntitySenses().canSee(this.attackTarget)) {
 				++this.moveTries;
@@ -60,41 +91,68 @@ public class EntityAIRangedAttack extends EntityAIBase {
 				this.moveTries = 0;
 			}
 
-			int v = this.npc.ais.tacticalVariant == 0 ? 20 : 5;
-			if (var1 <= (double) range && this.moveTries >= v) {
+			int requiredTries = this.npc.ais.tacticalVariant == 0 ? 20 : 5;
+
+			if (distanceSq <= range && this.moveTries >= requiredTries) {
 				this.npc.getNavigator().clearPath();
 			} else {
 				this.npc.getNavigator().tryMoveToEntityLiving(this.attackTarget, 1.0D);
 			}
 		}
 
-		if (this.rangedAttackTime-- <= 0 && var1 <= (double) range
-				&& (this.npc.getEntitySenses().canSee(this.attackTarget) || this.npc.stats.ranged.getFireType() == 2)) {
-			if (this.burstCount++ <= this.npc.stats.ranged.getBurst()) {
-				this.rangedAttackTime = this.npc.stats.ranged.getBurstDelay();
-			} else {
-				this.burstCount = 0;
-				this.hasFired = true;
-				this.rangedAttackTime = this.npc.stats.ranged.getDelayRNG();
-			}
-
-			if (this.burstCount > 1) {
-				boolean indirect = false;
-				switch (this.npc.stats.ranged.getFireType()) {
-				case 1:
-					indirect = var1 > (double) range / 2.0D;
-					break;
-				case 2:
-					indirect = !this.npc.getEntitySenses().canSee(this.attackTarget);
-				}
-
-				this.npc.attackEntityWithRangedAttack(this.attackTarget, indirect ? 1.0F : 0.0F);
-				if (this.npc.currentAnimation != 6) {
-					this.npc.swingArm(EnumHand.MAIN_HAND);
-				}
-			}
+		if (this.npc.stats.ranged.isReloading()) {
+			this.rangedAttackTime = 1.0D;
+			return;
 		}
 
+		// Задержка реакции после получения новой цели.
+		if (this.reactionTicksRemaining > 0) {
+			--this.reactionTicksRemaining;
+			return;
+		}
+
+		// Дробный таймер сохраняет точный средний RPM.
+		this.rangedAttackTime -= 1.0D;
+
+		if (distanceSq > range) {
+			if (this.rangedAttackTime < 0.0D) {
+				this.rangedAttackTime = 0.0D;
+			}
+			return;
+		}
+
+		if (this.rangedAttackTime >= 0.0D) {
+			return;
+		}
+
+		boolean canSee = this.npc.getEntitySenses().canSee(this.attackTarget);
+
+		if (!canSee && this.npc.stats.ranged.getFireType() != 2) {
+			this.rangedAttackTime = 0.0D;
+			return;
+		}
+
+		boolean indirect = false;
+
+		switch (this.npc.stats.ranged.getFireType()) {
+			case 1:
+				indirect = distanceSq > (double) range / 2.0D;
+				break;
+			case 2:
+				indirect = !canSee;
+				break;
+		}
+
+		this.npc.attackEntityWithRangedAttack(
+				this.attackTarget,
+				indirect ? 1.0F : 0.0F);
+
+		if (this.npc.currentAnimation != 6) {
+			this.npc.swingArm(EnumHand.MAIN_HAND);
+		}
+
+		this.hasFired = true;
+		this.rangedAttackTime += this.getFireIntervalTicks();
 	}
 
 	public boolean hasFired() {
