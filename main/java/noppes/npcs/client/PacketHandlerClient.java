@@ -1,5 +1,8 @@
 package noppes.npcs.client;
 
+import com.cheba.gui.GuiDynamicTraderMenu;
+import com.cheba.gui.TraderClientSession;
+import com.cheba.trader.TraderPreset;
 import io.netty.buffer.ByteBuf;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -20,7 +23,6 @@ import net.minecraft.village.MerchantRecipeList;
 import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent.ClientCustomPacketEvent;
-import net.minecraftforge.fml.common.network.internal.FMLMessage;
 import noppes.npcs.CustomItems;
 import noppes.npcs.CustomNpcs;
 import noppes.npcs.LogWriter;
@@ -59,7 +61,6 @@ import noppes.npcs.entity.EntityDialogNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.items.ItemScripted;
 
-import com.cheba.util.EntitySpawnMessageHelper;
 
 public class PacketHandlerClient extends PacketHandlerServer {
 
@@ -87,7 +88,37 @@ public class PacketHandlerClient extends PacketHandlerServer {
 
 	private void client(ByteBuf buffer, EntityPlayer player, EnumPacketClient type) throws Exception {
 		Entity entity;
-		if (type == EnumPacketClient.CHATBUBBLE) {
+
+		if (type == EnumPacketClient.TraderSessionOpen) {
+			NBTTagCompound data = Server.readNBT(buffer);
+
+			String token = data.getString("Token");
+			String profileName = data.getString("ProfileName");
+
+			if (token.isEmpty() || profileName.isEmpty()
+					|| !data.hasKey("Preset", 10)) {
+				return;
+			}
+
+			TraderPreset preset = TraderPreset.readFromNBT(
+					data.getCompoundTag("Preset")
+			);
+
+			if (preset == null) {
+				return;
+			}
+
+			TraderClientSession session = new TraderClientSession(token);
+
+			Minecraft.getMinecraft().displayGuiScreen(
+					new GuiDynamicTraderMenu(
+							session,
+							profileName,
+							preset
+					)
+			);
+
+		} else if (type == EnumPacketClient.CHATBUBBLE) {
 			entity = Minecraft.getMinecraft().world.getEntityByID(buffer.readInt());
 			if (entity == null || !(entity instanceof EntityNPCInterface)) {
 				return;

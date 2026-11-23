@@ -1,6 +1,7 @@
 package com.cheba.gui;
 
 import com.cheba.trader.NpcTradeConfig;
+import com.cheba.trader.TraderPreset;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -15,23 +16,29 @@ import noppes.npcs.constants.EnumPacketServer;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Экран подтверждения покупки товара из независимого каталога.
+ */
 @SuppressWarnings("deprecation")
 public class GuiDynamicTraderConfirm extends GuiScreen {
 
     private static final int MAX_MULTIPLIER = 64;
 
-    private final int npcEntityId;
+    private final TraderClientSession session;
+    private final TraderPreset preset;
     private final int page;
     private final NpcTradeConfig offer;
 
     private GuiTextField quantityField;
 
     public GuiDynamicTraderConfirm(
-            int npcEntityId,
+            TraderClientSession session,
+            TraderPreset preset,
             int page,
             NpcTradeConfig offer
     ) {
-        this.npcEntityId = npcEntityId;
+        this.session = session;
+        this.preset = preset;
         this.page = page;
         this.offer = offer;
     }
@@ -42,62 +49,46 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
         }
 
         try {
-            int value = Integer.parseInt(quantityField.getText().trim());
+            int value = Integer.parseInt(
+                    quantityField.getText().trim()
+            );
 
             return Math.max(
                     1,
                     Math.min(MAX_MULTIPLIER, value)
             );
+
         } catch (NumberFormatException ignored) {
             return 1;
         }
     }
 
-    private int getQuantityY() {
-        int lines = offer.getPriceMoney() > 0L ? 1 : 0;
-
-        List<ItemStack> priceItems = offer.getPriceItems();
-        lines += Math.min(4, priceItems.size());
-
-        if (priceItems.size() > 4) {
-            lines++;
-        }
-
-        return Math.min(
-                height - 62,
-                Math.max(
-                        height / 2 + 30,
-                        height / 2 - 20 + lines * 12
-                )
-        );
-    }
-
     @Override
     public void initGui() {
+        session.completeTransition();
         buttonList.clear();
-
-        int quantityY = getQuantityY();
 
         quantityField = new GuiTextField(
                 0,
                 fontRenderer,
                 width / 2 - 20,
-                quantityY,
+                height / 2 + 25,
                 60,
                 18
         );
 
         quantityField.setMaxStringLength(2);
-        quantityField.setValidator(value -> value.matches("\\d{0,2}"));
+        quantityField.setValidator(
+                value -> value.matches("\\d{0,2}")
+        );
         quantityField.setText("1");
         quantityField.setFocused(true);
 
-        int buttonY = Math.min(height - 24, quantityY + 34);
-        int x = width / 2 - 105;
+        int buttonY = height / 2 + 55;
 
         buttonList.add(new GuiButton(
                 0,
-                x,
+                width / 2 - 105,
                 buttonY,
                 100,
                 20,
@@ -106,7 +97,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
 
         buttonList.add(new GuiButton(
                 1,
-                x + 110,
+                width / 2 + 5,
                 buttonY,
                 100,
                 20,
@@ -115,32 +106,52 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
     }
 
     @Override
-    protected void actionPerformed(GuiButton button) throws IOException {
+    protected void actionPerformed(GuiButton button)
+            throws IOException {
+
         if (button.id == 0) {
             Client.sendData(
-                    EnumPacketServer.TraderBuy,
-                    npcEntityId,
+                    EnumPacketServer.TraderSessionBuy,
+                    session.getToken(),
                     offer.getId(),
                     getMultiplier()
             );
         }
 
+        session.beginTransition();
+
         mc.displayGuiScreen(
-                new GuiDynamicTraderBuy(npcEntityId, page)
+                new GuiDynamicTraderBuy(
+                        session,
+                        preset,
+                        page
+                )
         );
     }
 
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+    protected void keyTyped(char typedChar, int keyCode)
+            throws IOException {
+
         if (keyCode == 1) {
+            session.beginTransition();
+
             mc.displayGuiScreen(
-                    new GuiDynamicTraderBuy(npcEntityId, page)
+                    new GuiDynamicTraderBuy(
+                            session,
+                            preset,
+                            page
+                    )
             );
+
             return;
         }
 
         if (quantityField != null) {
-            quantityField.textboxKeyTyped(typedChar, keyCode);
+            quantityField.textboxKeyTyped(
+                    typedChar,
+                    keyCode
+            );
         }
 
         super.keyTyped(typedChar, keyCode);
@@ -152,22 +163,35 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
+
         if (quantityField != null) {
-            quantityField.mouseClicked(mouseX, mouseY, mouseButton);
+            quantityField.mouseClicked(
+                    mouseX,
+                    mouseY,
+                    mouseButton
+            );
         }
 
-        super.mouseClicked(mouseX, mouseY, mouseButton);
+        super.mouseClicked(
+                mouseX,
+                mouseY,
+                mouseButton
+        );
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+    public void drawScreen(
+            int mouseX,
+            int mouseY,
+            float partialTicks
+    ) {
         drawDefaultBackground();
 
         drawCenteredString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.confirm.title"),
                 width / 2,
-                height / 2 - 88,
+                height / 2 - 85,
                 0xFFFFFF
         );
 
@@ -179,14 +203,14 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             itemRender.renderItemAndEffectIntoGUI(
                     result,
                     width / 2 - 8,
-                    height / 2 - 62
+                    height / 2 - 58
             );
 
             itemRender.renderItemOverlays(
                     fontRenderer,
                     result,
                     width / 2 - 8,
-                    height / 2 - 62
+                    height / 2 - 58
             );
 
             RenderHelper.disableStandardItemLighting();
@@ -195,13 +219,12 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
                     fontRenderer,
                     result.getDisplayName(),
                     width / 2,
-                    height / 2 - 41,
+                    height / 2 - 36,
                     0xFFFFFF
             );
         }
 
         int multiplier = getMultiplier();
-        int y = height / 2 - 24;
 
         if (offer.getPriceMoney() > 0L) {
             long totalPrice;
@@ -211,7 +234,7 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
                         offer.getPriceMoney(),
                         (long) multiplier
                 );
-            } catch (ArithmeticException e) {
+            } catch (ArithmeticException ignored) {
                 totalPrice = Long.MAX_VALUE;
             }
 
@@ -222,14 +245,14 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
                             totalPrice
                     ),
                     width / 2,
-                    y,
+                    height / 2 - 15,
                     0xFFD700
             );
-
-            y += 12;
         }
 
         List<ItemStack> priceItems = offer.getPriceItems();
+
+        int y = height / 2 + 2;
         int visible = Math.min(4, priceItems.size());
 
         for (int i = 0; i < visible; i++) {
@@ -239,7 +262,8 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
                 continue;
             }
 
-            long requiredCount = (long) item.getCount() * multiplier;
+            long requiredCount = (long) item.getCount()
+                    * multiplier;
 
             drawCenteredString(
                     fontRenderer,
@@ -265,19 +289,21 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
             );
         }
 
-        long totalItems = result.isEmpty()
-                ? 0L
-                : (long) result.getCount() * multiplier;
-
         drawString(
                 fontRenderer,
-                I18n.translateToLocal("cheba.trader.quantity.multiplier"),
+                I18n.translateToLocal(
+                        "cheba.trader.quantity.multiplier"
+                ),
                 width / 2 - 100,
-                getQuantityY() + 5,
+                height / 2 + 30,
                 0xFFFFFF
         );
 
         quantityField.drawTextBox();
+
+        long totalItems = result.isEmpty()
+                ? 0L
+                : (long) result.getCount() * multiplier;
 
         drawCenteredString(
                 fontRenderer,
@@ -286,11 +312,20 @@ public class GuiDynamicTraderConfirm extends GuiScreen {
                         totalItems
                 ),
                 width / 2,
-                getQuantityY() + 21,
+                height / 2 + 45,
                 0xAAAAAA
         );
 
-        super.drawScreen(mouseX, mouseY, partialTicks);
+        super.drawScreen(
+                mouseX,
+                mouseY,
+                partialTicks
+        );
+    }
+
+    @Override
+    public void onGuiClosed() {
+        session.onScreenClosed();
     }
 
     @Override

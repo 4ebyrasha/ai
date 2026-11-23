@@ -1,60 +1,87 @@
 package com.cheba.gui;
 
+import com.cheba.trader.TraderPreset;
+
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
-import noppes.npcs.client.Client;
-import noppes.npcs.constants.EnumPacketServer;
 import net.minecraft.util.text.translation.I18n;
 
-import java.io.IOException;
-
+/**
+ * Главное меню независимого торгового профиля.
+ */
+@SuppressWarnings("deprecation")
 public class GuiDynamicTraderMenu extends GuiScreen {
 
-    private final int npcEntityId;
+    private final TraderClientSession session;
+    private final String profileName;
+    private final TraderPreset preset;
 
-    public GuiDynamicTraderMenu(int npcEntityId) {
-        this.npcEntityId = npcEntityId;
+    public GuiDynamicTraderMenu(
+            TraderClientSession session,
+            String profileName,
+            TraderPreset preset
+    ) {
+        this.session = session;
+        this.profileName = profileName;
+        this.preset = preset;
     }
 
     @Override
     public void initGui() {
+        session.completeTransition();
         buttonList.clear();
 
-        int buttonWidth = 160;
-        int buttonHeight = 20;
-        int x = (width - buttonWidth) / 2;
-        int y = height / 2 - 12;
+        int x = width / 2 - 80;
+        int y = height / 2 - 10;
 
         buttonList.add(new GuiButton(
-                0, x, y, buttonWidth, buttonHeight, I18n.translateToLocal("cheba.trader.buy")
-        ));
-
-        buttonList.add(new GuiButton(
-                1, x, y + 26, buttonWidth, buttonHeight, I18n.translateToLocal("cheba.trader.sell")
+                0,
+                x,
+                y,
+                160,
+                20,
+                I18n.translateToLocal("cheba.trader.buy")
         ));
     }
 
     @Override
-    protected void actionPerformed(GuiButton button) throws IOException {
+    protected void actionPerformed(GuiButton button) {
         if (button.id == 0) {
-            mc.displayGuiScreen(new GuiDynamicTraderBuy(npcEntityId, 0));
-        } else if (button.id == 1) {
-            // Просим сервер открыть контейнер продажи.
-            mc.displayGuiScreen(null);
-            Client.sendData(
-                    EnumPacketServer.TraderOpenSell,
-                    npcEntityId
+            session.beginTransition();
+
+            mc.displayGuiScreen(
+                    new GuiDynamicTraderBuy(
+                            session,
+                            profileName,
+                            preset,
+                            0
+                    )
             );
         }
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+    protected void keyTyped(char typedChar, int keyCode)
+            throws java.io.IOException {
+        super.keyTyped(typedChar, keyCode);
+    }
+
+    @Override
+    public void onGuiClosed() {
+        session.onScreenClosed();
+    }
+
+    @Override
+    public void drawScreen(
+            int mouseX,
+            int mouseY,
+            float partialTicks
+    ) {
         drawDefaultBackground();
 
         drawCenteredString(
                 fontRenderer,
-                I18n.translateToLocal("cheba.trader.title"),
+                profileName,
                 width / 2,
                 height / 2 - 55,
                 0xFFFFFF
