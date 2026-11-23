@@ -127,9 +127,34 @@ public class PacketHandlerServer {
 		}
 	}
 
-	private void handlePacket(EnumPacketServer type, ByteBuf buffer, EntityPlayerMP player, EntityNPCInterface npc)
-			throws Exception {
-		if (type == EnumPacketServer.TraderBuy) {
+	private void handlePacket(
+			EnumPacketServer type,
+			ByteBuf buffer,
+			EntityPlayerMP player,
+			EntityNPCInterface npc
+	) throws Exception {
+
+		if (type == EnumPacketServer.TraderSessionBuy) {
+			String sessionToken = Server.readString(buffer);
+			String offerId = Server.readString(buffer);
+			int multiplier = buffer.readInt();
+
+			TraderPacketService.handleSessionBuy(
+					player,
+					sessionToken,
+					offerId,
+					multiplier
+			);
+
+		} else if (type == EnumPacketServer.TraderSessionClose) {
+			String sessionToken = Server.readString(buffer);
+
+			TraderPacketService.handleSessionClose(
+					player,
+					sessionToken
+			);
+
+		} else if (type == EnumPacketServer.TraderBuy) {
 			int npcEntityId = buffer.readInt();
 			String offerId = Server.readString(buffer);
 			int multiplier = buffer.isReadable()
@@ -169,6 +194,7 @@ public class PacketHandlerServer {
 					player,
 					npcEntityId
 			);
+
 		} else if (type == EnumPacketServer.Delete) {
 			npc.delete();
 			NoppesUtilServer.deleteNpc(npc, player);

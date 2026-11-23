@@ -1,5 +1,6 @@
 package noppes.npcs;
 
+import com.cheba.trader.TraderSessionManager;
 import com.google.common.util.concurrent.ListenableFutureTask;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -352,6 +353,22 @@ public class ServerEventsHandler {
 				Server.sendData((EntityPlayerMP) event.getEntityPlayer(), EnumPacketClient.MARK_DATA,
 						event.getTarget().getEntityId(), data.getNBT());
 			}
+		}
+	}
+	/**
+	 * Закрывает торговую сессию игрока при выходе с сервера.
+	 * <p>
+	 * Это не позволяет оставлять активные сессии после отключения
+	 * и освобождает записи менеджера сессий.
+	 *
+	 * @param event событие выхода игрока
+	 */
+	@SubscribeEvent
+	public void playerLoggedOut(net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedOutEvent event) {
+		if (event.player instanceof EntityPlayerMP) {
+			TraderSessionManager.closePlayer(
+					(EntityPlayerMP) event.player
+			);
 		}
 	}
 }

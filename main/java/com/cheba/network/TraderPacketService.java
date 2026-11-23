@@ -2,6 +2,7 @@ package com.cheba.network;
 
 import com.cheba.currency.StalkerBaseCurrencyBridge;
 import com.cheba.trader.TraderSellService;
+import com.cheba.trader.TraderSessionManager;
 import com.cheba.trader.TraderTradeService;
 
 import net.minecraft.entity.Entity;
@@ -111,6 +112,103 @@ public final class TraderPacketService {
                             + player.getName()
                             + " for NPC "
                             + npc.getEntityId()
+            );
+        }
+    }
+
+    /**
+     * Закрывает торговую сессию, если токен принадлежит отправителю.
+     *
+     * @param player отправитель пакета
+     * @param sessionToken токен сессии
+     */
+    public static void handleSessionClose(
+            EntityPlayerMP player,
+            String sessionToken
+    ) {
+        if (player == null || player.world == null || player.world.isRemote) {
+            return;
+        }
+
+        TraderSessionManager.closeOwned(player, sessionToken);
+    }
+
+    /**
+     * Обрабатывает покупку через независимую торговую сессию.
+     * <p>
+     * Клиент передаёт только токен сессии, ID предложения и множитель.
+     * Профиль и каталог всегда определяются сервером.
+     *
+     * @param player отправитель пакета
+     * @param sessionToken токен сессии
+     * @param offerId постоянный ID предложения
+     * @param multiplier количество комплектов
+     */
+    public static void handleSessionBuy(
+            EntityPlayerMP player,
+            String sessionToken,
+            String offerId,
+            int multiplier
+    ) {
+        if (player == null || player.world == null || player.world.isRemote) {
+            return;
+        }
+
+        if (sessionToken == null
+                || sessionToken.length() > 64
+                || offerId == null
+                || offerId.trim().isEmpty()
+                || offerId.length() > 128
+                || multiplier < 1
+                || multiplier > 64) {
+            sendMessage(player, "cheba.trader.message.invalid_offer");
+            return;
+        }
+
+        TraderSessionManager.Context context =
+                TraderSessionManager.resolve(player, sessionToken);
+
+        if (context == null) {
+            sendMessage(player, "cheba.trader.message.not_found");
+            return;
+        }
+
+        String requestKey = sessionToken
+                + "|" + offerId
+                + "|" + multiplier;
+
+        long currentTick = player.world.getTotalWorldTime();
+        LastRequest previous = LAST_REQUESTS.get(player);
+
+        if (previous != null
+                && previous.key.equals(requestKey)
+                && currentTick - previous.tick < 2L) {
+            return;
+        }
+
+        LAST_REQUESTS.put(
+                player,
+                new LastRequest(requestKey, currentTick)
+        );
+
+        TraderTradeService.Result result = TRADE_SERVICE.buy(
+                player,
+                context.getProfile(),
+                context.getPreset(),
+                offerId,
+                multiplier
+        );
+
+        sendBuyResult(player, result);
+
+        if (result == TraderTradeService.Result.REFUND_FAILED) {
+            System.err.println(
+                    "[ChebaTrader] Failed to refund payment for player "
+                            + player.getName()
+                            + ", profile "
+                            + context.getProfile().getId()
+                            + ", offer "
+                            + offerId
             );
         }
     }

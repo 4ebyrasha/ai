@@ -109,7 +109,7 @@ public enum EnumPacketServer {
 																																																																																																																																																									CustomNpcsPermissions.SCENES), SceneReset(
 																																																																																																																																																											CustomNpcsPermissions.SCENES), NbtBookSaveEntity(
 																																																																																																																																																													CustomNpcsPermissions.TOOL_NBTBOOK), NbtBookSaveBlock(
-																																																																																																																																																															CustomNpcsPermissions.TOOL_NBTBOOK), CustomGuiClose, CustomGuiButton, CustomGuiSlotChange, CustomGuiScrollClick, TraderBuy, TraderOpenSell, TraderSell;
+																																																																																																																																																															CustomNpcsPermissions.TOOL_NBTBOOK), CustomGuiClose, CustomGuiButton, CustomGuiSlotChange, CustomGuiScrollClick, TraderBuy, TraderOpenSell, TraderSell, TraderSessionBuy, TraderSessionClose;
 
 	public CustomNpcsPermissions.Permission permission;
 	public boolean needsNpc;
@@ -163,5 +163,7 @@ public enum EnumPacketServer {
 		TraderBuy.exempt();
 		TraderOpenSell.exempt();
 		TraderSell.exempt();
+		TraderSessionBuy.exempt();
+		TraderSessionClose.exempt();
 	}
 }
