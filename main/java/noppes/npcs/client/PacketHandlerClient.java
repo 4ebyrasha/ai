@@ -2,6 +2,7 @@ package noppes.npcs.client;
 
 import com.cheba.gui.GuiDynamicTraderMenu;
 import com.cheba.gui.GuiTraderPresetEditor;
+import com.cheba.gui.GuiTraderBindingSetup;
 import com.cheba.gui.TraderClientSession;
 import com.cheba.trader.TraderPreset;
 import io.netty.buffer.ByteBuf;
@@ -132,6 +133,13 @@ public class PacketHandlerClient extends PacketHandlerServer {
 						message,
 						preset
 				);
+			}
+		} else if (type == EnumPacketClient.TraderBindingSetupResult) {
+			NBTTagCompound data = Server.readNBT(buffer);
+			GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
+
+			if (currentScreen instanceof GuiTraderBindingSetup) {
+				((GuiTraderBindingSetup) currentScreen).onSetupResult(data);
 			}
 		} else if (type == EnumPacketClient.TraderSessionOpen) {
 			NBTTagCompound data = Server.readNBT(buffer);

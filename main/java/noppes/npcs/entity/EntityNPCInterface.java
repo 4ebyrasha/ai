@@ -3,6 +3,9 @@ package noppes.npcs.entity;
 import com.cheba.api.IPerceptionFilter;
 import com.cheba.trader.TraderBinding;
 import com.cheba.trader.TraderProfileManager;
+import com.cheba.trader.TraderProfile;
+import com.cheba.trader.TraderPreset;
+import com.cheba.trader.TraderSessionManager;
 import com.google.common.base.Predicate;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
@@ -521,6 +524,50 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		this.combatHandler.damage(damageSrc, damageAmount);
 	}
 
+	private boolean openBoundTrader(EntityPlayer player) {
+		if (!(player instanceof EntityPlayerMP)) {
+			return false;
+		}
+
+		TraderProfileManager manager = TraderProfileManager.get(this.world);
+		TraderProfile profile = manager == null || this.traderBinding == null
+				? null
+				: manager.getProfileById(this.traderBinding.getTraderId());
+
+		if (profile == null) {
+			player.sendMessage(new TextComponentString("Trader profile is unavailable."));
+			return true;
+		}
+
+		TraderPreset preset = manager.getPreset(profile.getPresetName());
+		if (preset == null) {
+			player.sendMessage(new TextComponentString("Trader catalog is not assigned or unavailable."));
+			return true;
+		}
+
+		EntityPlayerMP serverPlayer = (EntityPlayerMP) player;
+		TraderSessionManager.Session session =
+				TraderSessionManager.open(serverPlayer, profile.getName());
+
+		if (session == null) {
+			player.sendMessage(new TextComponentString("Could not open trader session."));
+			return true;
+		}
+
+		NBTTagCompound data = new NBTTagCompound();
+		data.setString("Token", session.getToken());
+		data.setString("ProfileName", profile.getName());
+		data.setTag("Preset", preset.writeToNBT());
+
+		Server.sendData(
+				serverPlayer,
+				EnumPacketClient.TraderSessionOpen,
+				data
+		);
+
+		return true;
+	}
+
 	public boolean processInteract(EntityPlayer player, EnumHand hand) {
 
 		// ─── ФИЛЬТР ВОСПРИЯТИЯ (только сервер) ───
@@ -569,6 +616,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 					Server.sendData((EntityPlayerMP) player, EnumPacketClient.QUEST_COMPLETION, data.quest.id);
 				} else if (dialog != null) {
 					NoppesUtilServer.openDialog(player, this, dialog);
+				} else if (this.traderBinding != null) {
+					this.openBoundTrader(player);
 				} else if (this.roleInterface != null) {
 					this.roleInterface.interact(player);
 				} else {

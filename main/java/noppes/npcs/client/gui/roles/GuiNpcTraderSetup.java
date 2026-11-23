@@ -2,6 +2,7 @@
 package noppes.npcs.client.gui.roles;
 
 import com.cheba.gui.GuiNpcDynamicTraderEditor;
+import com.cheba.gui.GuiTraderBindingSetup;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.GlStateManager;
@@ -118,6 +119,15 @@ public class GuiNpcTraderSetup
 				20,
 				I18n.translateToLocal("cheba.trader.editor.open")
 		));
+
+		this.buttonList.add(new GuiButton(
+				5,
+				this.guiLeft + 260,
+				this.guiTop + 99,
+				135,
+				20,
+				"Profiles / catalogs"
+		));
 	}
 
 	@Override
@@ -151,6 +161,10 @@ public class GuiNpcTraderSetup
 		if (button.id == 4) {
 			this.role.sharedLimits =
 					((GuiNpcButtonYesNo) button).getBoolean();
+		}
+
+		if (button.id == 5) {
+			this.mc.displayGuiScreen(new GuiTraderBindingSetup(this));
 		}
 	}
 
