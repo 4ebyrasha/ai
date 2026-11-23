@@ -772,3 +772,9 @@ npc.hideEffectParticles.ranged=Скрывать частицы зелий
 
 npc.rangedAdvanced=Дополнительно
 npc.reaction=Реакция (сек.)
+cheba.trader.editor.view=Вид
+cheba.trader.editor.done=Готово
+cheba.trader.editor.layout_title=Расположение предложений
+cheba.trader.editor.layout_hint=Перетаскивай товары мышью для изменения расположения
+cheba.trader.editor.layout_saved=Расположение сохранено
+cheba.trader.tooltip.editor.view=Открыть визуальное расположение предложений

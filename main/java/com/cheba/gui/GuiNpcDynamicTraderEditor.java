@@ -125,6 +125,15 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 I18n.translateToLocal("cheba.trader.editor.buyback")
         ));
 
+        buttonList.add(new GuiButton(
+                12,
+                x + 190,
+                y + 7,
+                48,
+                18,
+                I18n.translateToLocal("cheba.trader.editor.view")
+        ));
+
         GuiButton previousPage = new GuiButton(
                 8, x + 48, y + 7, 31, 18,
                 I18n.translateToLocal("cheba.trader.editor.prev")
@@ -497,6 +506,18 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 refreshFields();
                 rebuildGuiAfterClick = true;
                 break;
+
+            case 12:
+                saveRole();
+
+                mc.displayGuiScreen(
+                        new GuiNpcTraderOfferLayout(
+                                npc,
+                                this,
+                                role
+                        )
+                );
+                return;
 
             case 7: {
                 NpcTradeConfig offer = getSelectedOffer();
@@ -1211,6 +1232,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 return "cheba.trader.tooltip.editor.buyback";
             case 11:
                 return "cheba.trader.tooltip.editor.barter_done";
+            case 12:
+                return "cheba.trader.tooltip.editor.view";
             default:
                 return null;
         }
