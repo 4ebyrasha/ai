@@ -7,29 +7,22 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * Каталог товаров торговой системы.
- * <p>
- * Один каталог может использоваться несколькими торговыми профилями.
- * TraderPreset не зависит от NPC и не содержит настроек лимитов профиля.
- */
 public class TraderPreset {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     private final String name;
 
     private final List<NpcTradeConfig> offers = new ArrayList<>();
     private final List<NpcBuybackConfig> buybackOffers = new ArrayList<>();
 
-    /**
-     * Старые настройки CustomNPCs:
-     * TraderCurrency, TraderSold, TraderIgnoreDamage, TraderIgnoreNBT.
-     * <p>
-     * Храним их отдельно, чтобы не потерять совместимость
-     * при переносе старых market JSON.
-     */
     private NBTTagCompound legacyData = new NBTTagCompound();
+
+    /**
+     * Версия содержимого каталога.
+     * Увеличивается при каждом успешном сохранении редактором.
+     */
+    private long revision;
 
     public TraderPreset(String name) {
         if (name == null || name.trim().isEmpty()) {
@@ -41,6 +34,10 @@ public class TraderPreset {
 
     public String getName() {
         return name;
+    }
+
+    public long getRevision() {
+        return revision;
     }
 
     public List<NpcTradeConfig> getOffers() {
@@ -137,13 +134,37 @@ public class TraderPreset {
     }
 
     /**
-     * Сериализует каталог вместе с предложениями и старыми настройками.
+     * Обновляет содержимое существующего объекта.
+     * Имя каталога и сам объект остаются неизменными.
      */
+    public boolean replaceContents(
+            TraderPreset source,
+            long newRevision
+    ) {
+        if (source == null
+                || !name.equalsIgnoreCase(source.getName())
+                || newRevision < 0L) {
+            return false;
+        }
+
+        offers.clear();
+        offers.addAll(source.offers);
+
+        buybackOffers.clear();
+        buybackOffers.addAll(source.buybackOffers);
+
+        legacyData = source.legacyData.copy();
+        revision = newRevision;
+
+        return true;
+    }
+
     public NBTTagCompound writeToNBT() {
         NBTTagCompound tag = new NBTTagCompound();
 
         tag.setInteger("Version", VERSION);
         tag.setString("Name", name);
+        tag.setLong("Revision", revision);
 
         NBTTagList offerTags = new NBTTagList();
 
@@ -169,13 +190,11 @@ public class TraderPreset {
         return tag;
     }
 
-    /**
-     * Загружает каталог.
-     * <p>
-     * Для старых предложений без DisplaySlot сохраняется
-     * прежний порядок отображения.
-     */
     public static TraderPreset readFromNBT(NBTTagCompound tag) {
+        if (tag == null) {
+            return null;
+        }
+
         String name = tag.getString("Name");
 
         if (name.trim().isEmpty()) {
@@ -183,6 +202,7 @@ public class TraderPreset {
         }
 
         TraderPreset preset = new TraderPreset(name);
+        preset.revision = Math.max(0L, tag.getLong("Revision"));
 
         if (tag.hasKey("LegacyData", 10)) {
             preset.setLegacyData(tag.getCompoundTag("LegacyData"));

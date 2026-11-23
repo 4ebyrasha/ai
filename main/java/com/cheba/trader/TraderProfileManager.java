@@ -171,6 +171,44 @@ public class TraderProfileManager extends WorldSavedData {
         return true;
     }
 
+    /**
+     * Сохраняет изменения каталога, только если его ревизия
+     * совпадает с ревизией, на основе которой работал редактор.
+     *
+     * Обновляет существующий объект, не заменяя его в списке.
+     */
+    public boolean saveEditedPreset(
+            String presetName,
+            long expectedRevision,
+            TraderPreset editedPreset
+    ) {
+        if (presetName == null
+                || presetName.trim().isEmpty()
+                || editedPreset == null
+                || expectedRevision < 0L
+                || expectedRevision == Long.MAX_VALUE
+                || !presetName.equalsIgnoreCase(editedPreset.getName())) {
+            return false;
+        }
+
+        TraderPreset current = getPreset(presetName);
+
+        if (current == null
+                || current.getRevision() != expectedRevision) {
+            return false;
+        }
+
+        if (!current.replaceContents(
+                editedPreset,
+                expectedRevision + 1L
+        )) {
+            return false;
+        }
+
+        markDirty();
+        return true;
+    }
+
     public boolean replacePreset(TraderPreset preset) {
         if (preset == null) {
             return false;
