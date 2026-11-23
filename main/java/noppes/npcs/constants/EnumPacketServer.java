@@ -167,5 +167,6 @@ public enum EnumPacketServer {
 		TraderSessionClose.exempt();
 		TraderSessionOpenSell.exempt();
 		TraderSessionSell.exempt();
+		TraderPresetEditorSave.exempt();
 	}
 }
