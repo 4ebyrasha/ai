@@ -122,11 +122,11 @@ public class GuiTraderBindingSetup extends GuiScreen {
         drawString(fontRenderer, "Магазин (имя из списка «Магазины»)", left + 50, top + 30, 0xFFFFFF);
         shopNameField.drawTextBox();
         drawString(fontRenderer, "Группа лимитов (пусто — общая для магазина)",
-                left + 10, top + 77, 0xFFFFFF);
+                left + 50, top + 77, 0xFFFFFF);
         limitGroupField.drawTextBox();
         drawString(fontRenderer, "ID профиля: " + (profileId.isEmpty() ? "не создан" : profileId),
-                left + 10, top + 165, 0xAAAAAA);
-        if (!statusMessage.isEmpty()) drawCenteredString(fontRenderer, statusMessage, width / 2, top + 194, 0xE0E0E0);
+                left + 50, top + 180, 0xAAAAAA);
+        if (!statusMessage.isEmpty()) drawCenteredString(fontRenderer, statusMessage, width / 2, top + 198, 0xE0E0E0);
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
