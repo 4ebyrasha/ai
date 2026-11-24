@@ -599,10 +599,12 @@ public class GuiTraderPresetEditor extends GuiScreen {
     protected void keyTyped(char typedChar, int keyCode)
             throws IOException {
 
+        if (keyCode == 1) {
+            mc.displayGuiScreen(parent);
+            return;
+        }
+
         if (saving || stale) {
-            if (stale && keyCode == 1) {
-                super.keyTyped(typedChar, keyCode);
-            }
             return;
         }
 
