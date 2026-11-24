@@ -48,6 +48,11 @@ public class GuiTraderPresetManager extends GuiNPCInterface
         applyData(data);
     }
 
+    public void onEditorClosed() {
+        waiting = false;
+        send("list");
+    }
+
     public void applyData(NBTTagCompound data) {
         if (data == null) return;
         waiting = false;
