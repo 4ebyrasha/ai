@@ -27,16 +27,16 @@ public class GuiTraderBindingSetup extends GuiScreen {
     @Override
     public void initGui() {
         buttonList.clear();
-        int left = (width - 360) / 2, top = (height - 190) / 2;
-        shopNameField = new GuiTextField(0, fontRenderer, left + 10, top + 43, 340, 20);
+        int left = (width - 360) / 2, top = (height - 210) / 2;
+        shopNameField = new GuiTextField(0, fontRenderer, left + 50, top + 43, 260, 20);
         shopNameField.setMaxStringLength(128);
-        limitGroupField = new GuiTextField(1, fontRenderer, left + 10, top + 91, 340, 20);
+        limitGroupField = new GuiTextField(1, fontRenderer, left + 50, top + 91, 260, 20);
         limitGroupField.setMaxStringLength(128);
-        buttonList.add(new GuiButton(0, left + 10, top + 137, 110, 20, "Сохранить"));
-        buttonList.add(new GuiButton(1, left + 240, top + 137, 110, 20, "Отмена"));
-        buttonList.add(new GuiButton(2, left + 10, top + 114, 190, 20,
+        buttonList.add(new GuiButton(0, left + 35, top + 150, 120, 20, "Сохранить"));
+        buttonList.add(new GuiButton(1, left + 205, top + 150, 120, 20, "Отмена"));
+        buttonList.add(new GuiButton(2, left + 35, top + 122, 120, 20,
                 opensGui ? "Открывает GUI: Да" : "Открывает GUI: Нет"));
-        buttonList.add(new GuiButton(3, left + 240, top + 160, 110, 20, "Копировать ID"));
+        buttonList.add(new GuiButton(3, left + 205, top + 122, 120, 20, "Копировать ID"));
         if (!loadRequested) {
             loadRequested = true;
             NBTTagCompound request = new NBTTagCompound();
@@ -117,16 +117,16 @@ public class GuiTraderBindingSetup extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawDefaultBackground();
-        int left = (width - 360) / 2, top = (height - 190) / 2;
+        int left = (width - 360) / 2, top = (height - 210) / 2;
         drawCenteredString(fontRenderer, "Профиль торговца NPC", width / 2, top + 10, 0xFFFFFF);
-        drawString(fontRenderer, "Магазин (имя из списка «Магазины»)", left + 10, top + 30, 0xFFFFFF);
+        drawString(fontRenderer, "Магазин (имя из списка «Магазины»)", left + 50, top + 30, 0xFFFFFF);
         shopNameField.drawTextBox();
         drawString(fontRenderer, "Группа лимитов (пусто — общая для магазина)",
                 left + 10, top + 77, 0xFFFFFF);
         limitGroupField.drawTextBox();
         drawString(fontRenderer, "ID профиля: " + (profileId.isEmpty() ? "не создан" : profileId),
                 left + 10, top + 165, 0xAAAAAA);
-        if (!statusMessage.isEmpty()) drawCenteredString(fontRenderer, statusMessage, width / 2, top + 185, 0xE0E0E0);
+        if (!statusMessage.isEmpty()) drawCenteredString(fontRenderer, statusMessage, width / 2, top + 194, 0xE0E0E0);
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
