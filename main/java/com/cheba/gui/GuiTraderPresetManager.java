@@ -98,22 +98,22 @@ public class GuiTraderPresetManager extends GuiNPCInterface
         super.initGui();
         if (scroll == null) {
             scroll = new GuiCustomScroll(this, 0);
-            scroll.setSize(165, 208);
+            scroll.setSize(165, 184);
         }
         scroll.guiLeft = guiLeft + 4;
         scroll.guiTop = guiTop + 4;
         addScroll(scroll);
 
-        nameField = new GuiTextField(0, fontRenderer, guiLeft + 170, guiTop + 34, 82, 20);
+        nameField = new GuiTextField(0, fontRenderer, guiLeft + 170, guiTop + 22, 82, 20);
         nameField.setMaxStringLength(128);
 
-        buttonList.add(new GuiButton(0, guiLeft + 170, guiTop + 62, 82, 20, "Создать"));
-        buttonList.add(new GuiButton(1, guiLeft + 170, guiTop + 84, 82, 20, "Переименовать"));
-        buttonList.add(new GuiButton(2, guiLeft + 170, guiTop + 106, 82, 20, "Удалить"));
-        buttonList.add(new GuiButton(3, guiLeft + 170, guiTop + 128, 82, 20, "Открыть"));
-        buttonList.add(new GuiButton(5, guiLeft + 170, guiTop + 150, 82, 20, "Используют NPC"));
-        buttonList.add(new GuiButton(6, guiLeft + 170, guiTop + 172, 82, 20, "Отвязать"));
-        buttonList.add(new GuiButton(4, guiLeft + 170, guiTop + 196, 82, 20, "Назад"));
+        buttonList.add(new GuiButton(0, guiLeft + 170, guiTop + 50, 82, 20, "Создать"));
+        buttonList.add(new GuiButton(1, guiLeft + 170, guiTop + 72, 82, 20, "Переименовать"));
+        buttonList.add(new GuiButton(2, guiLeft + 170, guiTop + 94, 82, 20, "Удалить"));
+        buttonList.add(new GuiButton(3, guiLeft + 170, guiTop + 116, 82, 20, "Редактировать"));
+        buttonList.add(new GuiButton(5, guiLeft + 170, guiTop + 138, 82, 20, "Используют NPC"));
+        buttonList.add(new GuiButton(6, guiLeft + 170, guiTop + 160, 82, 20, "Отвязать"));
+        buttonList.add(new GuiButton(4, guiLeft + 170, guiTop + 184, 82, 20, "Назад"));
 
         refreshModeControls();
     }
@@ -320,11 +320,11 @@ public class GuiTraderPresetManager extends GuiNPCInterface
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         super.drawScreen(mouseX, mouseY, partialTicks);
         if (nameField != null && nameField.getVisible()) {
-            drawString(fontRenderer, "Имя магазина", guiLeft + 170, guiTop + 20, 0xFFFFFF);
+            drawString(fontRenderer, "Имя магазина", guiLeft + 170, guiTop + 8, 0xFFFFFF);
             nameField.drawTextBox();
         }
         if (!status.isEmpty()) {
-            drawString(fontRenderer, status, guiLeft + 4, guiTop + ySize - 10, 0xFFAA55);
+            drawCenteredString(fontRenderer, fontRenderer.trimStringToWidth(status, xSize - 8),\n                    guiLeft + xSize / 2, guiTop + ySize - 12, 0xFFAA55);
         }
     }
 
