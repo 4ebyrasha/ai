@@ -139,10 +139,7 @@ public class PacketHandlerServer {
 			EntityNPCInterface npc
 	) throws Exception {
 
-		if (type == EnumPacketServer.TraderPresetEditorFetch) {
-            handleTraderPresetEditorFetch(player, npc);
-
-        } else if (type == EnumPacketServer.TraderBindingSetup) {
+		if (type == EnumPacketServer.TraderBindingSetup) {
 			NBTTagCompound request = Server.readNBT(buffer);
 			handleTraderBindingSetup(player, npc, request);
 
@@ -1382,50 +1379,6 @@ public class PacketHandlerServer {
 		player.getServer().logWarning(player.getName() + ": " + warning);
 	}
 
-
-	private void handleTraderPresetEditorFetch(
-			EntityPlayerMP player,
-			EntityNPCInterface npc
-	) {
-		if (player == null || npc == null || npc.world != player.world || npc.isDead) {
-			if (player != null) {
-				player.sendMessage(new TextComponentString("Не удалось получить NPC для открытия каталога."));
-			}
-			return;
-		}
-
-		TraderProfileManager manager = TraderProfileManager.get(npc.world);
-		if (manager == null) {
-			player.sendMessage(new TextComponentString("Хранилище магазинов недоступно."));
-			return;
-		}
-
-		TraderProfile profile = npc.hasTraderBinding()
-				? manager.getProfileById(npc.getTraderBinding().getTraderId())
-				: null;
-
-		if (profile == null && !npc.hasTraderBinding()
-					&& npc.roleInterface instanceof RoleTrader) {
-			profile = manager.migrateLegacyNpc(npc, (RoleTrader) npc.roleInterface);
-		}
-
-		if (profile == null || profile.getPresetName().isEmpty()) {
-			player.sendMessage(new TextComponentString("У NPC не настроен торговый профиль."));
-			return;
-		}
-
-		TraderPreset preset = manager.getPreset(profile.getPresetName());
-		if (preset == null) {
-			player.sendMessage(new TextComponentString("Каталог магазина не найден."));
-			return;
-		}
-
-		TraderPresetEditorService.registerEditor(player, preset.getName());
-
-		NBTTagCompound data = new NBTTagCompound();
-		data.setTag("Preset", preset.writeToNBT());
-		Server.sendData(player, EnumPacketClient.TraderPresetEditorOpen, data);
-	}
 
 	private void handleTraderBindingSetup(
 			EntityPlayerMP player,

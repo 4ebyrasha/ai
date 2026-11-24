@@ -1,7 +1,7 @@
 
 package noppes.npcs.client.gui.roles;
 
-import com.cheba.gui.GuiTraderPresetEditor;
+import com.cheba.gui.GuiNpcDynamicTraderEditor;
 import com.cheba.gui.GuiTraderBindingSetup;
 
 import net.minecraft.client.gui.GuiButton;
@@ -104,7 +104,13 @@ public class GuiNpcTraderSetup extends GuiContainerNPCInterface2 {
 		}
 
 		if (button.id == 3) {
-			Client.sendData(EnumPacketServer.TraderPresetEditorFetch);
+			this.mc.displayGuiScreen(
+					new GuiNpcDynamicTraderEditor(
+							this.traderNpc,
+							this,
+							this.role
+					)
+			);
 		}
 		if (button.id == 5) {
 			this.mc.displayGuiScreen(new GuiTraderBindingSetup(this));

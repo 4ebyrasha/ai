@@ -107,12 +107,7 @@ public class PacketHandlerClient extends PacketHandlerServer {
 			}
 
 			Minecraft.getMinecraft().displayGuiScreen(
-					new GuiTraderPresetEditor(
-                            preset,
-                            Minecraft.getMinecraft().currentScreen instanceof noppes.npcs.client.gui.roles.GuiNpcTraderSetup
-                                    ? Minecraft.getMinecraft().currentScreen
-                                    : null
-                    )
+					new GuiTraderPresetEditor(preset)
 			);
 
 		} else if (type == EnumPacketClient.TraderPresetEditorResult) {
