@@ -324,7 +324,8 @@ public class GuiTraderPresetManager extends GuiNPCInterface
             nameField.drawTextBox();
         }
         if (!status.isEmpty()) {
-            drawCenteredString(fontRenderer, fontRenderer.trimStringToWidth(status, xSize - 8),\n                    guiLeft + xSize / 2, guiTop + ySize - 12, 0xFFAA55);
+            drawCenteredString(fontRenderer, fontRenderer.trimStringToWidth(status, xSize - 8),
+                    guiLeft + xSize / 2, guiTop + ySize - 12, 0xFFAA55);
         }
     }
 
