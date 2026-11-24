@@ -10,6 +10,8 @@ import noppes.npcs.constants.EnumPacketClient;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.nbt.CompressedStreamTools;
@@ -34,8 +36,15 @@ public final class TraderPresetEditorService {
     private static final int MAX_OFFERS = 54;
     private static final int MAX_BUYBACK_OFFERS = 128;
     private static final int MAX_PRICE_ITEMS = 54;
+    private static final Map<EntityPlayerMP, String> OPEN_EDITORS = new WeakHashMap<>();
 
     private TraderPresetEditorService() {
+    }
+
+    public static void registerEditor(EntityPlayerMP player, String presetName) {
+        if (player != null && presetName != null && !presetName.trim().isEmpty()) {
+            OPEN_EDITORS.put(player, presetName);
+        }
     }
 
     public static void handleSave(
@@ -124,6 +133,7 @@ public final class TraderPresetEditorService {
         }
 
         broadcastPresetUpdate(player, savedPreset);
+        broadcastEditorStale(player, savedPreset);
 
         sendResult(
                 player,
@@ -393,6 +403,29 @@ public final class TraderPresetEditorService {
                     EnumPacketClient.TraderPresetUpdate,
                     update
             );
+        }
+    }
+
+    private static void broadcastEditorStale(
+            EntityPlayerMP sourcePlayer,
+            TraderPreset preset
+    ) {
+        if (sourcePlayer == null || sourcePlayer.getServer() == null || preset == null) {
+            return;
+        }
+
+        NBTTagCompound update = new NBTTagCompound();
+        update.setString("PresetName", preset.getName());
+        update.setLong("Revision", preset.getRevision());
+
+        for (Map.Entry<EntityPlayerMP, String> entry : OPEN_EDITORS.entrySet()) {
+            EntityPlayerMP target = entry.getKey();
+            if (target == null || target == sourcePlayer
+                    || !preset.getName().equalsIgnoreCase(entry.getValue())) {
+                continue;
+            }
+
+            Server.sendData(target, EnumPacketClient.TraderPresetEditorStale, update);
         }
     }
 

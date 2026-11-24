@@ -1408,6 +1408,11 @@ public class PacketHandlerServer {
 				? manager.getProfileById(npc.getTraderBinding().getTraderId())
 				: null;
 
+		if (currentProfile == null && !npc.hasTraderBinding()
+					&& npc.roleInterface instanceof RoleTrader) {
+			currentProfile = manager.migrateLegacyNpc(npc, (RoleTrader) npc.roleInterface);
+		}
+
 		if ("load".equals(action)) {
 			response.setBoolean("Success", true);
 			response.setString("ShopName",
@@ -1417,6 +1422,8 @@ public class PacketHandlerServer {
 							? "" : currentProfile.getPresetName());
 			response.setBoolean("SharedLimits",
 					currentProfile != null && currentProfile.hasSharedLimits());
+			response.setString("ProfileId",
+					currentProfile == null ? "" : currentProfile.getId());
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
@@ -1486,6 +1493,7 @@ public class PacketHandlerServer {
 		npc.updateClient = true;
 
 		response.setBoolean("Success", true);
+		response.setString("ProfileId", profile.getId());
 		response.setString("Message", shopName.isEmpty()
 				? "Создан личный магазин NPC."
 				: "Магазин сохранён. Одинаковое имя подключает NPC к общему каталогу.");

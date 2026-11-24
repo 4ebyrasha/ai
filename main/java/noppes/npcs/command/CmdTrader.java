@@ -5,6 +5,7 @@ import com.cheba.trader.TraderProfile;
 import com.cheba.trader.TraderProfileManager;
 import com.cheba.trader.TraderPreset;
 import com.cheba.trader.TraderSessionManager;
+import com.cheba.trader.TraderPresetEditorService;
 
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -471,7 +472,7 @@ public class CmdTrader extends CommandNoppesBase {
     @SubCommand(
             name = "opentrader",
             desc = "Open trader profile",
-            usage = "<player> <profileName>",
+            usage = "<player> <profileName|profileId>",
             permission = 2
     )
     public void openTrader(
@@ -482,7 +483,7 @@ public class CmdTrader extends CommandNoppesBase {
 
         if (args.length < 2) {
             throw new CommandException(
-                    "Usage: /customnpcs trader opentrader <player> <profileName>"
+                    "Usage: /customnpcs trader opentrader <player> <profileName|profileId>"
             );
         }
 
@@ -504,8 +505,10 @@ public class CmdTrader extends CommandNoppesBase {
             );
         }
 
-        TraderProfile profile =
-                manager.getProfileByName(profileName);
+        TraderProfile profile = manager.getProfileById(profileName);
+        if (profile == null) {
+            profile = manager.getProfileByName(profileName);
+        }
 
         if (profile == null) {
             throw new CommandException(
@@ -525,7 +528,7 @@ public class CmdTrader extends CommandNoppesBase {
         }
 
         TraderSessionManager.Session session =
-                TraderSessionManager.open(player, profileName);
+                TraderSessionManager.open(player, profile.getId());
 
         if (session == null) {
             throw new CommandException(
@@ -588,6 +591,8 @@ public class CmdTrader extends CommandNoppesBase {
                     presetName
             );
         }
+
+        TraderPresetEditorService.registerEditor(player, preset.getName());
 
         NBTTagCompound data = new NBTTagCompound();
         data.setTag("Preset", preset.writeToNBT());

@@ -73,7 +73,10 @@ public final class TraderSessionManager {
             return null;
         }
 
-        TraderProfile profile = manager.getProfileByName(profileName);
+        TraderProfile profile = manager.getProfileById(profileName);
+        if (profile == null) {
+            profile = manager.getProfileByName(profileName);
+        }
         if (profile == null || profile.getPresetName().isEmpty()) {
             return null;
         }

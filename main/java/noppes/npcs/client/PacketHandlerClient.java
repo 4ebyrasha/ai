@@ -134,7 +134,16 @@ public class PacketHandlerClient extends PacketHandlerServer {
 						preset
 				);
 			}
-		} else if (type == EnumPacketClient.TraderBindingSetupResult) {
+		} else if (type == EnumPacketClient.TraderPresetEditorStale) {
+            NBTTagCompound data = Server.readNBT(buffer);
+            GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
+            if (currentScreen instanceof GuiTraderPresetEditor) {
+                ((GuiTraderPresetEditor) currentScreen).onRemoteUpdate(
+                        data.getString("PresetName"),
+                        data.getLong("Revision")
+                );
+            }
+        } else if (type == EnumPacketClient.TraderBindingSetupResult) {
 			NBTTagCompound data = Server.readNBT(buffer);
 			GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
 

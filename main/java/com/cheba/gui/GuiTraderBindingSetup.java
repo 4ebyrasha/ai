@@ -17,6 +17,7 @@ public class GuiTraderBindingSetup extends GuiScreen {
     private boolean sharedLimits;
     private boolean loadRequested;
     private boolean saving;
+    private String profileId = "";
     private String statusMessage = "";
 
     public GuiTraderBindingSetup(GuiScreen parent) {
@@ -26,8 +27,8 @@ public class GuiTraderBindingSetup extends GuiScreen {
     @Override
     public void initGui() {
         buttonList.clear();
-        int left = (width - 310) / 2;
-        int top = (height - 130) / 2;
+        int left = (width - 360) / 2;
+        int top = (height - 165) / 2;
 
         shopNameField = new GuiTextField(
                 0, fontRenderer, left + 10, top + 42, 290, 20
@@ -36,6 +37,7 @@ public class GuiTraderBindingSetup extends GuiScreen {
 
         buttonList.add(new GuiButton(0, left + 10, top + 92, 110, 20, "Сохранить"));
         buttonList.add(new GuiButton(1, left + 190, top + 92, 110, 20, "Отмена"));
+        buttonList.add(new GuiButton(3, left + 245, top + 119, 105, 20, "Копировать ID"));
         updateSharedButton();
 
         if (!loadRequested) {
@@ -71,6 +73,9 @@ public class GuiTraderBindingSetup extends GuiScreen {
         } else if (button.id == 2) {
             sharedLimits = !sharedLimits;
             updateSharedButton();
+        } else if (button.id == 3 && !profileId.isEmpty()) {
+            GuiScreen.setClipboardString(profileId);
+            statusMessage = "ID скопирован.";
         }
     }
 
@@ -90,6 +95,9 @@ public class GuiTraderBindingSetup extends GuiScreen {
         statusMessage = data.getString("Message");
         if (!data.getBoolean("Success")) return;
 
+        if (data.hasKey("ProfileId", 8)) {
+            profileId = data.getString("ProfileId");
+        }
         if ("load".equals(data.getString("Action"))) {
             shopNameField.setText(data.getString("ShopName"));
             sharedLimits = data.getBoolean("SharedLimits");
@@ -120,7 +128,9 @@ public class GuiTraderBindingSetup extends GuiScreen {
     @Override
     public void updateScreen() {
         shopNameField.updateCursorCounter();
-        for (GuiButton button : buttonList) button.enabled = !saving;
+        for (GuiButton button : buttonList) {
+            button.enabled = !saving && (button.id != 3 || !profileId.isEmpty());
+        }
     }
 
     @Override
@@ -138,10 +148,12 @@ public class GuiTraderBindingSetup extends GuiScreen {
                 left + 10, top + 55, 0xAAAAAA);
         fontRenderer.drawString("Одинаковое имя — общий каталог предложений.",
                 left + 10, top + 78, 0xAAAAAA);
+        fontRenderer.drawString("Trader ID: " + (profileId.isEmpty() ? "не создан" : profileId),
+                left + 10, top + 124, 0xAAAAAA);
 
         if (!statusMessage.isEmpty()) {
             drawCenteredString(fontRenderer, statusMessage,
-                    width / 2, top + 118, 0xE0E0E0);
+                    width / 2, top + 151, 0xE0E0E0);
         }
         super.drawScreen(mouseX, mouseY, partialTicks);
     }

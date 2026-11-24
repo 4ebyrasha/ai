@@ -27,7 +27,15 @@ public class TraderRuntimeState extends WorldSavedData {
             return null;
         }
 
-        MapStorage storage = world.getPerWorldStorage();
+        World storageWorld = world.getMinecraftServer() != null
+                ? world.getMinecraftServer().getWorld(0)
+                : world;
+
+        if (storageWorld == null || storageWorld.isRemote) {
+            return null;
+        }
+
+        MapStorage storage = storageWorld.getPerWorldStorage();
 
         WorldSavedData savedData = storage.getOrLoadData(
                 TraderRuntimeState.class,
@@ -43,7 +51,7 @@ public class TraderRuntimeState extends WorldSavedData {
             storage.setData(DATA_NAME, state);
         }
 
-        long currentDay = world.getTotalWorldTime() / 24000L;
+        long currentDay = storageWorld.getTotalWorldTime() / 24000L;
 
         state.ensureDay(currentDay);
 

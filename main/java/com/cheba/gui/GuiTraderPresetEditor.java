@@ -39,6 +39,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     private GuiTextField dailyStockField;
 
     private boolean saving;
+    private boolean stale;
 
     public GuiTraderPresetEditor(TraderPreset preset) {
         if (preset == null) {
@@ -78,6 +79,24 @@ public class GuiTraderPresetEditor extends GuiScreen {
         } else {
             statusMessage = message;
         }
+    }
+
+    public void onRemoteUpdate(String presetName, long revision) {
+        if (presetName == null || !preset.getName().equalsIgnoreCase(presetName)
+                || revision <= preset.getRevision()) {
+            return;
+        }
+
+        stale = true;
+        draggedOfferId = null;
+        statusMessage = "Catalog changed in another editor. Close and reopen to fetch the latest version.";
+        for (GuiButton button : buttonList) {
+            button.enabled = button.id == 3;
+        }
+        priceField.setEnabled(false);
+        sellPriceField.setEnabled(false);
+        maxPerDayField.setEnabled(false);
+        dailyStockField.setEnabled(false);
     }
 
     private int left() {
@@ -303,7 +322,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     protected void actionPerformed(@Nonnull GuiButton button)
             throws IOException {
 
-        if (saving) {
+        if (saving || (stale && button.id != 3)) {
             return;
         }
 
@@ -427,7 +446,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     }
 
     private void savePreset() {
-        if (saving) {
+        if (saving || stale) {
             return;
         }
 
@@ -470,7 +489,10 @@ public class GuiTraderPresetEditor extends GuiScreen {
             int mouseButton
     ) throws IOException {
 
-        if (saving) {
+        if (saving || stale) {
+            if (stale) {
+                super.mouseClicked(mouseX, mouseY, mouseButton);
+            }
             return;
         }
 
@@ -518,7 +540,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     ) {
         super.mouseReleased(mouseX, mouseY, state);
 
-        if (state != 0 || draggedOfferId == null) {
+        if (stale || state != 0 || draggedOfferId == null) {
             return;
         }
 
@@ -571,7 +593,10 @@ public class GuiTraderPresetEditor extends GuiScreen {
     protected void keyTyped(char typedChar, int keyCode)
             throws IOException {
 
-        if (saving) {
+        if (saving || stale) {
+            if (stale && keyCode == 1) {
+                super.keyTyped(typedChar, keyCode);
+            }
             return;
         }
 
@@ -595,7 +620,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
         dailyStockField.updateCursorCounter();
 
         for (GuiButton button : buttonList) {
-            button.enabled = !saving;
+            button.enabled = !saving && (!stale || button.id == 3);
         }
     }
 

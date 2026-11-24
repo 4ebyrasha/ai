@@ -548,7 +548,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 		EntityPlayerMP serverPlayer = (EntityPlayerMP) player;
 		TraderSessionManager.Session session =
-				TraderSessionManager.open(serverPlayer, profile.getName());
+				TraderSessionManager.open(serverPlayer, profile.getId());
 
 		if (session == null) {
 			player.sendMessage(new TextComponentString("Could not open trader session."));
