@@ -389,7 +389,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
             }
 
             case 3: {
-                mc.displayGuiScreen(parent);
+                mc.displayGuiScreen(null);
                 break;
             }
 
@@ -594,7 +594,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
             throws IOException {
 
         if (keyCode == 1) {
-            mc.displayGuiScreen(parent);
+            mc.displayGuiScreen(null);
             return;
         }
 
