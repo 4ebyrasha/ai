@@ -351,6 +351,10 @@ public class TraderProfileManager extends WorldSavedData {
             );
         }
 
+        if (npc.isTraderLegacyMigrationBlocked()) {
+            return null;
+        }
+
         String npcUuid = npc.getUniqueID().toString();
 
         String oldMarketName = role.getMarket() == null
@@ -449,6 +453,9 @@ public class TraderProfileManager extends WorldSavedData {
         }
         if (npc.hasTraderBinding()) {
             return getProfileById(npc.getTraderBinding().getTraderId());
+        }
+        if (npc.isTraderLegacyMigrationBlocked()) {
+            return null;
         }
         return migrateLegacyNpc(npc, role);
     }

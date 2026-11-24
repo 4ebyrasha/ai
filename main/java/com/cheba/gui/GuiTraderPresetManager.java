@@ -55,13 +55,14 @@ public class GuiTraderPresetManager extends GuiNPCInterface
 
     public void applyData(NBTTagCompound data) {
         if (data == null) return;
+
         waiting = false;
         status = data.getString("Message");
-        mode = data.getString("Mode").isEmpty() ? "shops" : data.getString("Mode");
+        String responseMode = data.getString("Mode");
+        mode = responseMode.isEmpty() ? "shops" : responseMode;
 
         if ("references".equals(mode)) {
             references.clear();
-            selectedReference = null;
             if (data.hasKey("References", 9)) {
                 NBTTagList list = data.getTagList("References", 10);
                 for (int i = 0; i < list.tagCount(); i++) {
@@ -69,32 +70,27 @@ public class GuiTraderPresetManager extends GuiNPCInterface
                     references.put(entry.getString("Label"), entry.copy());
                 }
             }
-            if (!references.isEmpty()) selectedReference = references.keySet().iterator().next();
-            if (scroll != null) {
-                scroll.setList(new ArrayList<>(references.keySet()));
-                if (selectedReference != null) scroll.setSelected(selectedReference);
+            if (selectedReference == null || !references.containsKey(selectedReference)) {
+                selectedReference = references.isEmpty()
+                        ? null : references.keySet().iterator().next();
             }
-            return;
+        } else {
+            shopLabels.clear();
+            if (data.hasKey("Presets", 9)) {
+                NBTTagList list = data.getTagList("Presets", 10);
+                for (int i = 0; i < list.tagCount(); i++) {
+                    NBTTagCompound entry = list.getCompoundTagAt(i);
+                    String name = entry.getString("Name");
+                    shopLabels.put(name + " (" + entry.getInteger("Offers") + ")", name);
+                }
+            }
+            if (selectedShop == null || !shopLabels.containsValue(selectedShop)) {
+                selectedShop = shopLabels.isEmpty()
+                        ? null : shopLabels.values().iterator().next();
+            }
         }
 
-        shopLabels.clear();
-        if (data.hasKey("Presets", 9)) {
-            NBTTagList list = data.getTagList("Presets", 10);
-            for (int i = 0; i < list.tagCount(); i++) {
-                NBTTagCompound entry = list.getCompoundTagAt(i);
-                String name = entry.getString("Name");
-                shopLabels.put(name + " (" + entry.getInteger("Offers") + ")", name);
-            }
-        }
-        if (selectedShop == null || !shopLabels.containsValue(selectedShop)) {
-            selectedShop = shopLabels.isEmpty() ? null : shopLabels.values().iterator().next();
-        }
-        if (scroll != null) {
-            List<String> labels = new ArrayList<>(shopLabels.keySet());
-            java.util.Collections.sort(labels, new noppes.npcs.util.NaturalOrderComparator());
-            scroll.setList(labels);
-            selectShopLabel();
-        }
+        refreshModeControls();
     }
 
     @Override
@@ -119,32 +115,43 @@ public class GuiTraderPresetManager extends GuiNPCInterface
         buttonList.add(new GuiButton(6, guiLeft + 170, guiTop + 172, 82, 20, "Отвязать"));
         buttonList.add(new GuiButton(4, guiLeft + 170, guiTop + 196, 82, 20, "Назад"));
 
-        if ("references".equals(mode)) {
-            nameField.setVisible(false);
-            findButton(0).visible = false;
-            findButton(1).visible = false;
-            findButton(2).visible = false;
-            findButton(3).visible = false;
-            findButton(5).visible = false;
-            findButton(6).visible = true;
-            findButton(4).displayString = "К магазинам";
-            scroll.setList(new ArrayList<>(references.keySet()));
-            if (selectedReference != null) scroll.setSelected(selectedReference);
-        } else {
-            nameField.setVisible(true);
-            findButton(0).visible = true;
-            findButton(1).visible = true;
-            findButton(2).visible = true;
-            findButton(3).visible = true;
-            findButton(5).visible = true;
-            findButton(6).visible = false;
-            findButton(4).displayString = "Назад";
-            List<String> labels = new ArrayList<>(shopLabels.keySet());
-            java.util.Collections.sort(labels, new noppes.npcs.util.NaturalOrderComparator());
-            scroll.setList(labels);
-            selectShopLabel();
+        refreshModeControls();
+    }
+
+    private void refreshModeControls() {
+        boolean referencesMode = "references".equals(mode);
+
+        if (nameField != null) nameField.setVisible(!referencesMode);
+        setButtonVisible(0, !referencesMode);
+        setButtonVisible(1, !referencesMode);
+        setButtonVisible(2, !referencesMode);
+        setButtonVisible(3, !referencesMode);
+        setButtonVisible(5, !referencesMode);
+        setButtonVisible(6, referencesMode);
+
+        GuiButton backButton = findButton(4);
+        if (backButton != null) {
+            backButton.displayString = referencesMode ? "К магазинам" : "Назад";
         }
+
+        if (scroll != null) {
+            if (referencesMode) {
+                scroll.setList(new ArrayList<>(references.keySet()));
+                if (selectedReference != null) scroll.setSelected(selectedReference);
+            } else {
+                List<String> labels = new ArrayList<>(shopLabels.keySet());
+                java.util.Collections.sort(labels, new noppes.npcs.util.NaturalOrderComparator());
+                scroll.setList(labels);
+                selectShopLabel();
+            }
+        }
+
         updateButtons();
+    }
+
+    private void setButtonVisible(int id, boolean visible) {
+        GuiButton button = findButton(id);
+        if (button != null) button.visible = visible;
     }
 
     private GuiButton findButton(int id) {
@@ -163,23 +170,31 @@ public class GuiTraderPresetManager extends GuiNPCInterface
     }
 
     private void updateButtons() {
-        boolean selected = "references".equals(mode)
+        boolean referencesMode = "references".equals(mode);
+        boolean selected = referencesMode
                 ? selectedReference != null : selectedShop != null;
+
         for (GuiButton button : buttonList) {
-            if (button.id != 4) button.enabled = !waiting;
+            button.enabled = button.id == 4 || !waiting;
         }
-        if ("references".equals(mode)) {
+
+        if (referencesMode) {
             NBTTagCompound selectedEntry = selectedReference == null
                     ? null : references.get(selectedReference);
             boolean loadedNpc = selectedEntry != null
                     && selectedEntry.getInteger("EntityId") >= 0;
-            findButton(6).enabled = !waiting && selected && loadedNpc;
+            setButtonEnabled(6, !waiting && selected && loadedNpc);
         } else {
-            findButton(1).enabled = !waiting && selected;
-            findButton(2).enabled = !waiting && selected;
-            findButton(3).enabled = !waiting && selected;
-            findButton(5).enabled = !waiting && selected;
+            setButtonEnabled(1, !waiting && selected);
+            setButtonEnabled(2, !waiting && selected);
+            setButtonEnabled(3, !waiting && selected);
+            setButtonEnabled(5, !waiting && selected);
         }
+    }
+
+    private void setButtonEnabled(int id, boolean enabled) {
+        GuiButton button = findButton(id);
+        if (button != null) button.enabled = enabled;
     }
 
     private void send(String action) {
@@ -234,9 +249,15 @@ public class GuiTraderPresetManager extends GuiNPCInterface
 
     @Override
     public void confirmClicked(boolean result, int id) {
-        if (result && id == 2) send("delete");
-        else if (result && id == 6) send("detach");
-        else mc.displayGuiScreen(this);
+        // Restore this manager before sending: the server response must update
+        // this instance, not create a new manager with GuiYesNo as its parent.
+        mc.displayGuiScreen(this);
+
+        if (result && id == 2) {
+            send("delete");
+        } else if (result && id == 6) {
+            send("detach");
+        }
     }
 
     @Override

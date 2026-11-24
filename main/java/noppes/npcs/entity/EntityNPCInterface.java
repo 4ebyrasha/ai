@@ -228,6 +228,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	 * у NPC с любой ролью или без торговой роли.
 	 */
 	private TraderBinding traderBinding;
+	private boolean traderLegacyMigrationBlocked;
 
 	public EntityNPCInterface(World world) {
 		super(world);
@@ -1294,6 +1295,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		} else {
 			this.traderBinding = null;
 		}
+		this.traderLegacyMigrationBlocked =
+				compound.getBoolean("TraderLegacyMigrationBlocked");
 
 		if (this.advanced.role != 0 && this.roleInterface != null) {
 			this.roleInterface.readFromNBT(compound);
@@ -1306,6 +1309,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		 */
 		if (!this.isRemote()
 				&& this.traderBinding == null
+				&& !this.traderLegacyMigrationBlocked
 				&& this.roleInterface instanceof RoleTrader) {
 
 			TraderProfileManager manager =
@@ -1373,6 +1377,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		} else {
 			compound.removeTag("TraderBinding");
 		}
+		compound.setBoolean("TraderLegacyMigrationBlocked", this.traderLegacyMigrationBlocked);
 
 		this.inventory.writeEntityToNBT(compound);
 		this.transform.writeToNBT(compound);
@@ -2233,6 +2238,11 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	 */
 	public void setTraderBinding(TraderBinding traderBinding) {
 		this.traderBinding = traderBinding;
+		this.traderLegacyMigrationBlocked = traderBinding == null;
+	}
+
+	public boolean isTraderLegacyMigrationBlocked() {
+		return traderLegacyMigrationBlocked;
 	}
 
 	/**

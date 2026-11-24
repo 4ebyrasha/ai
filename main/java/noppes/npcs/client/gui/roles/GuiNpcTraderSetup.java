@@ -12,6 +12,8 @@ import noppes.npcs.entity.EntityNPCInterface;
 public class GuiNpcTraderSetup extends GuiContainerNPCInterface2 {
     public GuiNpcTraderSetup(EntityNPCInterface npc, ContainerNPCTraderSetup container) {
         super(npc, container);
+        this.ySize = 200;
+        this.menuYOffset = 0;
     }
 
     @Override

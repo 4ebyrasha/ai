@@ -1413,6 +1413,7 @@ public class PacketHandlerServer {
 				: null;
 
 		if (currentProfile == null && !npc.hasTraderBinding()
+					&& !npc.isTraderLegacyMigrationBlocked()
 					&& npc.roleInterface instanceof RoleTrader) {
 			currentProfile = manager.migrateLegacyNpc(npc, (RoleTrader) npc.roleInterface);
 		}
