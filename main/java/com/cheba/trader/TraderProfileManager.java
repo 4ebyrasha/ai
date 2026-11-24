@@ -209,6 +209,56 @@ public class TraderProfileManager extends WorldSavedData {
         return true;
     }
 
+    public boolean renamePreset(String oldName, String newName) {
+        return renamePreset(oldName, newName, null);
+    }
+
+    public boolean renamePreset(String oldName, String newName, World world) {
+        if (oldName == null || newName == null || newName.trim().isEmpty()
+                || newName.trim().length() > 128) return false;
+        TraderPreset current = getPreset(oldName);
+        TraderPreset collision = getPreset(newName);
+        if (current == null || (collision != null && collision != current)) return false;
+
+        Map<TraderProfile, String> oldScopes = new HashMap<>();
+        for (TraderProfile profile : profiles) {
+            if (profile.getPresetName().equalsIgnoreCase(oldName)) {
+                oldScopes.put(profile, profile.getLimitScope());
+            }
+        }
+
+        TraderPreset replacement = current.copyAs(newName.trim());
+        int index = presets.indexOf(current);
+        if (index < 0) return false;
+        presets.set(index, replacement);
+        for (TraderProfile profile : oldScopes.keySet()) {
+            profile.setPresetName(replacement.getName());
+            if (world != null) {
+                TraderRuntimeState.migrateScope(
+                        world, oldScopes.get(profile), profile.getLimitScope());
+            }
+        }
+        markDirty();
+        return true;
+    }
+
+    public List<String> getPresetReferences(String name) {
+        List<String> references = new ArrayList<>();
+        if (name == null) return references;
+        for (TraderProfile profile : profiles) {
+            if (profile.getPresetName().equalsIgnoreCase(name)) references.add(profile.getName());
+        }
+        return references;
+    }
+
+    public boolean deletePreset(String name) {
+        TraderPreset preset = getPreset(name);
+        if (preset == null || !getPresetReferences(name).isEmpty()) return false;
+        if (!presets.remove(preset)) return false;
+        markDirty();
+        return true;
+    }
+
     public boolean replacePreset(TraderPreset preset) {
         if (preset == null) {
             return false;
@@ -296,12 +346,12 @@ public class TraderProfileManager extends WorldSavedData {
          * Профиль всегда индивидуальный.
          * Общность лимитов задаётся отдельно через limitGroupName.
          */
-        String profileName = "legacy-" + npcUuid;
+        String profileName = npc.getName() + " [" + npcUuid.substring(0, 8) + "]";
 
         String limitGroupName = role.sharedLimits
                 && !oldMarketName.isEmpty()
                 ? oldMarketName
-                : "";
+                : "legacy-" + npcUuid;
 
         TraderProfile profile = new TraderProfile(
                 UUID.randomUUID().toString(),
@@ -350,43 +400,18 @@ public class TraderProfileManager extends WorldSavedData {
      * Synchronizes edits made through the familiar NPC trader editor.
      * A missing binding is migrated once; subsequent saves update its catalog.
      */
+    /**
+     * Legacy RoleSave packets must not overwrite independent catalogs.
+     * Old NPCs are migrated once; catalog edits use revision-checked saves.
+     */
     public TraderProfile syncLegacyRole(EntityNPCInterface npc, RoleTrader role) {
-        if (npc == null || role == null
-                || npc.world == null || npc.world.isRemote) {
+        if (npc == null || role == null || npc.world == null || npc.world.isRemote) {
             return null;
         }
-
-        TraderProfile profile = npc.hasTraderBinding()
-                ? getProfileById(npc.getTraderBinding().getTraderId())
-                : migrateLegacyNpc(npc, role);
-        if (profile == null) {
-            return null;
+        if (npc.hasTraderBinding()) {
+            return getProfileById(npc.getTraderBinding().getTraderId());
         }
-
-        String presetName = profile.getPresetName();
-        if (presetName == null || presetName.trim().isEmpty()) {
-            presetName = "npc-" + npc.getUniqueID().toString();
-            profile.setPresetName(presetName);
-            markDirty();
-        }
-
-        TraderPreset current = getPreset(presetName);
-        if (current == null) {
-            TraderPreset migrated = role.createTraderPreset(presetName);
-            if (!addPreset(migrated)) {
-                current = getPreset(presetName);
-            } else {
-                current = migrated;
-            }
-        } else {
-            TraderPreset edited = role.createTraderPreset(presetName);
-            if (!saveEditedPreset(presetName, current.getRevision(), edited)) {
-                return null;
-            }
-            current = getPreset(presetName);
-        }
-
-        return current == null ? null : profile;
+        return migrateLegacyNpc(npc, role);
     }
 
     public void markChanged() {

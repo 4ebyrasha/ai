@@ -2,6 +2,9 @@ package noppes.npcs.client;
 
 import com.cheba.gui.GuiDynamicTraderMenu;
 import com.cheba.gui.GuiTraderPresetEditor;
+import com.cheba.gui.GuiNpcDynamicTraderEditor;
+import com.cheba.gui.GuiTraderPresetManager;
+import com.cheba.gui.TraderEditorModel;
 import com.cheba.gui.GuiTraderBindingSetup;
 import com.cheba.gui.TraderClientSession;
 import com.cheba.trader.TraderPreset;
@@ -91,26 +94,26 @@ public class PacketHandlerClient extends PacketHandlerServer {
 	private void client(ByteBuf buffer, EntityPlayer player, EnumPacketClient type) throws Exception {
 		Entity entity;
 
-		if (type == EnumPacketClient.TraderPresetEditorOpen) {
-			NBTTagCompound data = Server.readNBT(buffer);
+		if (type == EnumPacketClient.TraderPresetManagerOpen) {
+            NBTTagCompound data = Server.readNBT(buffer);
+            GuiScreen current = Minecraft.getMinecraft().currentScreen;
+            if (current instanceof GuiTraderPresetManager) {
+                ((GuiTraderPresetManager) current).applyData(data);
+            } else {
+                Minecraft.getMinecraft().displayGuiScreen(new GuiTraderPresetManager(data, current));
+            }
 
-			if (!data.hasKey("Preset", 10)) {
-				return;
-			}
+        } else if (type == EnumPacketClient.TraderPresetEditorOpen) {
+            NBTTagCompound data = Server.readNBT(buffer);
+            if (!data.hasKey("Preset", 10)) return;
+            TraderPreset preset = TraderPreset.readFromNBT(data.getCompoundTag("Preset"));
+            if (preset == null) return;
+            GuiScreen parent = Minecraft.getMinecraft().currentScreen;
+            if (!(parent instanceof GuiTraderPresetManager)) parent = null;
+            TraderEditorModel model = new TraderEditorModel(preset);
+            Minecraft.getMinecraft().displayGuiScreen(new GuiNpcDynamicTraderEditor(parent, model));
 
-			TraderPreset preset = TraderPreset.readFromNBT(
-					data.getCompoundTag("Preset")
-			);
-
-			if (preset == null) {
-				return;
-			}
-
-			Minecraft.getMinecraft().displayGuiScreen(
-					new GuiTraderPresetEditor(preset)
-			);
-
-		} else if (type == EnumPacketClient.TraderPresetEditorResult) {
+        } else if (type == EnumPacketClient.TraderPresetEditorResult) {
 			NBTTagCompound data = Server.readNBT(buffer);
 
 			boolean success = data.getBoolean("Success");
@@ -119,29 +122,21 @@ public class PacketHandlerClient extends PacketHandlerServer {
 			GuiScreen currentScreen =
 					Minecraft.getMinecraft().currentScreen;
 
-			if (currentScreen instanceof GuiTraderPresetEditor) {
-				TraderPreset preset = null;
-
-				if (success && data.hasKey("Preset", 10)) {
-					preset = TraderPreset.readFromNBT(
-							data.getCompoundTag("Preset")
-					);
-				}
-
-				((GuiTraderPresetEditor) currentScreen).onSaveResult(
-						success,
-						message,
-						preset
-				);
-			}
+            TraderPreset preset = null;
+            if (success && data.hasKey("Preset", 10)) {
+                preset = TraderPreset.readFromNBT(data.getCompoundTag("Preset"));
+            }
+            TraderEditorModel.handleSaveResult(success, message, preset);
+            if (currentScreen instanceof GuiTraderPresetEditor) {
+                ((GuiTraderPresetEditor) currentScreen).onSaveResult(success, message, preset);
+            }
 		} else if (type == EnumPacketClient.TraderPresetEditorStale) {
             NBTTagCompound data = Server.readNBT(buffer);
             GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
+            TraderEditorModel.handleStale(data.getString("PresetName"), data.getLong("Revision"));
             if (currentScreen instanceof GuiTraderPresetEditor) {
                 ((GuiTraderPresetEditor) currentScreen).onRemoteUpdate(
-                        data.getString("PresetName"),
-                        data.getLong("Revision")
-                );
+                        data.getString("PresetName"), data.getLong("Revision"));
             }
         } else if (type == EnumPacketClient.TraderBindingSetupResult) {
 			NBTTagCompound data = Server.readNBT(buffer);

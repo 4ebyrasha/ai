@@ -160,6 +160,19 @@ public class TraderPreset {
         return true;
     }
 
+    public TraderPreset copyAs(String newName) {
+        TraderPreset copy = new TraderPreset(newName);
+        for (NpcTradeConfig offer : offers) {
+            if (offer != null) copy.addOffer(NpcTradeConfig.readFromNBT(offer.writeToNBT()));
+        }
+        for (NpcBuybackConfig offer : buybackOffers) {
+            if (offer != null) copy.addBuybackOffer(NpcBuybackConfig.readFromNBT(offer.writeToNBT()));
+        }
+        copy.setLegacyData(legacyData);
+        copy.revision = revision;
+        return copy;
+    }
+
     public NBTTagCompound writeToNBT() {
         NBTTagCompound tag = new NBTTagCompound();
 

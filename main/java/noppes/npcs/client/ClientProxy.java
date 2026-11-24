@@ -248,6 +248,18 @@ public class ClientProxy extends CommonProxy {
 
 	}
 
+    @Override
+    public Container getContainer(EnumGuiType gui, EntityPlayer player,
+            int x, int y, int z, EntityNPCInterface npc) {
+        if (gui == EnumGuiType.DynamicTraderSell) {
+            TraderClientSession session = TraderClientSession.getActiveSession();
+            if (session != null) {
+                return new TraderSellContainer(player, null, session.getToken());
+            }
+        }
+        return super.getContainer(gui, player, x, y, z, npc);
+    }
+
 	public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
 		if (ID > EnumGuiType.values().length) {
 			return null;

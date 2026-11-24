@@ -47,6 +47,75 @@ public final class TraderPresetEditorService {
         }
     }
 
+    public static void handleManagerRequest(EntityPlayerMP player, NBTTagCompound request) {
+        if (player == null || player.world == null || player.world.isRemote || request == null) return;
+        TraderProfileManager manager = TraderProfileManager.get(player.world);
+        if (manager == null) {
+            sendManagerResult(player, false, "Trader storage is unavailable.", null);
+            return;
+        }
+
+        String action = request.getString("Action");
+        String name = request.getString("Name").trim();
+        String newName = request.getString("NewName").trim();
+
+        if ("edit".equals(action)) {
+            TraderPreset preset = manager.getPreset(name);
+            if (preset == null) {
+                sendManagerResult(player, false, "Shop not found.", manager);
+                return;
+            }
+            registerEditor(player, preset.getName());
+            NBTTagCompound open = new NBTTagCompound();
+            open.setTag("Preset", preset.writeToNBT());
+            Server.sendData(player, EnumPacketClient.TraderPresetEditorOpen, open);
+            return;
+        }
+
+        boolean success;
+        String message;
+        if ("create".equals(action)) {
+            success = !name.isEmpty() && name.length() <= MAX_PRESET_NAME_LENGTH
+                    && manager.addPreset(new TraderPreset(name));
+            message = success ? "Shop created." : "Invalid name or shop already exists.";
+        } else if ("rename".equals(action)) {
+            success = !newName.isEmpty() && newName.length() <= MAX_PRESET_NAME_LENGTH
+                    && manager.renamePreset(name, newName, player.world);
+            message = success ? "Shop renamed." : "Shop could not be renamed; check duplicates.";
+        } else if ("delete".equals(action)) {
+            java.util.List<String> refs = manager.getPresetReferences(name);
+            success = refs.isEmpty() && manager.deletePreset(name);
+            message = success ? "Shop deleted."
+                    : "Shop is still assigned to NPC profiles: " + refs.toString();
+        } else if ("list".equals(action)) {
+            success = true;
+            message = "";
+        } else {
+            success = false;
+            message = "Unknown shop operation.";
+        }
+        sendManagerResult(player, success, message, manager);
+    }
+
+    private static void sendManagerResult(EntityPlayerMP player, boolean success,
+            String message, TraderProfileManager manager) {
+        NBTTagCompound data = new NBTTagCompound();
+        data.setBoolean("Success", success);
+        data.setString("Message", message == null ? "" : message);
+        if (manager != null) {
+            NBTTagList presets = new NBTTagList();
+            for (TraderPreset preset : manager.getPresets()) {
+                NBTTagCompound entry = new NBTTagCompound();
+                entry.setString("Name", preset.getName());
+                entry.setLong("Revision", preset.getRevision());
+                entry.setInteger("Offers", preset.getOffers().size());
+                presets.appendTag(entry);
+            }
+            data.setTag("Presets", presets);
+        }
+        Server.sendData(player, EnumPacketClient.TraderPresetManagerOpen, data);
+    }
+
     public static void handleSave(
             EntityPlayerMP player,
             NBTTagCompound data

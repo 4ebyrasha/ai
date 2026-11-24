@@ -48,8 +48,8 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     private int selectedPaymentIndex = -1;
 
     private final EntityNPCInterface npc;
-    private final GuiNpcTraderSetup parent;
-    private final RoleTrader role;
+    private final GuiScreen parent;
+    private final TraderEditorModel model;
 
     private GuiTextField buyPriceField;
     private GuiTextField sellPriceField;
@@ -67,11 +67,18 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     ) {
         this.npc = npc;
         this.parent = parent;
-        this.role = role;
+        this.model = new TraderEditorModel(role);
 
-        if (!role.getDynamicOffers().isEmpty()) {
+        if (!model.getDynamicOffers().isEmpty()) {
             selectedOfferIndex = 0;
         }
+    }
+
+    public GuiNpcDynamicTraderEditor(GuiScreen parent, TraderEditorModel model) {
+        this.npc = null;
+        this.parent = parent;
+        this.model = model;
+        if (!model.getDynamicOffers().isEmpty()) selectedOfferIndex = 0;
     }
 
     private int left() {
@@ -83,7 +90,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     }
 
     private int getOfferPageCount() {
-        int count = role.getDynamicOffers().size();
+        int count = model.getDynamicOffers().size();
 
         return Math.max(
                 1,
@@ -209,7 +216,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     }
 
     private NpcTradeConfig getSelectedOffer() {
-        List<NpcTradeConfig> offers = role.getDynamicOffers();
+        List<NpcTradeConfig> offers = model.getDynamicOffers();
 
         if (selectedOfferIndex < 0
                 || selectedOfferIndex >= offers.size()) {
@@ -323,29 +330,21 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
     private void saveRole() {
         saveFields();
-
-        role.markTradeConfigChanged();
-
-        NBTTagCompound data = role.writeToNBT(new NBTTagCompound());
-        data.setBoolean("ChebaSyncTraderCatalog", true);
-
-        Client.sendData(
-                EnumPacketServer.RoleSave,
-                data
-        );
+        model.save();
     }
 
     @Override
     protected void actionPerformed(GuiButton button)
             throws IOException {
+        if (model.isSaving() || (model.isStale() && button.id != 3)) return;
         saveFields();
 
         switch (button.id) {
             case 0: {
-                role.addDynamicOffer(new NpcTradeConfig());
+                model.addDynamicOffer(new NpcTradeConfig());
 
                 selectedOfferIndex =
-                        role.getDynamicOffers().size() - 1;
+                        model.getDynamicOffers().size() - 1;
 
                 offerPage =
                         selectedOfferIndex / OFFERS_PER_PAGE;
@@ -365,9 +364,9 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 NpcTradeConfig offer = getSelectedOffer();
 
                 if (offer != null) {
-                    role.removeDynamicOffer(offer.getId());
+                    model.removeDynamicOffer(offer.getId());
 
-                    int count = role.getDynamicOffers().size();
+                    int count = model.getDynamicOffers().size();
 
                     if (count == 0) {
                         selectedOfferIndex = -1;
@@ -406,6 +405,9 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
             case 3:
                 saveRole();
+                if (parent instanceof GuiTraderPresetManager) {
+                    ((GuiTraderPresetManager) parent).onEditorClosed();
+                }
                 mc.displayGuiScreen(parent);
                 return;
 
@@ -511,13 +513,12 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 break;
 
             case 12:
-                saveRole();
+                if (!model.isPresetMode()) saveRole();
 
                 mc.displayGuiScreen(
                         new GuiNpcTraderOfferLayout(
-                                npc,
                                 this,
-                                role
+                                model
                         )
                 );
                 return;
@@ -556,13 +557,12 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 break;
 
             case 10:
-                saveRole();
+                if (!model.isPresetMode()) saveRole();
 
                 mc.displayGuiScreen(
                         new GuiNpcTraderBuybackEditor(
-                                npc,
                                 this,
-                                role
+                                model
                         )
                 );
                 return;
@@ -573,7 +573,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
     }
 
     private void selectFirstOfferOnPage() {
-        int count = role.getDynamicOffers().size();
+        int count = model.getDynamicOffers().size();
 
         if (count == 0) {
             selectedOfferIndex = -1;
@@ -595,6 +595,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
+        if (model.isSaving() || model.isStale()) return;
         if (!barterEditMode) {
             buyPriceField.mouseClicked(mouseX, mouseY, mouseButton);
             sellPriceField.mouseClicked(mouseX, mouseY, mouseButton);
@@ -622,7 +623,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                     + row * OFFER_COLUMNS
                     + col;
 
-            if (index < role.getDynamicOffers().size()) {
+            if (index < model.getDynamicOffers().size()) {
                 saveFields();
 
                 selectedOfferIndex = index;
@@ -679,10 +680,15 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             int keyCode
     ) throws IOException {
         if (keyCode == 1) {
-            saveRole();
+            if (!model.isSaving()) saveRole();
+            if (parent instanceof GuiTraderPresetManager) {
+                ((GuiTraderPresetManager) parent).onEditorClosed();
+            }
             mc.displayGuiScreen(parent);
             return;
         }
+
+        if (model.isSaving() || model.isStale()) return;
 
         if (!barterEditMode) {
             buyPriceField.textboxKeyTyped(typedChar, keyCode);
@@ -732,7 +738,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 0xFFFFFF
         );
 
-        List<NpcTradeConfig> offers = role.getDynamicOffers();
+        List<NpcTradeConfig> offers = model.getDynamicOffers();
 
         for (int row = 0; row < OFFER_ROWS; row++) {
             for (int col = 0; col < OFFER_COLUMNS; col++) {
@@ -896,13 +902,12 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
             );
         }
 
-        if (!statusMessage.isEmpty()) {
+        String visibleStatus = model.getStatus().isEmpty()
+                ? statusMessage : model.getStatus();
+        if (!visibleStatus.isEmpty()) {
             drawString(
                     fontRenderer,
-                    fontRenderer.trimStringToWidth(
-                            statusMessage,
-                            PANEL_WIDTH - 16
-                    ),
+                    fontRenderer.trimStringToWidth(visibleStatus, PANEL_WIDTH - 16),
                     x + 8,
                     y + 260,
                     0xFFFF55
@@ -1042,7 +1047,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 + row * OFFER_COLUMNS
                 + col;
 
-        return index < role.getDynamicOffers().size()
+        return index < model.getDynamicOffers().size()
                 ? index
                 : -1;
     }
@@ -1114,10 +1119,10 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         int offerIndex = getHoveredOfferIndex(mouseX, mouseY);
 
         if (offerIndex >= 0
-                && offerIndex < role.getDynamicOffers().size()) {
+                && offerIndex < model.getDynamicOffers().size()) {
 
             NpcTradeConfig offer =
-                    role.getDynamicOffers().get(offerIndex);
+                    model.getDynamicOffers().get(offerIndex);
 
             ItemStack product = offer.getResult();
 
@@ -1239,6 +1244,19 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
                 return "cheba.trader.tooltip.editor.view";
             default:
                 return null;
+        }
+    }
+
+    @Override
+    public void updateScreen() {
+        super.updateScreen();
+        if (buyPriceField != null) buyPriceField.updateCursorCounter();
+        if (sellPriceField != null) sellPriceField.updateCursorCounter();
+        if (maxPerDayField != null) maxPerDayField.updateCursorCounter();
+        if (dailyStockField != null) dailyStockField.updateCursorCounter();
+        for (GuiButton button : buttonList) {
+            button.enabled = !model.isSaving()
+                    && (!model.isStale() || button.id == 3);
         }
     }
 

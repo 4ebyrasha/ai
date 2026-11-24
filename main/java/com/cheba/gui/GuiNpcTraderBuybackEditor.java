@@ -33,9 +33,8 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
     private static final int PAGE_SIZE = COLUMNS * ROWS;
     private static final int SLOT_SIZE = 16;
 
-    private final EntityNPCInterface npc;
     private final GuiScreen parent;
-    private final RoleTrader role;
+    private final TraderEditorModel model;
 
     private int page;
     private int selectedOfferIndex = -1;
@@ -49,13 +48,18 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             GuiScreen parent,
             RoleTrader role
     ) {
-        this.npc = npc;
         this.parent = parent;
-        this.role = role;
+        this.model = new TraderEditorModel(role);
 
-        if (!role.getBuybackOffers().isEmpty()) {
+        if (!model.getBuybackOffers().isEmpty()) {
             selectedOfferIndex = 0;
         }
+    }
+
+    public GuiNpcTraderBuybackEditor(GuiScreen parent, TraderEditorModel model) {
+        this.parent = parent;
+        this.model = model;
+        if (!model.getBuybackOffers().isEmpty()) selectedOfferIndex = 0;
     }
 
     private int left() {
@@ -67,7 +71,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
     }
 
     private int getPageCount() {
-        int count = role.getBuybackOffers().size();
+        int count = model.getBuybackOffers().size();
 
         return Math.max(
                 1,
@@ -76,7 +80,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
     }
 
     private NpcBuybackConfig getSelectedOffer() {
-        List<NpcBuybackConfig> offers = role.getBuybackOffers();
+        List<NpcBuybackConfig> offers = model.getBuybackOffers();
 
         if (selectedOfferIndex < 0
                 || selectedOfferIndex >= offers.size()) {
@@ -185,17 +189,11 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
 
     private void saveRole() {
         saveFields();
-
-        role.markTradeConfigChanged();
-
-        Client.sendData(
-                EnumPacketServer.RoleSave,
-                role.writeToNBT(new NBTTagCompound())
-        );
+        model.save();
     }
 
     private void selectFirstOfferOnPage() {
-        int count = role.getBuybackOffers().size();
+        int count = model.getBuybackOffers().size();
 
         if (count == 0) {
             selectedOfferIndex = -1;
@@ -212,6 +210,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
     @Override
     protected void actionPerformed(GuiButton button)
             throws IOException {
+        if (model.isSaving() || (model.isStale() && button.id != 3)) return;
         saveFields();
 
         switch (button.id) {
@@ -228,7 +227,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
                 NpcBuybackConfig offer =
                         new NpcBuybackConfig(selected, 0L);
 
-                if (!role.addBuybackOffer(offer)) {
+                if (!model.addBuybackOffer(offer)) {
                     statusMessage = I18n.translateToLocal(
                             "cheba.trader.buyback.duplicate"
                     );
@@ -236,7 +235,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
                 }
 
                 selectedOfferIndex =
-                        role.getBuybackOffers().size() - 1;
+                        model.getBuybackOffers().size() - 1;
 
                 page = selectedOfferIndex / PAGE_SIZE;
 
@@ -252,9 +251,9 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
                 NpcBuybackConfig offer = getSelectedOffer();
 
                 if (offer != null) {
-                    role.removeBuybackOffer(offer.getId());
+                    model.removeBuybackOffer(offer.getId());
 
-                    int count = role.getBuybackOffers().size();
+                    int count = model.getBuybackOffers().size();
 
                     if (count == 0) {
                         selectedOfferIndex = -1;
@@ -320,6 +319,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
+        if (model.isSaving() || model.isStale()) return;
         priceField.mouseClicked(mouseX, mouseY, mouseButton);
 
         int x = left();
@@ -339,7 +339,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
 
             int index = page * PAGE_SIZE + row * COLUMNS + col;
 
-            if (index < role.getBuybackOffers().size()) {
+            if (index < model.getBuybackOffers().size()) {
                 saveFields();
                 selectedOfferIndex = index;
                 refreshPriceField();
@@ -425,7 +425,7 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
                 0xFFFFFF
         );
 
-        List<NpcBuybackConfig> offers = role.getBuybackOffers();
+        List<NpcBuybackConfig> offers = model.getBuybackOffers();
 
         // Компактная сетка 10 × 8.
         for (int row = 0; row < ROWS; row++) {
@@ -627,9 +627,9 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
             int row = (mouseY - gridY) / SLOT_SIZE;
             int index = page * PAGE_SIZE + row * COLUMNS + col;
 
-            if (index < role.getBuybackOffers().size()) {
+            if (index < model.getBuybackOffers().size()) {
                 NpcBuybackConfig offer =
-                        role.getBuybackOffers().get(index);
+                        model.getBuybackOffers().get(index);
 
                 ItemStack stack = offer.getItem();
 
@@ -730,6 +730,15 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
                 return "cheba.trader.tooltip.editor.next_page";
             default:
                 return null;
+        }
+    }
+
+    @Override
+    public void updateScreen() {
+        super.updateScreen();
+        if (priceField != null) priceField.updateCursorCounter();
+        for (GuiButton button : buttonList) {
+            button.enabled = !model.isSaving() && (!model.isStale() || button.id == 3);
         }
     }
 

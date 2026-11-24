@@ -8,6 +8,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 import com.cheba.trader.TraderPreset;
+import com.cheba.trader.TraderProfile;
+import com.cheba.trader.TraderProfileManager;
 import com.cheba.trader.TraderSessionManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
@@ -471,6 +473,16 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 		if (!(player instanceof EntityPlayerMP) || player.world.isRemote) {
 			return;
 		}
+
+        if (npc.hasTraderBinding()) {
+            TraderProfileManager manager = TraderProfileManager.get(npc.world);
+            TraderProfile profile = manager == null ? null
+                    : manager.getProfileById(npc.getTraderBinding().getTraderId());
+            if (profile != null && !profile.opensGui()) {
+                npc.say(player, npc.advanced.getInteractLine());
+                return;
+            }
+        }
 
 		npc.say(player, npc.advanced.getInteractLine());
 

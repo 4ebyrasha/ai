@@ -540,6 +540,10 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			return true;
 		}
 
+		if (!profile.opensGui()) {
+            return false;
+        }
+
 		TraderPreset preset = manager.getPreset(profile.getPresetName());
 		if (preset == null) {
 			player.sendMessage(new TextComponentString("Trader catalog is not assigned or unavailable."));
@@ -618,7 +622,14 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 				} else if (dialog != null) {
 					NoppesUtilServer.openDialog(player, this, dialog);
 				} else if (this.traderBinding != null) {
-					this.openBoundTrader(player);
+                    boolean opened = this.openBoundTrader(player);
+                    if (!opened) {
+                        if (this.roleInterface != null) {
+                            this.roleInterface.interact(player);
+                        } else {
+                            this.say(player, this.advanced.getInteractLine());
+                        }
+                    }
 				} else if (this.roleInterface != null) {
 					this.roleInterface.interact(player);
 				} else {

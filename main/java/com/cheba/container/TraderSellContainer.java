@@ -91,6 +91,12 @@ public class TraderSellContainer extends Container {
         }
 
         if (sessionToken != null) {
+            // The client container has no server player/session manager;
+            // server-side interaction is validated below against the token.
+            if (player.world.isRemote) {
+                return true;
+            }
+
             if (!(player instanceof net.minecraft.entity.player.EntityPlayerMP)) {
                 return false;
             }

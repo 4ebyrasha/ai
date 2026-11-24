@@ -76,10 +76,11 @@ public class CommonProxy implements IGuiHandler {
 		} else if (gui == EnumGuiType.DynamicTraderMenu) {
 			return null;
 		} else if (gui == EnumGuiType.DynamicTraderSell) {
-			if (npc != null) {
-				return new TraderSellContainer(player, npc);
-			}
-
+			/*
+			 * sendOpenGui(..., null) may still resolve the player's last
+			 * editing NPC in NoppesUtilServer. A live independent session
+			 * must take precedence over that stale NPC reference.
+			 */
 			if (player instanceof EntityPlayerMP) {
 				String token = TraderSessionManager.getActiveToken(
 						(EntityPlayerMP) player
@@ -90,7 +91,7 @@ public class CommonProxy implements IGuiHandler {
 				}
 			}
 
-			return null;
+			return npc == null ? null : new TraderSellContainer(player, npc);
 		} else {
 			return gui == EnumGuiType.CustomGui ? new ContainerCustomGui(new InventoryBasic("", false, x)) : null;
 		}

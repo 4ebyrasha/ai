@@ -50,6 +50,7 @@ public class GuiNpcRemoteEditor extends GuiNPCInterface implements IScrollData, 
 		this.addButton(new GuiNpcButton(4, this.guiLeft + 170, this.guiTop + 72, 82, 20, "remote.tp"));
 		this.addButton(new GuiNpcButton(5, this.guiLeft + 170, this.guiTop + 110, 82, 20, "remote.resetall"));
 		this.addButton(new GuiNpcButton(3, this.guiLeft + 170, this.guiTop + 132, 82, 20, "remote.freeze"));
+		this.addButton(new GuiNpcButton(6, this.guiLeft + 170, this.guiTop + 154, 82, 20, "Магазины"));
 	}
 
 	public void confirmClicked(boolean flag, int i) {
@@ -62,6 +63,12 @@ public class GuiNpcRemoteEditor extends GuiNPCInterface implements IScrollData, 
 
 	protected void actionPerformed(GuiButton guibutton) {
 		int id = guibutton.id;
+        if (id == 6) {
+            net.minecraft.nbt.NBTTagCompound request = new net.minecraft.nbt.NBTTagCompound();
+            request.setString("Action", "list");
+            Client.sendData(EnumPacketServer.TraderPresetManager, request);
+            return;
+        }
 		if (id == 3) {
 			Client.sendData(EnumPacketServer.RemoteFreeze);
 		}

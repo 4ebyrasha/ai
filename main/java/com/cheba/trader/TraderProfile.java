@@ -12,7 +12,7 @@ import java.util.UUID;
  */
 public class TraderProfile {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     private final String id;
 
@@ -20,6 +20,8 @@ public class TraderProfile {
     private String presetName;
     private String limitGroupName;
     private boolean sharedLimits;
+    private boolean opensGui = true;
+    private boolean legacyLimitScope;
 
     public TraderProfile(String name) {
         this(
@@ -82,6 +84,7 @@ public class TraderProfile {
         this.limitGroupName = limitGroupName == null
                 ? ""
                 : limitGroupName.trim();
+        this.legacyLimitScope = false;
     }
 
     public boolean hasSharedLimits() {
@@ -92,6 +95,14 @@ public class TraderProfile {
         this.sharedLimits = sharedLimits;
     }
 
+    public boolean opensGui() {
+        return opensGui;
+    }
+
+    public void setOpensGui(boolean opensGui) {
+        this.opensGui = opensGui;
+    }
+
     /**
      * Возвращает область действия лимитов.
      * <p>
@@ -99,11 +110,16 @@ public class TraderProfile {
      * Индивидуальные лимиты используют постоянный Trader ID.
      */
     public String getLimitScope() {
-        if (sharedLimits && !limitGroupName.isEmpty()) {
-            return "group:" + limitGroupName.toLowerCase(java.util.Locale.ROOT);
+        if (legacyLimitScope) {
+            if (sharedLimits && !limitGroupName.isEmpty()) {
+                return "group:" + limitGroupName.toLowerCase(java.util.Locale.ROOT);
+            }
+            return "trader:" + id;
         }
 
-        return "trader:" + id;
+        String store = presetName.toLowerCase(java.util.Locale.ROOT);
+        String group = limitGroupName.toLowerCase(java.util.Locale.ROOT);
+        return group.isEmpty() ? "group:" + store : "group:" + store + ":" + group;
     }
 
     public NBTTagCompound writeToNBT() {
@@ -115,6 +131,8 @@ public class TraderProfile {
         tag.setString("PresetName", presetName);
         tag.setString("LimitGroupName", limitGroupName);
         tag.setBoolean("SharedLimits", sharedLimits);
+        tag.setBoolean("OpensGui", opensGui);
+        tag.setBoolean("LegacyLimitScope", legacyLimitScope);
 
         return tag;
     }
@@ -126,12 +144,17 @@ public class TraderProfile {
             return null;
         }
 
-        return new TraderProfile(
+        TraderProfile profile = new TraderProfile(
                 tag.getString("Id"),
                 name,
                 tag.getString("PresetName"),
                 tag.getString("LimitGroupName"),
                 tag.getBoolean("SharedLimits")
         );
+        profile.legacyLimitScope = tag.hasKey("LegacyLimitScope", 1)
+                ? tag.getBoolean("LegacyLimitScope")
+                : tag.getInteger("Version") < 2;
+        profile.opensGui = !tag.hasKey("OpensGui", 1) || tag.getBoolean("OpensGui");
+        return profile;
     }
 }

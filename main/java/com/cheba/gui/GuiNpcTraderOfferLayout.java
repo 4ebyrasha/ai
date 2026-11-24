@@ -32,9 +32,8 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
     private static final int SLOT_COUNT = COLUMNS * ROWS;
     private static final int SLOT_SIZE = 22;
 
-    private final EntityNPCInterface npc;
     private final GuiScreen parent;
-    private final RoleTrader role;
+    private final TraderEditorModel model;
 
     private int draggedSlot = -1;
     private int dragMouseX;
@@ -47,9 +46,13 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
             GuiScreen parent,
             RoleTrader role
     ) {
-        this.npc = npc;
         this.parent = parent;
-        this.role = role;
+        this.model = new TraderEditorModel(role);
+    }
+
+    public GuiNpcTraderOfferLayout(GuiScreen parent, TraderEditorModel model) {
+        this.parent = parent;
+        this.model = model;
     }
 
     @Override
@@ -89,7 +92,7 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
         boolean[] used = new boolean[SLOT_COUNT];
         boolean changed = false;
 
-        List<NpcTradeConfig> offers = role.getDynamicOffers();
+        List<NpcTradeConfig> offers = model.getDynamicOffers();
 
         for (NpcTradeConfig offer : offers) {
             if (offer == null) {
@@ -143,7 +146,7 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
             return null;
         }
 
-        for (NpcTradeConfig offer : role.getDynamicOffers()) {
+        for (NpcTradeConfig offer : model.getDynamicOffers()) {
             if (offer != null && offer.getDisplaySlot() == slot) {
                 return offer;
             }
@@ -175,6 +178,7 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
             int mouseY,
             int mouseButton
     ) throws IOException {
+        if (model.isSaving() || model.isStale()) return;
         if (mouseButton == 0) {
             int slot = getHoveredSlot(mouseX, mouseY);
 
@@ -215,6 +219,7 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
             int mouseY,
             int state
     ) {
+        if (model.isSaving() || model.isStale()) return;
         if (state == 0 && draggedSlot >= 0) {
             int targetSlot = getHoveredSlot(mouseX, mouseY);
 
@@ -259,19 +264,15 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
      * Сохраняет обновлённый список предложений на сервере.
      */
     private void saveRole() {
-        role.markTradeConfigChanged();
-
-        Client.sendData(
-                EnumPacketServer.RoleSave,
-                role.writeToNBT(new NBTTagCompound())
-        );
+        model.save();
     }
 
     @Override
     protected void actionPerformed(GuiButton button)
             throws IOException {
+        if (model.isSaving()) return;
         if (button.id == 0) {
-            saveRole();
+            if (!model.isStale()) saveRole();
             mc.displayGuiScreen(parent);
         }
     }
@@ -282,7 +283,7 @@ public class GuiNpcTraderOfferLayout extends GuiScreen {
             int keyCode
     ) throws IOException {
         if (keyCode == 1) {
-            saveRole();
+            if (!model.isSaving() && !model.isStale()) saveRole();
             mc.displayGuiScreen(parent);
             return;
         }
