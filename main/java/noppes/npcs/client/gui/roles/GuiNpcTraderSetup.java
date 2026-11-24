@@ -21,7 +21,7 @@ public class GuiNpcTraderSetup extends GuiContainerNPCInterface2 {
         super.initGui();
         setBackground("menubg.png");
         buttonList.add(new GuiButton(
-                5, guiLeft + 55, guiTop + 65, 146, 22,
+                5, guiLeft + 137, guiTop + 65, 146, 20,
                 "Настройки профиля торговца"
         ));
     }
