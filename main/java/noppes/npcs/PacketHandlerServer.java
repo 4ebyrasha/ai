@@ -496,8 +496,7 @@ public class PacketHandlerServer {
 															}
 
 															Server.sendData(player, EnumPacketClient.GUI_DATA, compound);
-														}
-														else if (type == EnumPacketServer.QuestRemove) {
+														} else if (type == EnumPacketServer.QuestRemove) {
 															quest1 = (Quest) QuestController.instance.quests
 																	.get(buffer.readInt());
 															if (quest1 != null) {
@@ -649,19 +648,19 @@ public class PacketHandlerServer {
 																			RoleTrader traderRole = (RoleTrader) npc.roleInterface;
 
 																			boolean syncTraderCatalog =
-																roleTag.getBoolean("ChebaSyncTraderCatalog");
+																					roleTag.getBoolean("ChebaSyncTraderCatalog");
 
-															traderRole.readFromNBTForSave(roleTag);
+																			traderRole.readFromNBTForSave(roleTag);
 
-															if (syncTraderCatalog) {
-																TraderProfileManager traderManager =
-																	TraderProfileManager.get(npc.world);
-																if (traderManager != null) {
-																	traderManager.syncLegacyRole(npc, traderRole);
-																}
-															}
+																			if (syncTraderCatalog) {
+																				TraderProfileManager traderManager =
+																						TraderProfileManager.get(npc.world);
+																				if (traderManager != null) {
+																					traderManager.syncLegacyRole(npc, traderRole);
+																				}
+																			}
 
-															String marketName = traderRole.marketName;
+																			String marketName = traderRole.marketName;
 
 																			if (marketName != null && !marketName.trim().isEmpty()) {
 																				RoleTrader.save(traderRole, marketName);
@@ -959,7 +958,7 @@ public class PacketHandlerServer {
 																								while (world.isAirBlock(
 																										coords)
 																										&& coords
-																												.getY() > 0) {
+																										.getY() > 0) {
 																									coords = coords
 																											.down();
 																								}
@@ -1211,15 +1210,15 @@ public class PacketHandlerServer {
 																									SchematicWrapper schem = tile1
 																											.getSchematic();
 																									schem.init(pos.add(
-																											1,
-																											tile1.yOffest,
-																											1),
+																													1,
+																													tile1.yOffest,
+																													1),
 																											player.world,
 																											tile1.rotation
 																													* 90);
 																									SchematicController.Instance
 																											.build(tile1
-																													.getSchematic(),
+																															.getSchematic(),
 																													player);
 																									player.world
 																											.setBlockToAir(
@@ -1415,7 +1414,7 @@ public class PacketHandlerServer {
 					currentProfile == null
 							|| currentProfile.getPresetName().startsWith("npc-")
 							|| currentProfile.getPresetName().startsWith("legacy-")
-						? "" : currentProfile.getPresetName());
+							? "" : currentProfile.getPresetName());
 			response.setBoolean("SharedLimits",
 					currentProfile != null && currentProfile.hasSharedLimits());
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
@@ -1441,10 +1440,10 @@ public class PacketHandlerServer {
 		String npcId = npc.getUniqueID().toString();
 		String presetName = shopName.isEmpty()
 				? (currentProfile != null
-						&& (currentProfile.getPresetName().startsWith("npc-")
-						|| currentProfile.getPresetName().startsWith("legacy-"))
-						? currentProfile.getPresetName()
-						: "npc-" + npcId)
+				&& (currentProfile.getPresetName().startsWith("npc-")
+				|| currentProfile.getPresetName().startsWith("legacy-"))
+				? currentProfile.getPresetName()
+				: "npc-" + npcId)
 				: shopName;
 		String profileName = currentProfile == null
 				? "npc-" + npcId : currentProfile.getName();
@@ -1492,3 +1491,4 @@ public class PacketHandlerServer {
 				: "Магазин сохранён. Одинаковое имя подключает NPC к общему каталогу.");
 		Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 	}
+}
