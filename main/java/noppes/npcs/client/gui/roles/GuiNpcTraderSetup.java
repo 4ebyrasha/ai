@@ -12,14 +12,11 @@ import noppes.npcs.entity.EntityNPCInterface;
 public class GuiNpcTraderSetup extends GuiContainerNPCInterface2 {
     public GuiNpcTraderSetup(EntityNPCInterface npc, ContainerNPCTraderSetup container) {
         super(npc, container);
-        this.ySize = 150;
-        this.menuYOffset = 10;
     }
 
     @Override
     public void initGui() {
         super.initGui();
-        buttonList.clear();
         setBackground("menubg.png");
         buttonList.add(new GuiButton(
                 5, guiLeft + 55, guiTop + 65, 146, 22,

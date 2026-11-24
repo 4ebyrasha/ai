@@ -6,6 +6,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.text.TextComponentString;
 import noppes.npcs.Server;
+import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.constants.EnumPacketClient;
 
 import java.util.HashSet;
@@ -72,27 +73,65 @@ public final class TraderPresetEditorService {
             return;
         }
 
+        if ("references".equals(action)) {
+            sendReferenceResult(player, manager, name, "");
+            return;
+        }
+
+        if ("detach".equals(action)) {
+            String profileId = request.getString("ProfileId");
+            int entityId = request.getInteger("EntityId");
+            int dimension = request.getInteger("Dimension");
+            boolean detached = false;
+
+            if (!profileId.isEmpty() && entityId >= 0) {
+                net.minecraft.world.WorldServer targetWorld =
+                        net.minecraftforge.common.DimensionManager.getWorld(dimension);
+                net.minecraft.entity.Entity entity = targetWorld == null
+                        ? null : targetWorld.getEntityByID(entityId);
+                if (entity instanceof EntityNPCInterface) {
+                    EntityNPCInterface npc = (EntityNPCInterface) entity;
+                    if (npc.hasTraderBinding()
+                            && profileId.equals(npc.getTraderBinding().getTraderId())) {
+                        npc.setTraderBinding(null);
+                        npc.updateClient = true;
+                        detached = true;
+                    }
+                }
+            }
+
+            boolean removed = detached
+                    && manager.removeProfileIfUnused(player.world, profileId, null);
+            String message = removed
+                    ? "NPC отвязан от магазина."
+                    : detached
+                        ? "NPC отвязан, но профиль ещё используется другим NPC."
+                        : "NPC не загружен. Перейдите к нему или загрузите его чанк, затем повторите отвязку.";
+            sendReferenceResult(player, manager, name, message);
+            return;
+        }
+
         boolean success;
         String message;
         if ("create".equals(action)) {
             success = !name.isEmpty() && name.length() <= MAX_PRESET_NAME_LENGTH
                     && manager.addPreset(new TraderPreset(name));
-            message = success ? "Shop created." : "Invalid name or shop already exists.";
+            message = success ? "Магазин создан." : "Недопустимое имя или магазин уже существует.";
         } else if ("rename".equals(action)) {
             success = !newName.isEmpty() && newName.length() <= MAX_PRESET_NAME_LENGTH
                     && manager.renamePreset(name, newName, player.world);
-            message = success ? "Shop renamed." : "Shop could not be renamed; check duplicates.";
+            message = success ? "Магазин переименован." : "Не удалось переименовать магазин.";
         } else if ("delete".equals(action)) {
             java.util.List<String> refs = manager.getPresetReferences(name);
             success = refs.isEmpty() && manager.deletePreset(name);
-            message = success ? "Shop deleted."
-                    : "Shop is still assigned to NPC profiles: " + refs.toString();
+            message = success ? "Магазин удалён."
+                    : "Сначала отвяжите профили NPC: " + refs.toString();
         } else if ("list".equals(action)) {
             success = true;
             message = "";
         } else {
             success = false;
-            message = "Unknown shop operation.";
+            message = "Неизвестная операция.";
         }
         sendManagerResult(player, success, message, manager);
     }
@@ -101,6 +140,7 @@ public final class TraderPresetEditorService {
             String message, TraderProfileManager manager) {
         NBTTagCompound data = new NBTTagCompound();
         data.setBoolean("Success", success);
+        data.setString("Mode", "shops");
         data.setString("Message", message == null ? "" : message);
         if (manager != null) {
             NBTTagList presets = new NBTTagList();
@@ -113,6 +153,60 @@ public final class TraderPresetEditorService {
             }
             data.setTag("Presets", presets);
         }
+        Server.sendData(player, EnumPacketClient.TraderPresetManagerOpen, data);
+    }
+
+    private static void sendReferenceResult(
+            EntityPlayerMP player,
+            TraderProfileManager manager,
+            String presetName,
+            String message
+    ) {
+        NBTTagCompound data = new NBTTagCompound();
+        data.setBoolean("Success", true);
+        data.setString("Mode", "references");
+        data.setString("Name", presetName);
+        data.setString("Message", message == null ? "" : message);
+        NBTTagList references = new NBTTagList();
+
+        for (TraderProfile profile : manager.getProfiles()) {
+            if (!profile.getPresetName().equalsIgnoreCase(presetName)) {
+                continue;
+            }
+
+            boolean found = false;
+            for (net.minecraft.world.WorldServer loadedWorld
+                    : net.minecraftforge.common.DimensionManager.getWorlds()) {
+                if (loadedWorld == null) continue;
+                for (net.minecraft.entity.Entity entity : loadedWorld.loadedEntityList) {
+                    if (!(entity instanceof EntityNPCInterface)) continue;
+                    EntityNPCInterface npc = (EntityNPCInterface) entity;
+                    if (!npc.hasTraderBinding()
+                            || !profile.getId().equals(npc.getTraderBinding().getTraderId())) {
+                        continue;
+                    }
+
+                    NBTTagCompound entry = new NBTTagCompound();
+                    entry.setString("ProfileId", profile.getId());
+                    entry.setInteger("EntityId", npc.getEntityId());
+                    entry.setInteger("Dimension", loadedWorld.provider.getDimension());
+                    entry.setString("Label", npc.getName() + " [" + loadedWorld.provider.getDimension() + "]");
+                    references.appendTag(entry);
+                    found = true;
+                }
+            }
+
+            if (!found) {
+                NBTTagCompound entry = new NBTTagCompound();
+                entry.setString("ProfileId", profile.getId());
+                entry.setInteger("EntityId", -1);
+                entry.setInteger("Dimension", 0);
+                entry.setString("Label", profile.getName() + " — NPC не загружен или запись устарела");
+                references.appendTag(entry);
+            }
+        }
+
+        data.setTag("References", references);
         Server.sendData(player, EnumPacketClient.TraderPresetManagerOpen, data);
     }
 

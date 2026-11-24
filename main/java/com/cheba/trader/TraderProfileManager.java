@@ -160,6 +160,45 @@ public class TraderProfileManager extends WorldSavedData {
         return true;
     }
 
+    public boolean removeProfile(String id) {
+        if (id == null || id.trim().isEmpty()) {
+            return false;
+        }
+        TraderProfile profile = getProfileById(id);
+        if (profile == null || !profiles.remove(profile)) {
+            return false;
+        }
+        markDirty();
+        return true;
+    }
+
+    public boolean removeProfileIfUnused(
+            World world,
+            String id,
+            EntityNPCInterface ignoredNpc
+    ) {
+        if (world == null || world.isRemote || id == null || id.trim().isEmpty()) {
+            return false;
+        }
+
+        for (net.minecraft.world.WorldServer loadedWorld
+                : net.minecraftforge.common.DimensionManager.getWorlds()) {
+            if (loadedWorld == null) {
+                continue;
+            }
+            for (net.minecraft.entity.Entity entity : loadedWorld.loadedEntityList) {
+                if (entity instanceof EntityNPCInterface && entity != ignoredNpc) {
+                    EntityNPCInterface npc = (EntityNPCInterface) entity;
+                    if (npc.hasTraderBinding()
+                            && id.equals(npc.getTraderBinding().getTraderId())) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return removeProfile(id);
+    }
+
     public boolean addPreset(TraderPreset preset) {
         if (preset == null || getPreset(preset.getName()) != null) {
             return false;

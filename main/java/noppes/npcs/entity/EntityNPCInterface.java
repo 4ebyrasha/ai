@@ -1682,6 +1682,18 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	}
 
 	public void delete() {
+		if (!this.world.isRemote && this.traderBinding != null) {
+			TraderProfileManager manager = TraderProfileManager.get(this.world);
+			if (manager != null) {
+				manager.removeProfileIfUnused(
+						this.world,
+						this.traderBinding.getTraderId(),
+						this
+				);
+			}
+			this.traderBinding = null;
+		}
+
 		if (this.advanced.role != 0 && this.roleInterface != null) {
 			this.roleInterface.delete();
 		}
