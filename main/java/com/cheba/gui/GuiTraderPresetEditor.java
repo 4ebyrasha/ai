@@ -28,6 +28,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
     private static final int SLOT_SIZE = 18;
 
     private final TraderPreset preset;
+    private final GuiScreen parent;
 
     private String selectedOfferId;
     private String draggedOfferId;
@@ -42,10 +43,15 @@ public class GuiTraderPresetEditor extends GuiScreen {
     private boolean stale;
 
     public GuiTraderPresetEditor(TraderPreset preset) {
+        this(preset, null);
+    }
+
+    public GuiTraderPresetEditor(TraderPreset preset, GuiScreen parent) {
         if (preset == null) {
             throw new IllegalArgumentException("Preset cannot be null");
         }
 
+        this.parent = parent;
         this.preset = TraderPreset.readFromNBT(
                 preset.writeToNBT()
         );
@@ -389,7 +395,7 @@ public class GuiTraderPresetEditor extends GuiScreen {
             }
 
             case 3: {
-                mc.displayGuiScreen(null);
+                mc.displayGuiScreen(parent);
                 break;
             }
 
