@@ -648,12 +648,17 @@ public class PacketHandlerServer {
 																		if (npc.roleInterface instanceof RoleTrader) {
 																			RoleTrader traderRole = (RoleTrader) npc.roleInterface;
 
-																			traderRole.readFromNBTForSave(roleTag);
+																			boolean syncTraderCatalog =
+																roleTag.getBoolean("ChebaSyncTraderCatalog");
 
-															TraderProfileManager traderManager =
-																TraderProfileManager.get(npc.world);
-															if (traderManager != null) {
-																traderManager.syncLegacyRole(npc, traderRole);
+															traderRole.readFromNBTForSave(roleTag);
+
+															if (syncTraderCatalog) {
+																TraderProfileManager traderManager =
+																	TraderProfileManager.get(npc.world);
+																if (traderManager != null) {
+																	traderManager.syncLegacyRole(npc, traderRole);
+																}
 															}
 
 															String marketName = traderRole.marketName;

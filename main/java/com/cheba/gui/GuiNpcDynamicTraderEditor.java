@@ -326,9 +326,12 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
 
         role.markTradeConfigChanged();
 
+        NBTTagCompound data = role.writeToNBT(new NBTTagCompound());
+        data.setBoolean("ChebaSyncTraderCatalog", true);
+
         Client.sendData(
                 EnumPacketServer.RoleSave,
-                role.writeToNBT(new NBTTagCompound())
+                data
         );
     }
 
@@ -916,7 +919,7 @@ public class GuiNpcDynamicTraderEditor extends GuiScreen {
         drawString(
                 fontRenderer,
                 I18n.translateToLocal("cheba.trader.editor.barter_items"),
-                x + 190,
+                x + 242,
                 y + 13,
                 0xFFFFFF
         );

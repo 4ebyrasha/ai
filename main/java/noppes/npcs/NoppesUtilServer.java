@@ -113,6 +113,11 @@ public class NoppesUtilServer {
 	}
 
 	public static void sendRoleData(EntityPlayer player, EntityNPCInterface npc) {
+		if (player == null || npc == null || npc.advanced == null
+				|| npc.roleInterface == null) {
+			return;
+		}
+
 		if (npc.advanced.role != 0) {
 			NBTTagCompound comp = new NBTTagCompound();
 			npc.roleInterface.writeToNBT(comp);

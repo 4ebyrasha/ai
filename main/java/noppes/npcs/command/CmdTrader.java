@@ -535,7 +535,7 @@ public class CmdTrader extends CommandNoppesBase {
 
         NBTTagCompound data = new NBTTagCompound();
         data.setString("Token", session.getToken());
-        data.setString("ProfileName", profile.getName());
+        data.setString("ProfileName", preset.getName());
         data.setTag("Preset", preset.writeToNBT());
 
         Server.sendData(

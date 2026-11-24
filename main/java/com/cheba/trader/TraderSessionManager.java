@@ -1,6 +1,8 @@
 package com.cheba.trader;
 
 import net.minecraft.entity.player.EntityPlayerMP;
+import noppes.npcs.entity.EntityNPCInterface;
+import noppes.npcs.roles.RoleTrader;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -76,15 +78,60 @@ public final class TraderSessionManager {
             return null;
         }
 
-        TraderPreset preset = manager.getPreset(profile.getPresetName());
-        if (preset == null) {
+        return openProfile(player, manager, profile);
+    }
+
+    /**
+     * Opens a shop using the persistent binding stored on the NPC.
+     * Every NPC keeps its own profile, while several profiles may point
+     * to the same shared catalog.
+     */
+    public static Session openForNpc(
+            EntityPlayerMP player,
+            EntityNPCInterface npc,
+            RoleTrader role
+    ) {
+        if (player == null || npc == null || role == null
+                || player.world == null || player.world.isRemote
+                || npc.world != player.world || npc.isDead
+                || player.getDistanceSq(npc) > 64.0D) {
+            return null;
+        }
+
+        TraderProfileManager manager = TraderProfileManager.get(player.world);
+        if (manager == null) {
+            return null;
+        }
+
+        TraderProfile profile;
+        if (npc.hasTraderBinding()) {
+            profile = manager.getProfileById(
+                    npc.getTraderBinding().getTraderId()
+            );
+        } else {
+            profile = manager.migrateLegacyNpc(npc, role);
+        }
+
+        if (profile == null || profile.getPresetName().isEmpty()) {
+            return null;
+        }
+
+        return openProfile(player, manager, profile);
+    }
+
+    private static Session openProfile(
+            EntityPlayerMP player,
+            TraderProfileManager manager,
+            TraderProfile profile
+    ) {
+        if (profile == null || profile.getPresetName().isEmpty()
+                || manager.getPreset(profile.getPresetName()) == null) {
             return null;
         }
 
         closePlayer(player);
 
         String token = UUID.randomUUID().toString();
-
         Session session = new Session(
                 token,
                 player.getUniqueID(),
@@ -94,7 +141,6 @@ public final class TraderSessionManager {
 
         SESSIONS.put(token, session);
         PLAYER_SESSIONS.put(player.getUniqueID(), token);
-
         return session;
     }
 

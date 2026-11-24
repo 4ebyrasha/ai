@@ -8,14 +8,19 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 import com.cheba.trader.TraderPreset;
+import com.cheba.trader.TraderSessionManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.nbt.NBTTagList;
 
 import net.minecraft.world.World;
 import noppes.npcs.CustomNpcs;
+import noppes.npcs.Server;
+import noppes.npcs.constants.EnumPacketClient;
 import noppes.npcs.NoppesUtilPlayer;
 import noppes.npcs.NoppesUtilServer;
 import noppes.npcs.NpcMiscInventory;
@@ -463,14 +468,39 @@ public class RoleTrader extends RoleInterface implements IRoleTrader {
 
 	// Стандартные методы RoleTrader.
 	public void interact(EntityPlayer player) {
-		// Не читаем JSON при каждом открытии магазина
+		if (!(player instanceof EntityPlayerMP) || player.world.isRemote) {
+			return;
+		}
 
 		npc.say(player, npc.advanced.getInteractLine());
 
-		NoppesUtilServer.sendOpenGui(
-				player,
-				EnumGuiType.DynamicTraderMenu,
-				npc
+		EntityPlayerMP serverPlayer = (EntityPlayerMP) player;
+		TraderSessionManager.Session session =
+				TraderSessionManager.openForNpc(serverPlayer, npc, this);
+
+		if (session == null) {
+			player.sendMessage(new TextComponentTranslation(
+					"cheba.trader.message.not_found"
+			));
+			return;
+		}
+
+		TraderSessionManager.Context context =
+				TraderSessionManager.resolve(serverPlayer, session.getToken());
+
+		if (context == null) {
+			return;
+		}
+
+		NBTTagCompound data = new NBTTagCompound();
+		data.setString("Token", session.getToken());
+		data.setString("ProfileName", context.getPreset().getName());
+		data.setTag("Preset", context.getPreset().writeToNBT());
+
+		Server.sendData(
+				serverPlayer,
+				EnumPacketClient.TraderSessionOpen,
+				data
 		);
 	}
 
