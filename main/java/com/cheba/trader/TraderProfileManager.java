@@ -361,9 +361,13 @@ public class TraderProfileManager extends WorldSavedData {
                 ? ""
                 : role.getMarket().trim();
 
-        String presetName = oldMarketName.isEmpty()
-                ? "legacy-" + npcUuid
-                : oldMarketName;
+        // An empty legacy market means this NPC has no assigned shop.
+        // Do not create synthetic legacy-* catalogs during entity loading.
+        if (oldMarketName.isEmpty()) {
+            return null;
+        }
+
+        String presetName = oldMarketName;
 
         /*
          * Сначала переносим каталог.
@@ -392,9 +396,8 @@ public class TraderProfileManager extends WorldSavedData {
         String profileName = npc.getName() + " [" + npcUuid.substring(0, 8) + "]";
 
         String limitGroupName = role.sharedLimits
-                && !oldMarketName.isEmpty()
                 ? oldMarketName
-                : "legacy-" + npcUuid;
+                : "npc-" + npcUuid;
 
         TraderProfile profile = new TraderProfile(
                 UUID.randomUUID().toString(),

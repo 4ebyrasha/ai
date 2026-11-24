@@ -83,6 +83,7 @@ public final class TraderPresetEditorService {
             int entityId = request.getInteger("EntityId");
             int dimension = request.getInteger("Dimension");
             boolean detached = false;
+            String detachedLegacyPreset = null;
 
             if (!profileId.isEmpty() && entityId >= 0) {
                 net.minecraft.world.WorldServer targetWorld =
@@ -93,6 +94,13 @@ public final class TraderPresetEditorService {
                     EntityNPCInterface npc = (EntityNPCInterface) entity;
                     if (npc.hasTraderBinding()
                             && profileId.equals(npc.getTraderBinding().getTraderId())) {
+                        TraderProfile profile = manager.getProfileById(profileId);
+                        if (profile != null) {
+                            String expectedLegacyName = "legacy-" + npc.getUniqueID().toString();
+                            if (expectedLegacyName.equalsIgnoreCase(profile.getPresetName())) {
+                                detachedLegacyPreset = profile.getPresetName();
+                            }
+                        }
                         npc.setTraderBinding(null);
                         npc.updateClient = true;
                         detached = true;
@@ -102,8 +110,13 @@ public final class TraderPresetEditorService {
 
             boolean removed = detached
                     && manager.removeProfileIfUnused(player.world, profileId, null);
+            boolean removedLegacyCatalog = removed
+                    && detachedLegacyPreset != null
+                    && manager.deletePreset(detachedLegacyPreset);
             String message = removed
-                    ? "NPC отвязан от магазина."
+                    ? (removedLegacyCatalog
+                        ? "NPC отвязан. Его автоматически созданный legacy-магазин очищен."
+                        : "NPC отвязан от магазина.")
                     : detached
                         ? "NPC отвязан, но профиль ещё используется другим NPC."
                         : "NPC не загружен. Перейдите к нему или загрузите его чанк, затем повторите отвязку.";

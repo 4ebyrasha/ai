@@ -233,7 +233,7 @@ public class GuiTraderPresetManager extends GuiNPCInterface
             send("rename");
         } else if (button.id == 2 && selectedShop != null) {
             mc.displayGuiScreen(new GuiYesNo(this, "Удалить магазин " + selectedShop + "?",
-                    "Сначала отвяжите всех NPC от этого магазина.", 2));
+                    "Будут удалены каталог и все его торговые предложения.", 2));
         } else if (button.id == 3 && selectedShop != null) {
             send("edit");
         } else if (button.id == 5 && selectedShop != null) {
