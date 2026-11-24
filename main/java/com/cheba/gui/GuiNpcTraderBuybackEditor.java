@@ -351,8 +351,8 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
          * Выбор предмета из обычного инвентаря игрока
          */
         int inventoryX = x + (PANEL_WIDTH - 9 * 18) / 2;
-        int mainY = y + 198;
-        int hotbarY = y + 252;
+        int mainY = y + 183;
+        int hotbarY = y + 237;
 
         if (mouseButton == 0
                 && mouseX >= inventoryX
@@ -694,8 +694,8 @@ public class GuiNpcTraderBuybackEditor extends GuiScreen {
 
     private int getHoveredInventorySlot(int mouseX, int mouseY) {
         int x = left() + (PANEL_WIDTH - 9 * 18) / 2;
-        int mainY = top() + 198;
-        int hotbarY = top() + 252;
+        int mainY = top() + 183;
+        int hotbarY = top() + 237;
 
         if (mouseX < x || mouseX >= x + 9 * 18) {
             return -1;

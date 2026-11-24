@@ -346,6 +346,49 @@ public class TraderProfileManager extends WorldSavedData {
         return profile;
     }
 
+    /**
+     * Synchronizes edits made through the familiar NPC trader editor.
+     * A missing binding is migrated once; subsequent saves update its catalog.
+     */
+    public TraderProfile syncLegacyRole(EntityNPCInterface npc, RoleTrader role) {
+        if (npc == null || role == null
+                || npc.world == null || npc.world.isRemote) {
+            return null;
+        }
+
+        TraderProfile profile = npc.hasTraderBinding()
+                ? getProfileById(npc.getTraderBinding().getTraderId())
+                : migrateLegacyNpc(npc, role);
+        if (profile == null) {
+            return null;
+        }
+
+        String presetName = profile.getPresetName();
+        if (presetName == null || presetName.trim().isEmpty()) {
+            presetName = "npc-" + npc.getUniqueID().toString();
+            profile.setPresetName(presetName);
+            markDirty();
+        }
+
+        TraderPreset current = getPreset(presetName);
+        if (current == null) {
+            TraderPreset migrated = role.createTraderPreset(presetName);
+            if (!addPreset(migrated)) {
+                current = getPreset(presetName);
+            } else {
+                current = migrated;
+            }
+        } else {
+            TraderPreset edited = role.createTraderPreset(presetName);
+            if (!saveEditedPreset(presetName, current.getRevision(), edited)) {
+                return null;
+            }
+            current = getPreset(presetName);
+        }
+
+        return current == null ? null : profile;
+    }
+
     public void markChanged() {
         markDirty();
     }

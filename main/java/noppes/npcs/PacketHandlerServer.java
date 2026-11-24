@@ -650,7 +650,13 @@ public class PacketHandlerServer {
 
 																			traderRole.readFromNBTForSave(roleTag);
 
-																			String marketName = traderRole.marketName;
+															TraderProfileManager traderManager =
+																TraderProfileManager.get(npc.world);
+															if (traderManager != null) {
+																traderManager.syncLegacyRole(npc, traderRole);
+															}
+
+															String marketName = traderRole.marketName;
 
 																			if (marketName != null && !marketName.trim().isEmpty()) {
 																				RoleTrader.save(traderRole, marketName);
@@ -1381,7 +1387,7 @@ public class PacketHandlerServer {
 
 		if (npc == null || npc.world != player.world || npc.isDead) {
 			response.setBoolean("Success", false);
-			response.setString("Message", "NPC editing session is unavailable.");
+			response.setString("Message", "Не удалось получить NPC для настройки.");
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
@@ -1389,120 +1395,95 @@ public class PacketHandlerServer {
 		TraderProfileManager manager = TraderProfileManager.get(npc.world);
 		if (manager == null) {
 			response.setBoolean("Success", false);
-			response.setString("Message", "Trader profile storage is unavailable.");
+			response.setString("Message", "Хранилище магазинов недоступно.");
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
 
+		TraderProfile currentProfile = npc.hasTraderBinding()
+				? manager.getProfileById(npc.getTraderBinding().getTraderId())
+				: null;
+
 		if ("load".equals(action)) {
-			TraderProfile profile = npc.hasTraderBinding()
-					? manager.getProfileById(npc.getTraderBinding().getTraderId())
-					: null;
-
 			response.setBoolean("Success", true);
-			response.setString("Message", profile == null
-					? "No trader profile is assigned."
-					: "Current NPC trader settings loaded.");
-
-			if (profile != null) {
-				response.setString("ProfileName", profile.getName());
-				response.setString("PresetName", profile.getPresetName());
-				response.setString("LimitGroupName", profile.getLimitGroupName());
-				response.setBoolean("SharedLimits", profile.hasSharedLimits());
-			}
-
-			NBTTagList profileNames = new NBTTagList();
-			int profileCount = 0;
-			for (TraderProfile availableProfile : manager.getProfiles()) {
-				if (profileCount++ >= 100) break;
-				profileNames.appendTag(new NBTTagString(availableProfile.getName()));
-			}
-			response.setTag("Profiles", profileNames);
-
-			NBTTagList presetNames = new NBTTagList();
-			int presetCount = 0;
-			for (TraderPreset availablePreset : manager.getPresets()) {
-				if (presetCount++ >= 100) break;
-				presetNames.appendTag(new NBTTagString(availablePreset.getName()));
-			}
-			response.setTag("Presets", presetNames);
-
+			response.setString("ShopName",
+					currentProfile == null
+							|| currentProfile.getPresetName().startsWith("npc-")
+							|| currentProfile.getPresetName().startsWith("legacy-")
+						? "" : currentProfile.getPresetName());
+			response.setBoolean("SharedLimits",
+					currentProfile != null && currentProfile.hasSharedLimits());
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
 
 		if (!"save".equals(action)) {
 			response.setBoolean("Success", false);
-			response.setString("Message", "Unknown trader setup action.");
+			response.setString("Message", "Неизвестная операция настройки.");
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
 
-		String profileName = request.getString("ProfileName").trim();
-		String presetName = request.getString("PresetName").trim();
-		String groupName = request.getString("LimitGroupName").trim();
+		String shopName = request.getString("ShopName").trim();
 		boolean sharedLimits = request.getBoolean("SharedLimits");
-		boolean openEditor = request.getBoolean("OpenEditor");
-
-		if (profileName.isEmpty() || profileName.length() > 128
-				|| presetName.length() > 128
-				|| groupName.length() > 128
-				|| (sharedLimits && groupName.isEmpty())
-				|| (openEditor && presetName.isEmpty())) {
+		if (shopName.length() > 128) {
 			response.setBoolean("Success", false);
-			response.setString("Message", "Invalid profile, catalog, or limit group name.");
+			response.setString("Message", "Имя магазина слишком длинное.");
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
 
-		TraderProfile profile = manager.getProfileByName(profileName);
-		TraderPreset preset = presetName.isEmpty()
-				? null
-				: manager.getPreset(presetName);
+		String npcId = npc.getUniqueID().toString();
+		String presetName = shopName.isEmpty()
+				? (currentProfile != null
+						&& (currentProfile.getPresetName().startsWith("npc-")
+						|| currentProfile.getPresetName().startsWith("legacy-"))
+						? currentProfile.getPresetName()
+						: "npc-" + npcId)
+				: shopName;
+		String profileName = currentProfile == null
+				? "npc-" + npcId : currentProfile.getName();
 
-		if (!presetName.isEmpty() && preset == null) {
-			try {
-				preset = new TraderPreset(presetName);
-			} catch (IllegalArgumentException exception) {
-				response.setBoolean("Success", false);
-				response.setString("Message", "Invalid catalog name.");
-				Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
-				return;
-			}
-
+		TraderPreset preset = manager.getPreset(presetName);
+		if (preset == null) {
+			RoleTrader legacyRole = npc.roleInterface instanceof RoleTrader
+					? (RoleTrader) npc.roleInterface : null;
+			preset = legacyRole == null
+					? new TraderPreset(presetName)
+					: legacyRole.createTraderPreset(presetName);
 			if (!manager.addPreset(preset)) {
 				preset = manager.getPreset(presetName);
 			}
 		}
 
-		if (profile == null) {
-			profile = manager.createProfile(profileName);
-		}
-
-		if ((!presetName.isEmpty() && preset == null) || profile == null) {
+		if (preset == null) {
 			response.setBoolean("Success", false);
-			response.setString("Message", "Could not create or resolve the profile/catalog.");
+			response.setString("Message", "Не удалось создать магазин.");
 			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 			return;
 		}
 
-		profile.setPresetName(preset == null ? "" : preset.getName());
-		profile.setLimitGroupName(groupName);
-		profile.setSharedLimits(sharedLimits);
-		manager.markChanged();
+		TraderProfile profile = currentProfile;
+		if (profile == null) profile = manager.getProfileByName(profileName);
+		if (profile == null) profile = manager.createProfile(profileName);
 
+		if (profile == null) {
+			response.setBoolean("Success", false);
+			response.setString("Message", "Не удалось создать настройки NPC.");
+			Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
+			return;
+		}
+
+		profile.setPresetName(preset.getName());
+		profile.setSharedLimits(sharedLimits);
+		profile.setLimitGroupName(sharedLimits ? preset.getName() : "");
+		manager.markChanged();
 		npc.setTraderBinding(new TraderBinding(profile.getId()));
 		npc.updateClient = true;
 
 		response.setBoolean("Success", true);
-		response.setBoolean("OpenEditor", openEditor);
-		response.setString("Message", "NPC trader profile and catalog saved.");
-		response.setString("ProfileName", profile.getName());
-		response.setString("PresetName", preset == null ? "" : preset.getName());
-		if (preset != null) {
-			response.setTag("Preset", preset.writeToNBT());
-		}
-
+		response.setString("Message", shopName.isEmpty()
+				? "Создан личный магазин NPC."
+				: "Магазин сохранён. Одинаковое имя подключает NPC к общему каталогу.");
 		Server.sendData(player, EnumPacketClient.TraderBindingSetupResult, response);
 	}
-}
