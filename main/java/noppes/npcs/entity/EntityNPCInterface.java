@@ -2239,6 +2239,12 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 	public void setTraderBinding(TraderBinding traderBinding) {
 		this.traderBinding = traderBinding;
 		this.traderLegacyMigrationBlocked = traderBinding == null;
+
+		// Entity NBT is persisted with its chunk. Mark it dirty so an explicit
+		// unbind is not lost when the server stops before the next autosave.
+		if (this.world != null && !this.world.isRemote && !this.isDead) {
+			this.world.getChunkFromBlockCoords(this.getPosition()).markDirty();
+		}
 	}
 
 	public boolean isTraderLegacyMigrationBlocked() {
