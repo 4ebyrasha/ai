@@ -128,6 +128,7 @@ public class GuiTraderPresetManager extends GuiNPCInterface
         setButtonVisible(3, !referencesMode);
         setButtonVisible(5, !referencesMode);
         setButtonVisible(6, referencesMode);
+        updateReferenceActionLabel();
 
         GuiButton backButton = findButton(4);
         if (backButton != null) {
@@ -147,6 +148,15 @@ public class GuiTraderPresetManager extends GuiNPCInterface
         }
 
         updateButtons();
+    }
+
+    private void updateReferenceActionLabel() {
+        GuiButton button = findButton(6);
+        if (button == null) return;
+        NBTTagCompound entry = selectedReference == null
+                ? null : references.get(selectedReference);
+        button.displayString = entry != null && entry.getInteger("EntityId") < 0
+                ? "Очистить запись" : "Отвязать";
     }
 
     private void setButtonVisible(int id, boolean visible) {
@@ -175,15 +185,11 @@ public class GuiTraderPresetManager extends GuiNPCInterface
                 ? selectedReference != null : selectedShop != null;
 
         for (GuiButton button : buttonList) {
-            button.enabled = button.id == 4 || !waiting;
+            button.enabled = !waiting;
         }
 
         if (referencesMode) {
-            NBTTagCompound selectedEntry = selectedReference == null
-                    ? null : references.get(selectedReference);
-            boolean loadedNpc = selectedEntry != null
-                    && selectedEntry.getInteger("EntityId") >= 0;
-            setButtonEnabled(6, !waiting && selected && loadedNpc);
+            setButtonEnabled(6, !waiting && selected);
         } else {
             setButtonEnabled(1, !waiting && selected);
             setButtonEnabled(2, !waiting && selected);
@@ -240,10 +246,13 @@ public class GuiTraderPresetManager extends GuiNPCInterface
             send("references");
         } else if (button.id == 6 && selectedReference != null) {
             NBTTagCompound entry = references.get(selectedReference);
-            String warning = entry != null && entry.getInteger("EntityId") < 0
-                    ? "NPC не загружен. Если он есть в выгруженном чанке, привязка там останется."
+            boolean unloaded = entry != null && entry.getInteger("EntityId") < 0;
+            String warning = unloaded
+                    ? "Запись профиля будет удалена. Если NPC существует в выгруженном чанке, его привязка снимется при следующей загрузке."
                     : "NPC потеряет привязку к этому торговому профилю.";
-            mc.displayGuiScreen(new GuiYesNo(this, "Отвязать " + selectedReference + "?", warning, 6));
+            mc.displayGuiScreen(new GuiYesNo(this,
+                    (unloaded ? "Очистить запись " : "Отвязать ") + selectedReference + "?",
+                    warning, 6));
         }
     }
 
@@ -264,8 +273,10 @@ public class GuiTraderPresetManager extends GuiNPCInterface
     public void scrollClicked(int mouseX, int mouseY, int mouseButton, GuiCustomScroll source) {
         String label = source.getSelected();
         if (label == null) return;
-        if ("references".equals(mode)) selectedReference = label;
-        else {
+        if ("references".equals(mode)) {
+            selectedReference = label;
+            updateReferenceActionLabel();
+        } else {
             selectedShop = shopLabels.get(label);
             if (selectedShop != null && nameField != null) nameField.setText(selectedShop);
         }

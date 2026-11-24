@@ -1301,6 +1301,17 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		if (this.advanced.role != 0 && this.roleInterface != null) {
 			this.roleInterface.readFromNBT(compound);
 		}
+
+		if (!this.isRemote() && this.traderBinding != null) {
+			TraderProfileManager manager = TraderProfileManager.get(this.world);
+			if (manager != null
+					&& manager.getProfileById(this.traderBinding.getTraderId()) == null) {
+				// The profile was explicitly removed from the manager. Do not
+				// recreate a synthetic legacy shop for this NPC on reload.
+				this.setTraderBinding(null);
+			}
+		}
+
 		/*
 		 * Мигрируем старого торговца после загрузки RoleTrader.
 		 *

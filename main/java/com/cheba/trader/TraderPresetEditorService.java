@@ -109,17 +109,20 @@ public final class TraderPresetEditorService {
             }
 
             boolean removed = detached
-                    && manager.removeProfileIfUnused(player.world, profileId, null);
+                    ? manager.removeProfileIfUnused(player.world, profileId, null)
+                    : entityId < 0 && manager.removeProfileIfUnused(player.world, profileId, null);
             boolean removedLegacyCatalog = removed
                     && detachedLegacyPreset != null
                     && manager.deletePreset(detachedLegacyPreset);
             String message = removed
                     ? (removedLegacyCatalog
                         ? "NPC отвязан. Его автоматически созданный legacy-магазин очищен."
-                        : "NPC отвязан от магазина.")
+                        : detached
+                            ? "NPC отвязан от магазина."
+                            : "Старая запись профиля очищена. Если NPC ещё существует, он будет отвязан при загрузке.")
                     : detached
                         ? "NPC отвязан, но профиль ещё используется другим NPC."
-                        : "NPC не загружен. Перейдите к нему или загрузите его чанк, затем повторите отвязку.";
+                        : "Профиль всё ещё используется загруженным NPC или уже отсутствует.";
             sendReferenceResult(player, manager, name, message);
             return;
         }
