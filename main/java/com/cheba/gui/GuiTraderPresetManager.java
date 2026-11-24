@@ -257,7 +257,7 @@ public class GuiTraderPresetManager extends GuiNPCInterface
     }
 
     @Override
-    public void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+    public void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         super.mouseClicked(mouseX, mouseY, mouseButton);
         if (nameField != null && nameField.getVisible()) {
             nameField.mouseClicked(mouseX, mouseY, mouseButton);
@@ -265,7 +265,7 @@ public class GuiTraderPresetManager extends GuiNPCInterface
     }
 
     @Override
-    public void keyTyped(char typedChar, int keyCode) throws IOException {
+    public void keyTyped(char typedChar, int keyCode) {
         if (keyCode == 1) {
             if ("references".equals(mode)) send("list");
             else mc.displayGuiScreen(parent);
